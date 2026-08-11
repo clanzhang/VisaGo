@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.7-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -122,6 +122,25 @@ visago/
 | 🇹🇭 免签/落地签 | 泰国、济州岛等免签或落地签目的地 |
 | 🇯🇵🇰🇷 需提前办理 | 日本、韩国等需提前办理签证的国家 |
 | 🇪🇺🇺🇸🇬🇧🇦🇺 需提前办理 | 申根、美国、英国、澳大利亚等严格审核国家 |
+
+## 📦 迭代版本
+
+### v0.0.7 (当前版本)
+
+- 🎉 首次发布
+- ✅ 签证百科（免签/落地签/需提前办理分类）
+- ✅ AI 文件扫描识别（身份证/护照/银行流水/在职证明）
+- ✅ 智能材料清单生成
+- ✅ 文档自动生成（行程单/在职证明/邀请函/个人陈述）
+- ✅ 申请进度追踪
+- ✅ 签证对比查询
+
+### v0.0.8 (计划中)
+
+- 🔜 接入更多国家签证数据
+- 🔜 AI 智能问答浮窗
+- 🔜 自动更新功能
+- 🔜 多语言支持完善
 
 ## 🤝 贡献
 

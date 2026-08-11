@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.7-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -122,6 +122,25 @@ visago/
 | 🇹🇭 Visa-free / VOA | Thailand, Jeju Island and other visa-free or visa-on-arrival destinations |
 | 🇯🇵🇰🇷 Apply in advance | Japan, South Korea and other countries requiring advance visas |
 | 🇪🇺🇺🇸🇬🇧🇦🇺 Apply in advance | Schengen, USA, UK, Australia and other strict-review countries |
+
+## 📦 Changelog
+
+### v0.0.7 (Current)
+
+- 🎉 Initial release
+- ✅ Visa Encyclopedia (visa-free / VOA / advance visa categories)
+- ✅ AI document scanning (ID / passport / bank statement / employment certificate)
+- ✅ Smart material checklist generation
+- ✅ Auto document generation (itinerary / employment letter / invitation / cover letter)
+- ✅ Application progress tracking
+- ✅ Visa comparison
+
+### v0.0.8 (Planned)
+
+- 🔜 More countries visa data
+- 🔜 AI chat assistant widget
+- 🔜 Auto-update support
+- 🔜 Improved i18n
 
 ## 🤝 Contributing
 
