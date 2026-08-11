@@ -2,7 +2,6 @@
 use std::path::Path;
 
 const SUPPORTED_EXT: &[&str] = &["pdf", "jpg", "jpeg", "png", "docx", "doc"];
-
 #[derive(serde::Serialize)]
 pub struct ScannedItem {
     pub path: String,
@@ -64,4 +63,67 @@ pub fn read_text_content(path: &Path) -> String {
         Ok(text) => text.chars().take(2000).collect(),
         Err(_) => String::new(),
     }
+}
+
+/// 从 PDF 提取文本（使用 pdf-extract）
+pub fn extract_pdf_text(path: &str) -> Result<String, String> {
+    println!("[extract] 开始提取 PDF 文本: {path}");
+    let data = std::fs::read(path).map_err(|e| format!("读取 PDF 失败: {e}"))?;
+    let text = pdf_extract::extract_text_from_mem(&data).map_err(|e| {
+        println!("[extract] PDF 文本提取失败: {e}");
+        format!("PDF 文本提取失败: {e}")
+    })?;
+    let cleaned: String = text.chars().filter(|c| !c.is_control() || *c == '\n' || *c == '\t').collect();
+    let trimmed = cleaned.trim().to_string();
+    println!("[extract] PDF 文本长度: {} 字符", trimmed.chars().count());
+    if trimmed.is_empty() {
+        println!("[extract] 警告: PDF 无文本层（可能是扫描件/图片型 PDF）");
+    }
+    Ok(trimmed)
+}
+
+/// 从 DOCX 提取文本（docx 是 zip，解压 word/document.xml 并剥离 XML 标签）
+pub fn extract_docx_text(path: &str) -> Result<String, String> {
+    println!("[extract] 开始提取 DOCX 文本: {path}");
+    let data = std::fs::read(path).map_err(|e| format!("读取 DOCX 失败: {e}"))?;
+    // 解析 zip 目录，找到 word/document.xml
+    let mut cursor = std::io::Cursor::new(&data);
+    let mut archive = zip::ZipArchive::new(&mut cursor)
+        .map_err(|e| format!("DOCX 不是有效的 zip: {e}"))?;
+
+    let mut doc_xml = String::new();
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let name = file.name().to_string();
+        if name == "word/document.xml" {
+            let mut content = String::new();
+            use std::io::Read;
+            file.read_to_string(&mut content).map_err(|e| format!("读取 document.xml 失败: {e}"))?;
+            doc_xml = content;
+            break;
+        }
+    }
+
+    if doc_xml.is_empty() {
+        println!("[extract] DOCX 中未找到 word/document.xml");
+        return Err("DOCX 中未找到文档内容".to_string());
+    }
+
+    // 提取 <w:t> 标签内的文本
+    let mut text = String::new();
+    for part in doc_xml.split("<w:t") {
+        if let Some(start) = part.find('>') {
+            let inner = &part[start + 1..];
+            if let Some(end) = inner.find("</w:t>") {
+                text.push_str(&inner[..end]);
+                text.push(' ');
+            }
+        }
+    }
+    let trimmed = text.trim().to_string();
+    println!("[extract] DOCX 文本长度: {} 字符", trimmed.chars().count());
+    if trimmed.is_empty() {
+        println!("[extract] 警告: DOCX 提取文本为空");
+    }
+    Ok(trimmed)
 }

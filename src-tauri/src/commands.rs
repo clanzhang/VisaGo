@@ -145,18 +145,54 @@ pub(crate) fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, String> {
 pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: String) -> Result<RecognizeResult, String> {
     println!("[IPC] recognize_file 被调用: {name} ({path})");
 
-    // 读取文件内容（图片转 base64，文本直接读）
     let ext = path
         .rsplit('.')
         .next()
         .unwrap_or("")
         .to_lowercase();
-    let content_b64 = match ext.as_str() {
+
+    // 提取文件文本内容（PDF/DOCX）与图片 base64（jpg/png）
+    let mut file_text: Option<String> = None;
+    let mut content_b64: Option<String> = None;
+
+    match ext.as_str() {
+        "pdf" => {
+            match scanner::extract_pdf_text(&path) {
+                Ok(text) if !text.trim().is_empty() => {
+                    println!("[recognize] PDF 文本提取成功: {} 字符", text.chars().count());
+                    file_text = Some(text);
+                }
+                Ok(_) => {
+                    // 扫描件 PDF（无文本层）：回退为"仅文件名"，让 Kimi 基于文件名+常识尽力识别
+                    println!("[recognize] PDF 无文本层（扫描件），回退为文件名识别");
+                    file_text = Some(format!(
+                        "（这是一个扫描件/图片型 PDF，无法直接提取文本。请根据文件名「{name}」和你的常识判断该文件类型，并尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
+                    ));
+                }
+                Err(e) => {
+                    println!("[recognize] PDF 文本提取失败: {e}（将尝试仅用文件名识别）");
+                    file_text = Some(format!(
+                        "（PDF 提取失败。请根据文件名「{name}」和你的常识判断该文件类型，尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
+                    ));
+                }
+            }
+        }
+        "docx" | "doc" => {
+            match scanner::extract_docx_text(&path) {
+                Ok(text) => {
+                    println!("[recognize] DOCX 文本提取成功: {} 字符", text.chars().count());
+                    file_text = Some(text);
+                }
+                Err(e) => {
+                    println!("[recognize] DOCX 文本提取失败: {e}");
+                }
+            }
+        }
         "jpg" | "jpeg" | "png" => {
             match scanner::read_file_base64(&path) {
                 Ok(b64) => {
                     println!("[recognize] 读取图片成功: {} bytes(base64 长度 {})", name, b64.len());
-                    Some(b64)
+                    content_b64 = Some(b64);
                 }
                 Err(e) => {
                     println!("[recognize] 读取图片失败: {name}: {e}");
@@ -164,11 +200,16 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
                 }
             }
         }
-        _ => None,
-    };
+        _ => {
+            println!("[recognize] 不支持的扩展名: {ext}");
+        }
+    }
 
-    println!("[recognize] 发送给 Kimi: name={name}, ext={ext}, content_b64={}", content_b64.is_some());
-    let recognized = match recognizer::recognize_file(&path, &name, content_b64).await {
+    println!("[recognize] 发送给 Kimi: name={name}, ext={ext}, file_text={}, content_b64={}",
+        file_text.as_ref().map(|t| t.chars().count()).unwrap_or(0),
+        content_b64.is_some());
+
+    let recognized = match recognizer::recognize_file(&path, &name, file_text, content_b64).await {
         Ok(r) => {
             println!("[recognize] Kimi 识别成功: category={}, fields={}", r.category, r.fields);
             r

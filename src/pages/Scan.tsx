@@ -142,32 +142,19 @@ export default function Scan() {
   // 从识别结果聚合字段到核对表单
   async function handleNextToConfirm() {
     const merged: Record<string, string> = {}
-    const fieldMap: Record<string, string> = {
-      name: '姓名',
-      passport_number: '护照号',
-      id_number: '身份证号',
-      nationality: '国籍',
-      birth_date: '出生日期',
-      gender: '性别',
-      phone: '手机号',
-      address: '地址',
-      home_province: '户籍',
-      occupation: '职业',
-      company: '单位',
-      position: '职位',
-      salary: '月薪',
-    }
+    // Kimi 返回的字段键与 FIELD_SPECS 一致（name/passport_number 等英文键）
+    const fieldKeys = FIELD_SPECS.map((f) => f.key)
     for (const item of items) {
-      if (item.status === 'done') {
-        for (const [k, v] of Object.entries(item.fields)) {
-          // Kimi 返回的字段可能是 "姓名: 张三" 或 "姓名：张三"
-          const clean = String(v).replace(/^[^:：]*[:：]\s*/, '').trim()
-          const target = Object.entries(fieldMap).find(
-            ([, label]) => k.includes(label) || label === k,
-          )?.[0]
-          if (target && clean && !merged[target]) {
-            merged[target] = clean
-          }
+      if (item.status !== 'done') continue
+      const fields = (item.fields ?? {}) as Record<string, unknown>
+      for (const k of fieldKeys) {
+        // 已填过则跳过（后续文件不覆盖）
+        if (merged[k]) continue
+        const v = fields[k]
+        if (v === null || v === undefined) continue
+        const clean = String(v).trim()
+        if (clean && clean !== 'null' && clean !== '暂无' && !merged[k]) {
+          merged[k] = clean
         }
       }
     }
@@ -350,15 +337,18 @@ export default function Scan() {
             {missingFields.length > 0 && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <div className="text-sm font-semibold text-amber-700">
-                  缺失 {missingFields.length} 项必填信息：
+                  文件中未找到 {missingFields.length} 项信息，请核对或补充：
                 </div>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {missingFields.map((f) => (
                     <span key={f.key} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                      缺 {f.label}
+                      {f.label}（文件中未找到）
                     </span>
                   ))}
                 </div>
+                <p className="mt-2 text-xs text-amber-600/70">
+                  💡 提示：可补充扫描身份证/护照/户口本等材料自动获取，或在下方手动补填
+                </p>
               </div>
             )}
 
@@ -372,11 +362,14 @@ export default function Scan() {
                       <label className="text-sm font-medium text-ink">
                         {f.label} {f.required && <span className="text-red-500">*</span>}
                       </label>
+                      {!filled && (
+                        <span className="ml-auto text-[11px] text-red-500/70">文件中未找到</span>
+                      )}
                     </div>
                     <input
                       value={profile[f.key] ?? ''}
                       onChange={(e) => setProfile({ ...profile, [f.key]: e.target.value })}
-                      placeholder={f.required ? '必填' : '选填'}
+                      placeholder={filled ? (f.required ? '必填' : '选填') : '文件中未找到，请补充'}
                       className="w-full rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-primary/40"
                     />
                   </div>
