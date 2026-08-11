@@ -293,10 +293,10 @@ pub(crate) async fn refresh_visa_data(
 
 // ===== PDF 导出 =====
 
-/// IPC: export_pdf — HTML 转 PDF 存本地
+/// IPC: export_pdf — HTML 转 PDF，弹保存对话框让用户选位置
 #[tauri::command]
-pub(crate) fn export_pdf(app: tauri::AppHandle, html: String, filename: String) -> Result<String, String> {
-    exporter::export_pdf(app, html, filename)
+pub(crate) fn export_pdf(html: String, filename: String) -> Result<String, String> {
+    exporter::export_pdf(html, filename)
 }
 
 // ===== 注册 =====

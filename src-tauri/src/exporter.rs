@@ -1,17 +1,5 @@
-// src/exporter.rs — HTML 转 PDF（本地保存）
-// 简化实现：提取 HTML 中的文本内容生成 PDF；复杂排版建议走前端 jsPDF
-use std::path::PathBuf;
-use tauri::Manager;
-
-fn data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("无法获取数据目录: {e}"))?;
-    let data = dir.join("exports");
-    std::fs::create_dir_all(&data).map_err(|e| format!("创建导出目录失败: {e}"))?;
-    Ok(data)
-}
+// src/exporter.rs — HTML 转 PDF（用户选择保存位置）
+// 用 rfd 原生保存对话框，不暴露应用内部目录
 
 /// 从 HTML 中粗略提取可见文本
 fn strip_html(html: &str) -> String {
@@ -86,16 +74,37 @@ fn escape_pdf(text: &str) -> String {
     s
 }
 
-/// 导出 PDF（被 commands.rs 的 IPC 命令调用）
-pub fn export_pdf(app: tauri::AppHandle, html: String, filename: String) -> Result<String, String> {
+/// 导出 PDF — 通过原生保存对话框让用户选择保存位置
+/// 注意：rfd 保存对话框必须在主线程调用，故为同步函数
+pub fn export_pdf(html: String, filename: String) -> Result<String, String> {
     let text = strip_html(&html);
     let pdf = make_pdf(&text);
-    let dir = data_dir(&app)?;
+
+    // 默认文件名只含文件名，不带路径（不暴露应用内部目录）
     let safe_name: String = filename
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
         .collect();
-    let path = dir.join(format!("{}.pdf", if safe_name.is_empty() { "document".to_string() } else { safe_name }));
+    let default_name = if safe_name.is_empty() { "document".to_string() } else { safe_name };
+    let default_name = format!("{default_name}.pdf");
+
+    println!("[export] 弹出保存对话框，默认文件名: {default_name}");
+    // 用 rfd 原生保存对话框，用户自行选择保存位置
+    let picked = rfd::FileDialog::new()
+        .set_title("选择保存位置")
+        .set_file_name(&default_name)
+        .add_filter("PDF", &["pdf"])
+        .save_file();
+
+    let path = match picked {
+        Some(p) => p,
+        None => {
+            println!("[export] 用户取消了保存");
+            return Err("用户取消了保存".to_string());
+        }
+    };
+    println!("[export] 用户选择保存到: {}", path.display());
+
     std::fs::write(&path, pdf).map_err(|e| format!("写 PDF 失败: {e}"))?;
     Ok(path.to_string_lossy().to_string())
 }
