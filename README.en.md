@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.7-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.8-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,9 +125,9 @@ visago/
 
 ## 📦 Changelog
 
-### v0.0.7 (Current)
+### v0.0.8 (Current)
 
-- 🎉 Initial release
+- 🎉 Version update release
 - ✅ Visa Encyclopedia (visa-free / VOA / advance visa categories)
 - ✅ AI document scanning (ID / passport / bank statement / employment certificate)
 - ✅ Smart material checklist generation
@@ -135,7 +135,7 @@ visago/
 - ✅ Application progress tracking
 - ✅ Visa comparison
 
-### v0.0.8 (Planned)
+### v0.0.9 (Planned)
 
 - 🔜 More countries visa data
 - 🔜 AI chat assistant widget
