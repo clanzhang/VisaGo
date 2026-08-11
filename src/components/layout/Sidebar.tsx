@@ -51,7 +51,13 @@ export function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
-            onClick={() => item.to === '/' && reset()}
+            onClick={() => {
+              // 点击「材料扫描」：通知 Scan 页重置到文件列表页（保留已扫描文件）
+              if (item.to === '/scan') {
+                window.dispatchEvent(new CustomEvent('visago:reset-scan'))
+              }
+              if (item.to === '/') reset()
+            }}
             className={({ isActive }) =>
               `group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-colors duration-150 ${
                 isActive

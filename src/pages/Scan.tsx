@@ -1,5 +1,6 @@
 // pages/Scan.tsx — 桌面端三步走：扫描资料 → 核对信息 → 生成结果
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { VButton, VBadge } from '@/components/common'
 import { useAppStore } from '@/stores/appStore'
 import {
@@ -66,6 +67,32 @@ export default function Scan() {
 
   const tauriEnv = isTauri()
 
+  // 用 ref 跟踪 items，供追加合并与导航重置使用
+  const itemsRef = useRef<RecognizedItem[]>([])
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+
+  // 侧边栏/导航再次进入「材料扫描」时，重置到文件列表页（保留已扫描文件）
+  const location = useLocation()
+  const navKeyRef = useRef(location.key)
+  useEffect(() => {
+    if (location.pathname === '/scan' && location.key !== navKeyRef.current) {
+      navKeyRef.current = location.key
+      setStep(itemsRef.current.length > 0 ? 2 : 1)
+    }
+  }, [location.pathname, location.key])
+
+  // 侧边栏点击「材料扫描」事件：回到文件列表页（保留已扫描文件，可追加）
+  useEffect(() => {
+    const handler = () => {
+      console.log('[Scan] 收到侧边栏重置事件，回到文件列表页')
+      setStep(itemsRef.current.length > 0 ? 2 : 1)
+    }
+    window.addEventListener('visago:reset-scan', handler)
+    return () => window.removeEventListener('visago:reset-scan', handler)
+  }, [])
+
   // ===== 第一步：扫描 =====
 
   /** 弹系统文件夹选择器，选文件夹后扫描 */
@@ -120,11 +147,13 @@ export default function Scan() {
     }
   }
 
-  /** 把扫描结果应用到状态 */
-  function applyScanResult(result: ScanResult) {
-    setFolder(result.folder)
-    setItems(
-      result.files.map((f) => ({
+  /** 把扫描结果应用到状态；append=true 时追加（去重）而非覆盖 */
+  function applyScanResult(result: ScanResult, append = false) {
+    const base = append ? itemsRef.current : []
+    const existing = new Set(base.map((i) => i.path))
+    const fresh = result.files
+      .filter((f) => !existing.has(f.path))
+      .map((f) => ({
         path: f.path,
         name: f.name,
         fileType: f.file_type,
@@ -132,14 +161,49 @@ export default function Scan() {
         fields: {},
         summary: '',
         status: 'pending' as const,
-      })),
-    )
+      }))
+    const merged = [...base, ...fresh]
+    setItems(merged)
+    if (!append) setFolder(result.folder)
+
     if (result.files.length === 0) {
-      toast('未找到支持的材料文件（pdf/jpg/png/docx/doc）', 'warning')
+      if (!append) toast('未找到支持的材料文件（pdf/jpg/png/docx/doc）', 'warning')
       return
     }
     setStep(2)
-    toast(`找到 ${result.files.length} 个文件`, 'success')
+    if (append) {
+      toast(`追加 ${fresh.length} 个文件`, 'success')
+      if (fresh.length > 0) {
+        void handleRecognizeAllFresh(fresh)
+      }
+    } else {
+      toast(`找到 ${fresh.length} 个文件`, 'success')
+    }
+  }
+
+  /** 追加更多文件：重新弹选择器，新文件追加到列表并自动识别 */
+  async function handleAddMore() {
+    if (!tauriEnv) {
+      toast('请使用 Tauri 桌面端进行扫描', 'warning')
+      return
+    }
+    setScanning(true)
+    try {
+      console.log('[Scan] 追加：弹文件选择器...')
+      const files = await pickFiles(true, '选择要追加的材料文件（可多选）')
+      if (!files || files.length === 0) {
+        setScanning(false)
+        return
+      }
+      console.log('[Scan] 追加：用户选择', files.length, '个文件')
+      const result: ScanResult = await scanFiles(files)
+      applyScanResult(result, true)
+    } catch (e) {
+      console.error('[Scan] 追加失败:', e)
+      toast(e instanceof Error ? e.message : '追加扫描失败', 'error')
+    } finally {
+      setScanning(false)
+    }
   }
 
   // 识别单个文件
@@ -185,6 +249,16 @@ export default function Scan() {
     }
     setRecognizingAll(false)
     toast('识别完成', 'success')
+  }
+
+  // 追加后自动识别一组新文件（串行）
+  async function handleRecognizeAllFresh(fresh: RecognizedItem[]) {
+    setRecognizingAll(true)
+    for (const item of fresh) {
+      await handleRecognize(item)
+    }
+    setRecognizingAll(false)
+    toast('追加文件识别完成', 'success')
   }
 
   // 从识别结果聚合字段到核对表单
@@ -325,12 +399,17 @@ export default function Scan() {
               <div>
                 <h2 className="text-lg font-bold text-ink">已扫描文件</h2>
                 <p className="text-xs text-ink/45">
-                  文件夹：{folder} · 共 {items.length} 个文件
+                  共 {items.length} 个文件{items.length > 0 && ` · ${folder}`}
                 </p>
               </div>
-              <VButton size="sm" onClick={handleRecognizeAll} disabled={recognizingAll}>
-                {recognizingAll ? '识别中…' : `🤖 识别全部 (${recognizedCount}/${items.length})`}
-              </VButton>
+              <div className="flex items-center gap-2">
+                <VButton size="sm" variant="secondary" onClick={handleAddMore} disabled={scanning}>
+                  {scanning ? '选择器中…' : '+ 添加更多文件'}
+                </VButton>
+                <VButton size="sm" onClick={handleRecognizeAll} disabled={recognizingAll}>
+                  {recognizingAll ? '识别中…' : `🤖 识别全部 (${recognizedCount}/${items.length})`}
+                </VButton>
+              </div>
             </div>
 
             <div className="space-y-2">
