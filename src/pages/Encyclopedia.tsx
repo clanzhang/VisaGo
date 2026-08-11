@@ -103,12 +103,14 @@ export default function Encyclopedia() {
         {list.map((c, i) => {
           const selected = compareIds.includes(c.id)
           return (
-            <div key={c.id} className="relative">
+            <div key={c.id} className="group relative">
               <CountryCard country={c} index={i} />
               {compareMode && (
                 <label
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute right-4 top-4 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded border-2 bg-white shadow-sm transition-colors"
+                  className={`absolute right-4 top-4 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 bg-white shadow-sm transition-opacity duration-150 ${
+                    selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
                   style={{
                     borderColor: selected ? '#1460A4' : '#d1d5db',
                   }}
