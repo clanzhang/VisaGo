@@ -93,32 +93,76 @@ pub(crate) async fn kimi_chat(prompt: String) -> Result<String, String> {
 
 // ===== 文件扫描与识别 =====
 
-/// IPC: scan_folder — 系统文件选择器选文件夹，递归扫描
-/// 注意：必须为同步命令（fn 而非 async fn），
-/// 因为 rfd::FileDialog 在 macOS 需在主线程调用，
-/// async command 运行在异步线程会导致对话框不弹出。
+/// IPC: scan_folder — 扫描指定文件夹（前端已用 dialog 选好路径）
+/// 接收前端传来的 path，递归扫描其中的材料文件。
+/// 不再在 Rust 端弹选择器（文件夹选择器在 macOS 上无法选单个文件）。
 #[tauri::command]
-pub(crate) fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, String> {
-    println!("[IPC] scan_folder 被调用（同步命令，主线程）");
-    let picked = rfd::FileDialog::new().pick_folder();
-    let folder = match picked {
-        Some(dir) => dir.to_string_lossy().to_string(),
-        None => {
-            println!("[IPC] scan_folder: 用户取消了选择");
-            return Err("用户取消了选择".to_string());
-        }
-    };
-    println!("[IPC] scan_folder: 选择了文件夹 {folder}");
-
-    let files = scanner::scan_folder(&folder)?;
+pub(crate) fn scan_folder(app: tauri::AppHandle, path: String) -> Result<ScanResult, String> {
+    println!("[IPC] scan_folder 被调用，扫描路径: {path}");
+    let files = scanner::scan_folder(&path)?;
     let result = ScanResult {
-        folder: folder.clone(),
+        folder: path.clone(),
         files,
     };
 
     // 记录扫描
     let scanned = store::ScannedFiles {
-        folder: folder.clone(),
+        folder: path.clone(),
+        scanned_at: chrono::Utc::now().to_rfc3339(),
+        files: result
+            .files
+            .iter()
+            .map(|f| store::ScannedFile {
+                path: f.path.clone(),
+                name: f.name.clone(),
+                file_type: f.file_type.clone(),
+                size: f.size,
+                recognized: false,
+                doc_category: String::new(),
+                fields: serde_json::Value::Null,
+                error: None,
+            })
+            .collect(),
+    };
+    let _ = store::save_scanned(&app, &scanned);
+
+    Ok(result)
+}
+
+/// IPC: scan_files — 扫描指定的单个或多个文件（前端已用 dialog 选好）
+/// 支持用户只选一个文件或多个文件，而不是整文件夹。
+#[tauri::command]
+pub(crate) fn scan_files(app: tauri::AppHandle, paths: Vec<String>) -> Result<ScanResult, String> {
+    println!("[IPC] scan_files 被调用，共 {} 个文件", paths.len());
+    let mut items = Vec::new();
+    for p in &paths {
+        let meta = std::fs::metadata(p).map_err(|e| format!("读取文件失败 {p}: {e}"))?;
+        let name = std::path::Path::new(p)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| p.clone());
+        let ext = std::path::Path::new(p)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        items.push(scanner::ScannedItem {
+            path: p.clone(),
+            name,
+            file_type: if ext == "jpeg" { "jpg".to_string() } else { ext },
+            size: meta.len(),
+        });
+    }
+    items.sort_by(|a, b| a.name.cmp(&b.name));
+
+    let result = ScanResult {
+        folder: paths.join(", "),
+        files: items,
+    };
+
+    // 记录扫描
+    let scanned = store::ScannedFiles {
+        folder: result.folder.clone(),
         scanned_at: chrono::Utc::now().to_rfc3339(),
         files: result
             .files

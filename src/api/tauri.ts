@@ -56,8 +56,54 @@ export interface RecognizeResult {
   summary: string
 }
 
-export function scanFolder(): Promise<ScanResult> {
-  return invoke<ScanResult>('scan_folder')
+export function scanFolder(path: string): Promise<ScanResult> {
+  return invoke<ScanResult>('scan_folder', { path })
+}
+
+export function scanFiles(paths: string[]): Promise<ScanResult> {
+  return invoke<ScanResult>('scan_files', { paths })
+}
+
+// ===== 系统对话框（plugin-dialog）=====
+
+/**
+ * 弹系统文件夹选择器，让用户选要扫描的文件夹。
+ * 返回选中的路径，取消返回 null。
+ */
+export async function pickFolder(title = '选择包含签证材料的文件夹'): Promise<string | null> {
+  if (!isTauri()) return null
+  const { open } = await import('@tauri-apps/plugin-dialog')
+  const selected = await open({
+    directory: true, // 选文件夹
+    multiple: false, // 只选一个
+    title,
+  })
+  return typeof selected === 'string' ? selected : null
+}
+
+/**
+ * 弹系统文件选择器，让用户选单个或多个材料文件。
+ * 返回路径数组，取消返回 null。
+ */
+export async function pickFiles(
+  multiple = true,
+  title = '选择签证材料文件（PDF/图片/DOCX）',
+): Promise<string[] | null> {
+  if (!isTauri()) return null
+  const { open } = await import('@tauri-apps/plugin-dialog')
+  const selected = await open({
+    directory: false, // 选文件
+    multiple,
+    title,
+    filters: [
+      {
+        name: '材料文件',
+        extensions: ['pdf', 'jpg', 'jpeg', 'png', 'docx', 'doc'],
+      },
+    ],
+  })
+  if (selected === null) return null
+  return Array.isArray(selected) ? selected : [selected]
 }
 
 export function recognizeFile(path: string, name: string): Promise<RecognizeResult> {

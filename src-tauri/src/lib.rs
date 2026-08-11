@@ -8,7 +8,7 @@ mod store;
 
 use commands::{
     ai_chat, export_pdf, get_visa_data, kimi_chat, load_profile, recognize_file,
-    refresh_visa_data, save_profile, scan_folder,
+    refresh_visa_data, save_profile, scan_files, scan_folder,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +22,7 @@ pub fn run() {
             ai_chat,
             kimi_chat,
             scan_folder,
+            scan_files,
             recognize_file,
             save_profile,
             load_profile,

@@ -4,6 +4,9 @@ import { VButton, VBadge } from '@/components/common'
 import { useAppStore } from '@/stores/appStore'
 import {
   scanFolder,
+  scanFiles,
+  pickFolder,
+  pickFiles,
   recognizeFile,
   saveProfile,
   exportPdf,
@@ -64,34 +67,79 @@ export default function Scan() {
   const tauriEnv = isTauri()
 
   // ===== 第一步：扫描 =====
-  async function handleScan() {
+
+  /** 弹系统文件夹选择器，选文件夹后扫描 */
+  async function handlePickFolder() {
+    if (!tauriEnv) {
+      toast('请使用 Tauri 桌面端进行扫描', 'warning')
+      return
+    }
     setScanning(true)
     try {
-      console.log('[Scan] 调用 scan_folder...')
-      const result: ScanResult = await scanFolder()
-      console.log('[Scan] scan_folder 成功:', result)
-      setFolder(result.folder)
-      setItems(
-        result.files.map((f) => ({
-          path: f.path,
-          name: f.name,
-          fileType: f.file_type,
-          category: '',
-          fields: {},
-          summary: '',
-          status: 'pending' as const,
-        })),
-      )
-      setStep(2)
+      console.log('[Scan] 弹文件夹选择器...')
+      const folder = await pickFolder()
+      if (!folder) {
+        console.log('[Scan] 用户取消了文件夹选择')
+        setScanning(false)
+        return
+      }
+      console.log('[Scan] 用户选择文件夹:', folder)
+      const result: ScanResult = await scanFolder(folder)
+      applyScanResult(result)
     } catch (e) {
-      console.error('[Scan] scan_folder 失败:', e)
-      toast(
-        e instanceof Error ? `${e.name}: ${e.message}` : `扫描失败: ${String(e)}`,
-        'error',
-      )
+      console.error('[Scan] 扫描失败:', e)
+      toast(e instanceof Error ? e.message : `扫描失败: ${String(e)}`, 'error')
     } finally {
       setScanning(false)
     }
+  }
+
+  /** 弹系统文件选择器，选单个或多个文件后扫描 */
+  async function handlePickFiles() {
+    if (!tauriEnv) {
+      toast('请使用 Tauri 桌面端进行扫描', 'warning')
+      return
+    }
+    setScanning(true)
+    try {
+      console.log('[Scan] 弹文件选择器...')
+      const files = await pickFiles(true)
+      if (!files || files.length === 0) {
+        console.log('[Scan] 用户取消了文件选择')
+        setScanning(false)
+        return
+      }
+      console.log('[Scan] 用户选择文件数:', files.length)
+      const result: ScanResult = await scanFiles(files)
+      applyScanResult(result)
+    } catch (e) {
+      console.error('[Scan] 扫描失败:', e)
+      toast(e instanceof Error ? e.message : `扫描失败: ${String(e)}`, 'error')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  /** 把扫描结果应用到状态 */
+  function applyScanResult(result: ScanResult) {
+    setFolder(result.folder)
+    setItems(
+      result.files.map((f) => ({
+        path: f.path,
+        name: f.name,
+        fileType: f.file_type,
+        category: '',
+        fields: {},
+        summary: '',
+        status: 'pending' as const,
+      })),
+    )
+    if (result.files.length === 0) {
+      toast('未找到支持的材料文件（pdf/jpg/png/docx/doc）', 'warning')
+      return
+    }
+    setStep(2)
+    toast(`找到 ${result.files.length} 个文件`, 'success')
   }
 
   // 识别单个文件
@@ -253,11 +301,19 @@ export default function Scan() {
           </div>
           <h2 className="text-xl font-bold text-ink">扫描我的资料</h2>
           <p className="mt-2 max-w-md text-sm text-ink/55">
-            选择包含签证材料的文件夹，将自动识别 PDF / JPG / PNG / DOCX 文件中的关键信息
+            选择包含签证材料的文件夹，或直接选择单个/多个材料文件（PDF / JPG / PNG / DOCX）
           </p>
-          <VButton size="lg" className="mt-8" onClick={handleScan} disabled={scanning}>
-            {scanning ? '打开文件选择器…' : '📁 扫描我的资料'}
-          </VButton>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <VButton size="lg" onClick={handlePickFolder} disabled={scanning}>
+              {scanning ? '打开选择器…' : '📁 选文件夹扫描'}
+            </VButton>
+            <VButton size="lg" variant="secondary" onClick={handlePickFiles} disabled={scanning}>
+              {scanning ? '打开选择器…' : '📄 选文件扫描'}
+            </VButton>
+          </div>
+          {!tauriEnv && (
+            <p className="mt-4 text-xs text-warning">桌面端才能弹出系统选择器，Web 模式仅演示</p>
+          )}
         </div>
       )}
 
