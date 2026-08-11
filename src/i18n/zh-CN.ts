@@ -11,6 +11,7 @@ export default {
     tracker: '进度追踪',
     documents: '资料生成',
     encyclopedia: '签证百科',
+    menu: '菜单',
   },
   home: {
     heroTitle: '轻松搞定签证',

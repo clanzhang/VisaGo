@@ -41,7 +41,7 @@ export default defineConfig({
       'rounded-16px bg-white border border-transparent shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-1',
     'input-base':
       'w-full rounded-12px border border-gray-200 bg-white px-4 py-3 text-sm text-brand-dark placeholder:text-brand-muted focus:border-brand-blue focus:ring-3 focus:ring-brand-blue/10 focus:outline-none transition-all duration-200',
-    'container-app': 'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8',
+    'container-app': 'mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8',
     'section-title': 'text-2xl font-bold text-brand-dark tracking-wide',
   },
   rules: [

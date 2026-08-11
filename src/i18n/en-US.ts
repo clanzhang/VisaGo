@@ -11,6 +11,7 @@ export default {
     tracker: 'Tracker',
     documents: 'Documents',
     encyclopedia: 'Encyclopedia',
+    menu: 'Menu',
   },
   home: {
     heroTitle: 'Visa Made Easy',
