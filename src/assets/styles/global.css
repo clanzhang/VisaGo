@@ -49,6 +49,16 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(28, 57, 195, 0); }
 }
 
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes diffFlash {
+  0% { background-color: rgba(28, 57, 195, 0.15); }
+  100% { background-color: transparent; }
+}
+
 /* 页面切换 */
 .animate-page-in {
   animation: fadeIn 0.3s ease-out, slideUp 0.3s ease-out;
@@ -68,6 +78,14 @@ body {
 
 .animate-slide-down {
   animation: slideDown 0.3s ease;
+}
+
+.animate-card-in {
+  animation: cardIn 0.4s ease-out both;
+}
+
+.animate-diff-flash {
+  animation: diffFlash 0.8s ease-out;
 }
 
 .animate-float {

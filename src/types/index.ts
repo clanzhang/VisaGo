@@ -27,6 +27,10 @@ export interface VisaType {
   fee: { amount: number; currency: string }
   serviceFee?: { amount: number; currency: string }
   processingDays: { min: number; max: number }
+  needInterview?: boolean
+  canApplyOnline?: boolean // 是否支持电子签/在线申请
+  acceptPersonal?: boolean // 是否接受个人递签
+  targetAudience?: Localized
   consularDistricts: ConsularDistrict[]
   requirements: Requirement[]
   faq: FAQ[]
@@ -36,6 +40,7 @@ export interface VisaType {
 
 export interface ConsularDistrict {
   name: Localized
+  city?: string // 使馆所在城市
   provinces: string[]
 }
 
@@ -47,6 +52,8 @@ export interface Requirement {
   format: 'original' | 'copy' | 'both'
   translationRequired: boolean
   notes?: Localized
+  /** 适用职业身份：为空则适用所有人；否则限定身份 */
+  forOccupation?: Array<'employed' | 'student' | 'retired' | 'freelance'>
 }
 
 export interface FAQ {

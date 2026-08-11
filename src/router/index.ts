@@ -33,6 +33,12 @@ const routes = [
     meta: { title: 'nav.encyclopedia' },
   },
   {
+    path: '/encyclopedia/compare',
+    name: 'compare',
+    component: () => import('../pages/Compare'),
+    meta: { title: 'encyclopedia.compareTitle' },
+  },
+  {
     path: '/encyclopedia/:id',
     name: 'country-detail',
     component: () => import('../pages/CountryDetail'),
