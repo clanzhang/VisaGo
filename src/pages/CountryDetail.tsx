@@ -1,4 +1,4 @@
-// pages/CountryDetail.tsx — 国家详情页
+// pages/CountryDetail.tsx — 国家详情页（静态兜底 + Kimi AI 实时数据）
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useI18n } from '@/i18n'
@@ -10,20 +10,28 @@ import {
   extraBasicRequirements,
 } from '@/data/encyclopedia-extra'
 import { PROVINCES } from '@/data/countries'
+import { useCountryAIData } from '@/hooks/useAIData'
+import type { AiCountryData } from '@/types/ai'
 import type { Requirement } from '@/types'
 
 const categoryOrder: Requirement['category'][] = ['basic', 'identity', 'financial', 'travel', 'extra']
+
+const IDENTITY_KEYS = ['employed', 'student', 'retired', 'freelance'] as const
 
 export default function CountryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useI18n()
   const country = countries.find((c) => c.id === id)
+  const { data: aiData, loading: aiLoading, error: aiError, refresh: aiRefresh } = useCountryAIData(id)
 
   const [visaTypeId, setVisaTypeId] = useState(country?.visaTypes[0]?.id ?? '')
   const [tab, setTab] = useState<'materials' | 'fee' | 'districts' | 'faq'>('materials')
   const [province, setProvince] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+
+  const ai = aiData as AiCountryData | null
+  const aiVisaType = ai?.visaTypes?.[0]
 
   const visaType = useMemo(
     () => country?.visaTypes.find((v) => v.id === visaTypeId) ?? country?.visaTypes[0],
@@ -133,6 +141,128 @@ export default function CountryDetail() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Kimi AI 实时数据 */}
+      <div className="anim-card rounded-2xl bg-white p-6 shadow-card" style={{ animationDelay: '160ms' }}>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#121C19] text-xs font-bold text-[#39A2B8]">K</span>
+            <h3 className="text-sm font-semibold text-ink">Kimi AI 实时签证数据</h3>
+            {ai?.lastUpdated && (
+              <span className="text-xs text-ink/40">更新于 {ai.lastUpdated}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {aiLoading && (
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
+            )}
+            <VButton variant="secondary" size="sm" onClick={() => aiRefresh()} disabled={aiLoading}>
+              刷新数据
+            </VButton>
+          </div>
+        </div>
+
+        {aiError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {aiError}
+            <button onClick={() => aiRefresh()} className="ml-3 font-medium underline underline-offset-2">
+              点击重试
+            </button>
+          </div>
+        )}
+
+        {aiLoading && !ai ? (
+          <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/50">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
+            正在从 Kimi 获取 {country?.name.zh} 最新签证信息…
+          </div>
+        ) : aiVisaType ? (
+          <div className="space-y-5">
+            {/* 身份分层材料 */}
+            <div>
+              <div className="mb-2 text-xs font-medium text-ink/45">按身份分层的材料清单</div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {IDENTITY_KEYS.map((key) => {
+                  const list = aiVisaType.identityRequirements?.[key]
+                  if (!list || list.length === 0) return null
+                  const label = t(`encyclopedia.identity${key.charAt(0).toUpperCase() + key.slice(1)}`)
+                  return (
+                    <div key={key} className="rounded-xl border border-ink/5 p-4">
+                      <div className="mb-2 text-sm font-semibold text-ink">{label}</div>
+                      <ul className="space-y-1.5">
+                        {list.map((r, i) => (
+                          <li key={i} className="flex items-start gap-2 text-[13px] text-ink/65">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#39A2B8]" />
+                            <span>
+                              {r.name}
+                              {r.details && <span className="ml-1 text-xs text-ink/40">· {r.details}</span>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 核心材料分类 */}
+            {aiVisaType.requirements && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(['basic', 'financial', 'identity', 'travel'] as const).map((cat) => {
+                  const list = aiVisaType.requirements?.[cat]
+                  if (!list || list.length === 0) return null
+                  const label = t(`encyclopedia.${cat}Materials`)
+                  return (
+                    <div key={cat} className="rounded-xl border border-ink/5 p-4">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-ink">{label}</span>
+                        <VBadge>{list.length}</VBadge>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {list.map((r, i) => (
+                          <li key={i} className="flex items-start gap-2 text-[13px] text-ink/65">
+                            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${r.required ? 'bg-primary' : 'bg-ink/25'}`} />
+                            <span>
+                              {r.name}
+                              {r.details && <span className="ml-1 text-xs text-ink/40">· {r.details}</span>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* FAQ */}
+            {ai?.faq && ai.faq.length > 0 && (
+              <div>
+                <div className="mb-2 text-xs font-medium text-ink/45">AI 整理 FAQ</div>
+                <div className="space-y-2">
+                  {ai.faq.map((f, i) => (
+                    <details key={i} className="group rounded-xl border border-ink/5 p-3">
+                      <summary className="cursor-pointer list-none text-sm font-medium text-ink">
+                        <span className="mr-2 text-[#39A2B8]">Q.</span>
+                        {f.question}
+                        <span className="float-right text-ink/30 transition-transform group-open:rotate-45">+</span>
+                      </summary>
+                      <p className="mt-2 pl-6 text-[13px] leading-relaxed text-ink/60">{f.answer}</p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {ai?.tips && (
+              <div className="rounded-xl bg-[#E8F5E9] px-4 py-3 text-sm text-ink/70">
+                💡 {ai.tips}
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* 标签页 */}

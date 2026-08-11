@@ -54,9 +54,22 @@ function MapIllustration() {
   )
 }
 
-export function HeroCards() {
+export interface HeroText {
+  assistantTitle: string
+  assistantDesc: string
+  encyclopediaTitle: string
+  encyclopediaDesc: string
+}
+
+export function HeroCards({ hero }: { hero?: HeroText }) {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const text = hero ?? {
+    assistantTitle: t('home.heroAssistantTitle'),
+    assistantDesc: t('home.heroAssistantDesc'),
+    encyclopediaTitle: t('home.heroEncyclopediaTitle'),
+    encyclopediaDesc: t('home.heroEncyclopediaDesc'),
+  }
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -68,8 +81,8 @@ export function HeroCards() {
       >
         <PassportIllustration />
         <div className="ml-6 flex-1 text-left">
-          <h3 className="font-display text-xl font-bold text-ink">{t('home.heroAssistantTitle')}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">{t('home.heroAssistantDesc')}</p>
+          <h3 className="font-display text-xl font-bold text-ink">{text.assistantTitle}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.assistantDesc}</p>
           <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-colors duration-150 hover:bg-gray-50">
             {t('home.heroAssistantCta')}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -87,8 +100,8 @@ export function HeroCards() {
       >
         <MapIllustration />
         <div className="ml-6 flex-1 text-left">
-          <h3 className="font-display text-xl font-bold text-ink">{t('home.heroEncyclopediaTitle')}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">{t('home.heroEncyclopediaDesc')}</p>
+          <h3 className="font-display text-xl font-bold text-ink">{text.encyclopediaTitle}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.encyclopediaDesc}</p>
           <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-colors duration-150 hover:bg-gray-50">
             {t('home.heroEncyclopediaCta')}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

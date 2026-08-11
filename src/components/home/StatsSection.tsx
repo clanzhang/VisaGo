@@ -2,8 +2,19 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { feeOverview, progressData } from '@/data/mock'
+import type { FeeCategory, ProgressItem } from '@/types'
 
-export function StatsSection() {
+export interface StatsData {
+  feeTotal: string
+  feeCategories: FeeCategory[]
+  progress: ProgressItem[]
+}
+
+interface Props {
+  stats?: Partial<StatsData>
+}
+
+export function StatsSection({ stats }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
 
@@ -13,7 +24,10 @@ export function StatsSection() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  const max = Math.max(...progressData.map((p) => p.progress))
+  const categories = stats?.feeCategories?.length ? stats.feeCategories : feeOverview.categories
+  const feeTotal = stats?.feeTotal || feeOverview.total
+  const progress = stats?.progress?.length ? stats.progress : progressData
+  const max = Math.max(...progress.map((p) => p.progress))
 
   return (
     <section>
@@ -28,10 +42,10 @@ export function StatsSection() {
         >
           <h3 className="mb-1 text-sm font-medium text-subtle">{t('home.feeTitle')}</h3>
           <div className="font-display mt-2 text-4xl font-bold tracking-tight text-ink">
-            {feeOverview.total}
+            {feeTotal}
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            {feeOverview.categories.map((c) => (
+            {categories.map((c) => (
               <span
                 key={c.label}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#F9F9F6] px-3 py-1.5 text-xs font-medium text-ink/70"
@@ -50,7 +64,7 @@ export function StatsSection() {
         >
           <h3 className="mb-4 text-sm font-medium text-subtle">{t('home.progressTitle')}</h3>
           <div className="space-y-4">
-            {progressData.map((item, i) => {
+            {progress.map((item, i) => {
               const isTop = item.progress === max
               return (
                 <div key={item.country} className="flex items-center gap-3">

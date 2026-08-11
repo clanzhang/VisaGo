@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
 import { useVisaStore } from '@/stores/visaStore'
+import { useAIDocuments, type DocumentResult } from '@/hooks/useAIRecruit'
 import { templates } from '@/data/templates'
 import { countries, PROVINCES, OCCUPATIONS } from '@/data/countries'
 import { exportElementToPdf } from '@/utils/pdf'
@@ -22,6 +23,7 @@ const EMPTY_PROFILE: UserProfile = {
 export default function Documents() {
   const { t } = useI18n()
   const { savedProfile, saveProfile } = useVisaStore()
+  const { generate, loading: aiLoading, error: aiError } = useAIDocuments()
   const [profile, setProfile] = useState<UserProfile>(savedProfile ?? EMPTY_PROFILE)
   const [destination, setDestination] = useState('日本')
   const [startDate, setStartDate] = useState(todayISO())
@@ -31,6 +33,7 @@ export default function Documents() {
   const [hotel, setHotel] = useState('')
   const [selected, setSelected] = useState<string[]>(['itinerary', 'employment'])
   const [exporting, setExporting] = useState(false)
+  const [aiDoc, setAiDoc] = useState<DocumentResult | null>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
   const travelDays = useMemo(() => {
@@ -53,6 +56,16 @@ export default function Documents() {
     setSelected((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     )
+  }
+
+  async function generateDocs() {
+    const result = await generate(profile, {
+      destination,
+      startDate,
+      endDate,
+      days,
+    })
+    if (result) setAiDoc(result)
   }
 
   async function exportPdf() {
@@ -155,6 +168,35 @@ export default function Documents() {
               <h2 className="text-lg font-bold text-ink">{t('documents.templates')}</h2>
               <VBadge tone="primary">{t('documents.selectTemplate')}</VBadge>
             </div>
+
+            {/* Kimi AI 一键生成 */}
+            <div className="mb-4 rounded-xl border border-[#39A2B8]/20 bg-gradient-to-br from-[#E0F7FA]/50 to-[#E8F5E9]/50 p-4">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#121C19] text-xs font-bold text-[#39A2B8]">K</span>
+                <span className="text-sm font-semibold text-ink">Kimi AI 一键生成文档内容</span>
+                {aiLoading && (
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
+                )}
+              </div>
+              <p className="mt-1.5 text-xs text-ink/50">
+                根据你的资料自动生成行程单、在职证明、邀请函、个人陈述，可编辑后导出 PDF
+              </p>
+              {aiError && (
+                <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                  {aiError}
+                </div>
+              )}
+              <VButton
+                className="mt-3 w-full"
+                variant="secondary"
+                size="sm"
+                onClick={generateDocs}
+                disabled={aiLoading}
+              >
+                {aiLoading ? '生成中…' : '✨ AI 生成文档'}
+              </VButton>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               {templates.map((tmpl) => {
                 const active = selected.includes(tmpl.key)
@@ -185,7 +227,16 @@ export default function Documents() {
             {selected.includes('itinerary') && (
               <section className="mb-6">
                 <h3 className="mb-3 border-b border-ink/10 pb-2 text-base font-bold text-ink">📅 行程单 / Travel Itinerary</h3>
-                <div className="rounded-lg bg-[#F9F9F6] p-3">{field(t('documents.destination'), docData.trip.destination)}{field(t('documents.startDate'), docData.trip.startDate)}{field(t('documents.endDate'), docData.trip.endDate)}{field(t('documents.flightNumber'), docData.trip.flightNumber)}</div>
+                {aiDoc?.itinerary?.days?.length ? (
+                  <div className="rounded-lg bg-[#F9F9F6] p-3">
+                    {field(t('documents.destination'), docData.trip.destination)}
+                    {field(t('documents.startDate'), docData.trip.startDate)}
+                    {field(t('documents.endDate'), docData.trip.endDate)}
+                    {field(t('documents.flightNumber'), docData.trip.flightNumber)}
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-[#F9F9F6] p-3">{field(t('documents.destination'), docData.trip.destination)}{field(t('documents.startDate'), docData.trip.startDate)}{field(t('documents.endDate'), docData.trip.endDate)}{field(t('documents.flightNumber'), docData.trip.flightNumber)}</div>
+                )}
                 <table className="mt-3 w-full text-left">
                   <thead>
                     <tr className="text-xs text-ink/45">
@@ -197,7 +248,7 @@ export default function Documents() {
                     </tr>
                   </thead>
                   <tbody>
-                    {docData.days.map((d, i) => (
+                    {(aiDoc?.itinerary?.days?.length ? aiDoc.itinerary.days : docData.days).map((d, i) => (
                       <tr key={i} className="border-t border-ink/5">
                         <td className="py-1.5 pr-2">{d.date}</td>
                         <td className="py-1.5 pr-2">{d.city}</td>
@@ -215,7 +266,11 @@ export default function Documents() {
             {selected.includes('employment') && (
               <section className="mb-6">
                 <h3 className="mb-3 border-b border-ink/10 pb-2 text-base font-bold text-ink">💼 在职证明 / Employment Certificate</h3>
-                <div className="rounded-lg bg-[#F9F9F6] p-3">{field(t('documents.name'), docData.profile.name)}{field(t('documents.passportNumber'), docData.profile.passportNumber)}{field(t('documents.occupation'), t(`documents.occupation${docData.profile.occupation.charAt(0).toUpperCase() + docData.profile.occupation.slice(1)}`))}{field('准假日期', `${docData.trip.startDate} 至 ${docData.trip.endDate}`)}</div>
+                {aiDoc?.employment?.content ? (
+                  <div className="whitespace-pre-wrap rounded-lg bg-[#F9F9F6] p-3 text-sm leading-relaxed text-ink/75">{aiDoc.employment.content}</div>
+                ) : (
+                  <div className="rounded-lg bg-[#F9F9F6] p-3">{field(t('documents.name'), docData.profile.name)}{field(t('documents.passportNumber'), docData.profile.passportNumber)}{field(t('documents.occupation'), t(`documents.occupation${docData.profile.occupation.charAt(0).toUpperCase() + docData.profile.occupation.slice(1)}`))}{field('准假日期', `${docData.trip.startDate} 至 ${docData.trip.endDate}`)}</div>
+                )}
               </section>
             )}
 
@@ -223,7 +278,11 @@ export default function Documents() {
             {selected.includes('invitation') && (
               <section className="mb-6">
                 <h3 className="mb-3 border-b border-ink/10 pb-2 text-base font-bold text-ink">✉️ 邀请函 / Invitation Letter</h3>
-                <div className="rounded-lg bg-[#F9F9F6] p-3">{field('邀请人', '—')}{field('被邀请人', docData.profile.name)}{field('关系', '—')}{field(t('documents.destination'), docData.trip.destination)}</div>
+                {aiDoc?.invitation?.content ? (
+                  <div className="whitespace-pre-wrap rounded-lg bg-[#F9F9F6] p-3 text-sm leading-relaxed text-ink/75">{aiDoc.invitation.content}</div>
+                ) : (
+                  <div className="rounded-lg bg-[#F9F9F6] p-3">{field('邀请人', '—')}{field('被邀请人', docData.profile.name)}{field('关系', '—')}{field(t('documents.destination'), docData.trip.destination)}</div>
+                )}
               </section>
             )}
 
@@ -232,9 +291,13 @@ export default function Documents() {
               <section className="mb-6">
                 <h3 className="mb-3 border-b border-ink/10 pb-2 text-base font-bold text-ink">📝 个人陈述 / Cover Letter</h3>
                 <div className="rounded-lg bg-[#F9F9F6] p-3">
-                  <p className="leading-relaxed text-ink/70">
-                    本人 {docData.profile.name}，护照号 {docData.profile.passportNumber}，计划于 {docData.trip.startDate} 至 {docData.trip.endDate} 前往 {docData.trip.destination} 旅游，行程已安排妥当，承诺按期回国。
-                  </p>
+                  {aiDoc?.cover?.content ? (
+                    <p className="whitespace-pre-wrap leading-relaxed text-ink/70">{aiDoc.cover.content}</p>
+                  ) : (
+                    <p className="leading-relaxed text-ink/70">
+                      本人 {docData.profile.name}，护照号 {docData.profile.passportNumber}，计划于 {docData.trip.startDate} 至 {docData.trip.endDate} 前往 {docData.trip.destination} 旅游，行程已安排妥当，承诺按期回国。
+                    </p>
+                  )}
                 </div>
               </section>
             )}
