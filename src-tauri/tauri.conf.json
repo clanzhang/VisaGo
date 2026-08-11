@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "VisaGo",
-  "version": "0.1.0",
-  "identifier": "com.visago.app",
+  "version": "0.0.7",
+  "identifier": "com.visago.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
