@@ -24,10 +24,20 @@ interface RecognizedItem {
   name: string
   fileType: string
   category: string
-  fields: Record<string, string>
+  fields: Record<string, unknown>
   summary: string
   status: 'pending' | 'recognizing' | 'done' | 'error'
   error?: string
+}
+
+// 从文件提取的行程数据（识别行程单时填充）
+interface TripData {
+  destination?: string
+  start_date?: string
+  end_date?: string
+  days?: number
+  cities?: string[]
+  daily_plan?: { day?: number; date?: string; city?: string; activity?: string; transport?: string; accommodation?: string }[]
 }
 
 // 材料字段规范（用于核对表单 + 缺失检测）
@@ -57,6 +67,9 @@ export default function Scan() {
 
   // 核对表单（从识别结果汇总）
   const [profile, setProfile] = useState<Record<string, string>>({})
+
+  // 从识别结果提取的行程数据（用于生成行程单）
+  const [tripData, setTripData] = useState<TripData | null>(null)
 
   // 出结果：选国家/签证类型
   const [country, setCountry] = useState('日本')
@@ -266,9 +279,16 @@ export default function Scan() {
     const merged: Record<string, string> = {}
     // Kimi 返回的字段键与 FIELD_SPECS 一致（name/passport_number 等英文键）
     const fieldKeys = FIELD_SPECS.map((f) => f.key)
+    let trip: TripData | null = null
     for (const item of items) {
       if (item.status !== 'done') continue
       const fields = (item.fields ?? {}) as Record<string, unknown>
+      // 提取行程数据（识别为行程单的文件）
+      const rawTrip = fields['trip']
+      if (rawTrip && typeof rawTrip === 'object' && !Array.isArray(rawTrip)) {
+        trip = rawTrip as TripData
+        console.log('[Scan] 识别到行程数据:', trip)
+      }
       for (const k of fieldKeys) {
         // 已填过则跳过（后续文件不覆盖）
         if (merged[k]) continue
@@ -281,6 +301,7 @@ export default function Scan() {
       }
     }
     setProfile(merged)
+    setTripData(trip)
     setStep(3)
   }
 
@@ -305,8 +326,30 @@ export default function Scan() {
         .map(([k, v]) => `${FIELD_SPECS.find((f) => f.key === k)?.label ?? k}: ${v}`)
         .join('\n')
       const docName = docType === 'itinerary' ? '行程单' : docType === 'employment' ? '在职证明' : '解释信'
-      const prompt = `根据以下用户信息，生成${docName}。要求：正式、符合签证申请规范、中英文各一版。\n\n用户信息：\n${info}\n\n申请：${country} ${visaType}`
+
+      // 行程单：把识别出的真实行程数据传给 Kimi，避免占位符
+      let tripSection = ''
+      if (docType === 'itinerary') {
+        if (tripData) {
+          const daysText = (tripData.daily_plan ?? [])
+            .map((d) => `第${d.day ?? '?'}天(${d.date ?? ''}) ${d.city ?? ''}: ${d.activity ?? ''}${d.transport ? `【交通:${d.transport}】` : ''}${d.accommodation ? `【住宿:${d.accommodation}】` : ''}`)
+            .join('\n')
+          tripSection = `\n\n已从用户上传的行程文件提取到的真实行程数据（务必使用这些数据，不要用占位符或编造）：\n`
+            + `出发日期：${tripData.start_date ?? '未知'}\n`
+            + `返回日期：${tripData.end_date ?? '未知'}\n`
+            + `目的地：${tripData.destination ?? country}\n`
+            + `天数：${tripData.days ?? (tripData.daily_plan?.length ?? '未知')}\n`
+            + `城市：${(tripData.cities ?? []).join('、') || '未知'}\n`
+            + `每日安排：\n${daysText || '（文件中无每日明细）'}`
+        } else {
+          tripSection = '\n\n（注意：未识别到行程文件。如用户上传了行程单请据实生成，不要使用 [具体日期]/[具体天数] 占位符；行程信息不完整时请用合理假设并标注。）'
+        }
+      }
+
+      console.log('[Scan] handleGenerate tripData=', tripData)
+      const prompt = `根据以下用户信息，生成${docName}。要求：正式、符合签证申请规范、中英文各一版。\n\n用户信息：\n${info}\n\n申请：${country} ${visaType}${tripSection}`
       const content = await kimiChat(prompt)
+      console.log('[Scan] 生成完成，长度:', content.length)
       setGenerated(content)
     } catch (e) {
       toast(e instanceof Error ? e.message : '生成失败', 'error')
@@ -561,6 +604,33 @@ export default function Scan() {
                     ))}
                   </div>
                 </div>
+
+                {/* 行程数据预览（识别到行程文件时显示） */}
+                {docType === 'itinerary' && tripData && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
+                      <span>🗺️</span> 已从行程文件提取数据
+                    </div>
+                    <dl className="space-y-1 text-xs text-ink/70">
+                      <div className="flex justify-between"><dt className="text-ink/50">目的地</dt><dd className="font-medium">{tripData.destination || country}</dd></div>
+                      <div className="flex justify-between"><dt className="text-ink/50">出发</dt><dd className="font-medium">{tripData.start_date || '—'}</dd></div>
+                      <div className="flex justify-between"><dt className="text-ink/50">返回</dt><dd className="font-medium">{tripData.end_date || '—'}</dd></div>
+                      <div className="flex justify-between"><dt className="text-ink/50">天数</dt><dd className="font-medium">{tripData.days ?? tripData.daily_plan?.length ?? '—'}</dd></div>
+                      <div className="flex justify-between"><dt className="text-ink/50">城市</dt><dd className="font-medium">{(tripData.cities ?? []).join('、') || '—'}</dd></div>
+                    </dl>
+                    {tripData.daily_plan && tripData.daily_plan.length > 0 && (
+                      <div className="mt-2 border-t border-primary/15 pt-2">
+                        <div className="mb-1 text-[11px] text-ink/50">每日安排</div>
+                        <div className="max-h-28 space-y-0.5 overflow-y-auto text-[11px] text-ink/70">
+                          {tripData.daily_plan.map((d, i) => (
+                            <div key={i}>· 第{d.day ?? i + 1}天 {d.date ? `(${d.date})` : ''} {d.city || ''}：{d.activity || ''}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <VButton className="w-full" onClick={handleGenerate} disabled={generating}>
                   {generating ? '生成中…' : '✨ AI 生成材料'}
                 </VButton>

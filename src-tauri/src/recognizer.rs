@@ -29,11 +29,24 @@ const RECOGNIZE_PROMPT: &str = r#"你是一个签证材料识别专家。以下�
   "salary": "薪资",
   "passport_issued_in": "护照签发地"
 }
+如果文件是【行程单】，除上述字段外，必须额外提取行程信息：
+{
+  "trip": {
+    "destination": "目的地国家/城市",
+    "start_date": "出发日期（YYYY-MM-DD）",
+    "end_date": "返回日期（YYYY-MM-DD）",
+    "days": "总天数（数字）",
+    "cities": ["途经城市1", "城市2"],
+    "daily_plan": [
+      { "day": 1, "date": "MM-DD", "city": "城市", "activity": "当日安排", "transport": "交通方式", "accommodation": "住宿" }
+    ]
+  }
+}
 同时输出：
-"category": "文件类型（身份证/护照/银行流水/在职证明/户口本/房产证/其他）",
+"category": "文件类型（身份证/护照/银行流水/在职证明/户口本/房产证/行程单/其他）",
 "summary": "一句话描述"
 规则：
-1. 能提取的字段填真实值
+1. 能提取的字段填真实值，行程信息从文件文本中逐字提取，不要编造
 2. 文本中没有的字段填 null
 3. 不要编造数据
 4. 只输出 JSON，不要其他内容"#;
