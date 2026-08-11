@@ -94,9 +94,12 @@ pub(crate) async fn kimi_chat(prompt: String) -> Result<String, String> {
 // ===== 文件扫描与识别 =====
 
 /// IPC: scan_folder — 系统文件选择器选文件夹，递归扫描
+/// 注意：必须为同步命令（fn 而非 async fn），
+/// 因为 rfd::FileDialog 在 macOS 需在主线程调用，
+/// async command 运行在异步线程会导致对话框不弹出。
 #[tauri::command]
-pub(crate) async fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, String> {
-    println!("[IPC] scan_folder 被调用");
+pub(crate) fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, String> {
+    println!("[IPC] scan_folder 被调用（同步命令，主线程）");
     let picked = rfd::FileDialog::new().pick_folder();
     let folder = match picked {
         Some(dir) => dir.to_string_lossy().to_string(),
