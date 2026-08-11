@@ -1,0 +1,107 @@
+/* src/assets/styles/global.css */
+:root {
+  --brand: #0b1da5;
+  --brand-blue: #1c39c3;
+  --brand-dark: #0d0e32;
+  --brand-mid: #17205a;
+  --brand-muted: #a2aad0;
+  --brand-bg: #f6f7f9;
+  --accent-purple: #7b2fbe;
+  --accent-orange: #f5a623;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Sans SC', 'DM Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f6f7f9;
+  color: #0d0e32;
+}
+
+/* 动效 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatAnim {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes pingRing {
+  0% { box-shadow: 0 0 0 0 rgba(28, 57, 195, 0.35); }
+  70% { box-shadow: 0 0 0 8px rgba(28, 57, 195, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(28, 57, 195, 0); }
+}
+
+/* 页面切换 */
+.animate-page-in {
+  animation: fadeIn 0.3s ease-out, slideUp 0.3s ease-out;
+}
+
+.animate-step-in {
+  animation: fadeIn 0.4s ease-in-out, slideUp 0.4s ease-in-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease;
+}
+
+.animate-float {
+  animation: floatAnim 4s infinite ease-in-out;
+}
+
+.animate-ping-ring {
+  animation: pingRing 2s infinite;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(13, 14, 50, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 无障碍：焦点可见 */
+:focus-visible {
+  outline: 2px solid #f5a623;
+  outline-offset: 2px;
+}
+
+@media print {
+  header, nav, footer, aside {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}
