@@ -2,7 +2,7 @@
 
 # VisaGo Visa Assistant
 
-**AI-Powered All-in-One Visa Application Assistant**
+<p>AI-Powered All-in-One Visa Application Assistant</p>
 
 </div>
 
