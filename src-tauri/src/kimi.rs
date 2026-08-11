@@ -68,6 +68,7 @@ pub async fn chat(messages: Vec<ChatMessage>, options: ChatOptions) -> Result<St
 
     let req = ChatRequest {
         model: options.model.unwrap_or_else(|| MODEL.to_string()),
+        messages,
         temperature: options.temperature.unwrap_or(0.3),
         max_tokens: options.max_tokens.unwrap_or(8192),
         response_format: options.response_format,
@@ -82,9 +83,10 @@ pub async fn chat(messages: Vec<ChatMessage>, options: ChatOptions) -> Result<St
         .await
         .map_err(|e| format!("Kimi 请求失败: {e}"))?;
 
-    if !res.status().is_success() {
+    let status = res.status();
+    if !status.is_success() {
         let body = res.text().await.unwrap_or_default();
-        return Err(format!("Kimi 返回错误 {}: {}", res.status(), body));
+        return Err(format!("Kimi 返回错误 {status}: {body}"));
     }
 
     let data: ChatResponse = res.json().await.map_err(|e| format!("Kimi 响应解析失败: {e}"))?;

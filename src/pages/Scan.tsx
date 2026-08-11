@@ -1,0 +1,454 @@
+// pages/Scan.tsx — 桌面端三步走：扫描资料 → 核对信息 → 生成结果
+import { useMemo, useState } from 'react'
+import { VButton, VBadge } from '@/components/common'
+import { useAppStore } from '@/stores/appStore'
+import {
+  scanFolder,
+  recognizeFile,
+  saveProfile,
+  exportPdf,
+  kimiChat,
+  isTauri,
+  type ScanResult,
+  type RecognizeResult,
+} from '@/api/tauri'
+
+type Step = 1 | 2 | 3
+
+interface RecognizedItem {
+  path: string
+  name: string
+  fileType: string
+  category: string
+  fields: Record<string, string>
+  summary: string
+  status: 'pending' | 'recognizing' | 'done' | 'error'
+  error?: string
+}
+
+// 材料字段规范（用于核对表单 + 缺失检测）
+const FIELD_SPECS = [
+  { key: 'name', label: '姓名', required: true },
+  { key: 'passport_number', label: '护照号', required: true },
+  { key: 'id_number', label: '身份证号', required: true },
+  { key: 'nationality', label: '国籍', required: true },
+  { key: 'birth_date', label: '出生日期', required: true },
+  { key: 'gender', label: '性别', required: false },
+  { key: 'phone', label: '手机号', required: false },
+  { key: 'address', label: '家庭住址', required: false },
+  { key: 'home_province', label: '户籍省份', required: true },
+  { key: 'occupation', label: '职业', required: true },
+  { key: 'company', label: '工作单位', required: false },
+  { key: 'position', label: '职位', required: false },
+  { key: 'salary', label: '月薪', required: false },
+]
+
+export default function Scan() {
+  const { toast } = useAppStore()
+  const [step, setStep] = useState<Step>(1)
+  const [folder, setFolder] = useState('')
+  const [items, setItems] = useState<RecognizedItem[]>([])
+  const [scanning, setScanning] = useState(false)
+  const [recognizingAll, setRecognizingAll] = useState(false)
+
+  // 核对表单（从识别结果汇总）
+  const [profile, setProfile] = useState<Record<string, string>>({})
+
+  // 出结果：选国家/签证类型
+  const [country, setCountry] = useState('日本')
+  const [visaType, setVisaType] = useState('旅游签证')
+  const [docType, setDocType] = useState<'itinerary' | 'employment' | 'cover'>('itinerary')
+  const [generated, setGenerated] = useState('')
+  const [generating, setGenerating] = useState(false)
+
+  const tauriEnv = isTauri()
+
+  // ===== 第一步：扫描 =====
+  async function handleScan() {
+    setScanning(true)
+    try {
+      const result: ScanResult = await scanFolder()
+      setFolder(result.folder)
+      setItems(
+        result.files.map((f) => ({
+          path: f.path,
+          name: f.name,
+          fileType: f.file_type,
+          category: '',
+          fields: {},
+          summary: '',
+          status: 'pending' as const,
+        })),
+      )
+      setStep(2)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '扫描失败', 'error')
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  // 识别单个文件
+  async function handleRecognize(item: RecognizedItem) {
+    setItems((prev) =>
+      prev.map((x) => (x.path === item.path ? { ...x, status: 'recognizing' } : x)),
+    )
+    try {
+      const res: RecognizeResult = await recognizeFile(item.path, item.name)
+      setItems((prev) =>
+        prev.map((x) =>
+          x.path === item.path
+            ? {
+                ...x,
+                category: res.category,
+                fields: (res.fields ?? {}) as Record<string, string>,
+                summary: res.summary,
+                status: 'done',
+              }
+            : x,
+        ),
+      )
+    } catch (e) {
+      setItems((prev) =>
+        prev.map((x) =>
+          x.path === item.path
+            ? { ...x, status: 'error', error: e instanceof Error ? e.message : '识别失败' }
+            : x,
+        ),
+      )
+    }
+  }
+
+  // 识别全部（串行）
+  async function handleRecognizeAll() {
+    setRecognizingAll(true)
+    const pending = items.filter((x) => x.status === 'pending' || x.status === 'error')
+    for (const item of pending) {
+      await handleRecognize(item)
+    }
+    setRecognizingAll(false)
+    toast('识别完成', 'success')
+  }
+
+  // 从识别结果聚合字段到核对表单
+  async function handleNextToConfirm() {
+    const merged: Record<string, string> = {}
+    const fieldMap: Record<string, string> = {
+      name: '姓名',
+      passport_number: '护照号',
+      id_number: '身份证号',
+      nationality: '国籍',
+      birth_date: '出生日期',
+      gender: '性别',
+      phone: '手机号',
+      address: '地址',
+      home_province: '户籍',
+      occupation: '职业',
+      company: '单位',
+      position: '职位',
+      salary: '月薪',
+    }
+    for (const item of items) {
+      if (item.status === 'done') {
+        for (const [k, v] of Object.entries(item.fields)) {
+          // Kimi 返回的字段可能是 "姓名: 张三" 或 "姓名：张三"
+          const clean = String(v).replace(/^[^:：]*[:：]\s*/, '').trim()
+          const target = Object.entries(fieldMap).find(
+            ([, label]) => k.includes(label) || label === k,
+          )?.[0]
+          if (target && clean && !merged[target]) {
+            merged[target] = clean
+          }
+        }
+      }
+    }
+    setProfile(merged)
+    setStep(3)
+  }
+
+  async function handleSaveProfile() {
+    try {
+      await saveProfile(profile as never)
+      toast('资料已保存', 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '保存失败', 'error')
+    }
+  }
+
+  // ===== 第三步：生成 =====
+  async function handleGenerate() {
+    setGenerating(true)
+    setGenerated('')
+    try {
+      const info = Object.entries(profile)
+        .map(([k, v]) => `${FIELD_SPECS.find((f) => f.key === k)?.label ?? k}: ${v}`)
+        .join('\n')
+      const docName = docType === 'itinerary' ? '行程单' : docType === 'employment' ? '在职证明' : '解释信'
+      const prompt = `根据以下用户信息，生成${docName}。要求：正式、符合签证申请规范、中英文各一版。\n\n用户信息：\n${info}\n\n申请：${country} ${visaType}`
+      const content = await kimiChat(prompt)
+      setGenerated(content)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '生成失败', 'error')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const path = await exportPdf(`<html><body><pre>${generated}</pre></body></html>`, `${country}-${docType}`)
+      toast(`已导出: ${path}`, 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '导出失败', 'error')
+    }
+  }
+
+  // 材料缺失检测
+  const missingFields = useMemo(
+    () => FIELD_SPECS.filter((f) => f.required && !profile[f.key]),
+    [profile],
+  )
+
+  const recognizedCount = items.filter((x) => x.status === 'done').length
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">材料扫描助手</h1>
+          <p className="mt-1 text-base font-medium text-subtle">
+            选文件夹 → 自动识别 → 核对信息 → 生成材料
+          </p>
+        </div>
+        {!tauriEnv && (
+          <VBadge tone="warning">当前为 Web 模式，需在 Tauri 桌面端使用完整功能</VBadge>
+        )}
+      </div>
+
+      {/* 步骤指示器 */}
+      <div className="flex items-center gap-2">
+        {(['扫描', '核对', '出结果'] as const).map((label, i) => {
+          const n = (i + 1) as Step
+          return (
+            <div key={label} className="flex flex-1 items-center gap-2">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                  n < step ? 'bg-success text-white' : n === step ? 'bg-primary text-white' : 'bg-ink/8 text-ink/40'
+                }`}
+              >
+                {n < step ? '✓' : n}
+              </div>
+              <span className={`text-sm ${n <= step ? 'font-medium text-ink' : 'text-ink/40'}`}>{label}</span>
+              {i < 2 && <div className={`h-0.5 flex-1 ${n < step ? 'bg-success' : 'bg-ink/8'}`} />}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ===== 第一步：扫描 ===== */}
+      {step === 1 && (
+        <div className="flex flex-col items-center rounded-2xl bg-white p-16 text-center shadow-card">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#E0F7FA]">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1460A4" strokeWidth="1.6">
+              <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5zM14 3v5h5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="12" cy="15" r="2.5" />
+              <path d="M12 12.5V9m0 9v-1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-ink">扫描我的资料</h2>
+          <p className="mt-2 max-w-md text-sm text-ink/55">
+            选择包含签证材料的文件夹，将自动识别 PDF / JPG / PNG / DOCX 文件中的关键信息
+          </p>
+          <VButton size="lg" className="mt-8" onClick={handleScan} disabled={scanning}>
+            {scanning ? '打开文件选择器…' : '📁 扫描我的资料'}
+          </VButton>
+        </div>
+      )}
+
+      {/* ===== 第二步：文件列表 + 核对表单 ===== */}
+      {step === 2 && (
+        <div className="flex flex-col gap-6">
+          <div className="rounded-2xl bg-white p-6 shadow-card">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-ink">已扫描文件</h2>
+                <p className="text-xs text-ink/45">
+                  文件夹：{folder} · 共 {items.length} 个文件
+                </p>
+              </div>
+              <VButton size="sm" onClick={handleRecognizeAll} disabled={recognizingAll}>
+                {recognizingAll ? '识别中…' : `🤖 识别全部 (${recognizedCount}/${items.length})`}
+              </VButton>
+            </div>
+
+            <div className="space-y-2">
+              {items.map((item) => (
+                <div key={item.path} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
+                  <span className="text-lg">📄</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-ink">{item.name}</div>
+                    <div className="text-xs text-ink/40">
+                      {item.fileType.toUpperCase()} · {item.category || '未识别'}
+                    </div>
+                  </div>
+                  {item.status === 'pending' && (
+                    <VButton size="sm" variant="secondary" onClick={() => handleRecognize(item)}>
+                      识别
+                    </VButton>
+                  )}
+                  {item.status === 'recognizing' && (
+                    <span className="flex items-center gap-1.5 text-xs text-ink/50">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
+                      识别中
+                    </span>
+                  )}
+                  {item.status === 'done' && (
+                    <VBadge tone="success">✓ {item.category}</VBadge>
+                  )}
+                  {item.status === 'error' && (
+                    <VBadge tone="danger">{item.error}</VBadge>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <VButton onClick={handleNextToConfirm} disabled={recognizedCount === 0}>
+                下一步：核对信息 →
+              </VButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== 第三步：出结果（核对表单 + 生成） ===== */}
+      {step === 3 && (
+        <div className="flex flex-col gap-6">
+          <div className="rounded-2xl bg-white p-6 shadow-card">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-ink">核对自动提取的信息</h2>
+              <div className="flex gap-2">
+                <VButton variant="secondary" size="sm" onClick={handleSaveProfile}>
+                  💾 保存
+                </VButton>
+                <VButton size="sm" onClick={() => setStep(2)}>
+                  返回文件列表
+                </VButton>
+              </div>
+            </div>
+
+            {/* 缺失提示 */}
+            {missingFields.length > 0 && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <div className="text-sm font-semibold text-amber-700">
+                  缺失 {missingFields.length} 项必填信息：
+                </div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {missingFields.map((f) => (
+                    <span key={f.key} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                      缺 {f.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {FIELD_SPECS.map((f) => {
+                const filled = !!profile[f.key]
+                return (
+                  <div key={f.key} className={`rounded-xl border p-4 ${filled ? 'border-success/30 bg-success/5' : 'border-red-200 bg-red-50/50'}`}>
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${filled ? 'bg-success' : 'bg-red-400'}`} />
+                      <label className="text-sm font-medium text-ink">
+                        {f.label} {f.required && <span className="text-red-500">*</span>}
+                      </label>
+                    </div>
+                    <input
+                      value={profile[f.key] ?? ''}
+                      onChange={(e) => setProfile({ ...profile, [f.key]: e.target.value })}
+                      placeholder={f.required ? '必填' : '选填'}
+                      className="w-full rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-primary/40"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 生成材料 */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl bg-white p-6 shadow-card">
+              <h2 className="mb-4 text-lg font-bold text-ink">选择申请目标</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-ink/60">国家</label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+                  >
+                    {['日本', '韩国', '泰国', '申根', '美国', '英国', '澳大利亚'].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-ink/60">签证类型</label>
+                  <select
+                    value={visaType}
+                    onChange={(e) => setVisaType(e.target.value)}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+                  >
+                    {['旅游签证', '商务签证', '探亲签证', '学生签证'].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-ink/60">生成文档类型</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['itinerary', 'employment', 'cover'] as const).map((dt) => (
+                      <button
+                        key={dt}
+                        onClick={() => setDocType(dt)}
+                        className={`rounded-lg border-2 px-2 py-2 text-xs font-medium transition-all ${
+                          docType === dt ? 'border-primary bg-primary/5 text-primary' : 'border-ink/10 text-ink/55'
+                        }`}
+                      >
+                        {dt === 'itinerary' ? '行程单' : dt === 'employment' ? '在职证明' : '解释信'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <VButton className="w-full" onClick={handleGenerate} disabled={generating}>
+                  {generating ? '生成中…' : '✨ AI 生成材料'}
+                </VButton>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-card">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-ink">生成结果</h2>
+                {generated && (
+                  <VButton variant="secondary" size="sm" onClick={handleExport}>
+                    ⬇️ 导出 PDF
+                  </VButton>
+                )}
+              </div>
+              {generated ? (
+                <pre className="max-h-[480px] overflow-y-auto whitespace-pre-wrap rounded-xl bg-[#F9F9F6] p-4 text-sm leading-relaxed text-ink/75">
+                  {generated}
+                </pre>
+              ) : (
+                <div className="flex h-64 items-center justify-center rounded-xl bg-[#F9F9F6] text-sm text-ink/40">
+                  点击「AI 生成材料」获取文档
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

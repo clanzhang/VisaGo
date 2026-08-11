@@ -6,6 +6,7 @@ import { useVisaStore } from '@/stores/visaStore'
 const NAV_ITEMS = [
   { to: '/', key: 'home', icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
   { to: '/assistant', key: 'assistant', icon: 'M12 4a4 4 0 100 8 4 4 0 000-8zM6 21v-2a4 4 0 014-4h4a4 4 0 014 4v2' },
+  { to: '/scan', key: 'scan', label: '材料扫描', icon: 'M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5zM14 3v5h5M9 13h6M9 17h6' },
   { to: '/tracker', key: 'tracker', icon: 'M21 12a9 9 0 11-18 0 9 9 0 0118 0zM12 7v5l3 2' },
   { to: '/documents', key: 'documents', icon: 'M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5zM14 3v5h5M9 13h6M9 17h6' },
   { to: '/encyclopedia', key: 'encyclopedia', icon: 'M4 19.5A2.5 2.5 0 016.5 17H20V4H6.5A2.5 2.5 0 004 6.5v13zM20 8h-5' },
@@ -76,7 +77,7 @@ export function Sidebar() {
                 >
                   <path d={item.icon} />
                 </svg>
-                <span>{t(`nav.${item.key}`)}</span>
+                <span>{item.label ?? t(`nav.${item.key}`)}</span>
               </>
             )}
           </NavLink>
