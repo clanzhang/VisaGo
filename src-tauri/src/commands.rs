@@ -144,6 +144,7 @@ pub(crate) fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, String> {
 #[tauri::command]
 pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: String) -> Result<RecognizeResult, String> {
     println!("[IPC] recognize_file 被调用: {name} ({path})");
+
     // 读取文件内容（图片转 base64，文本直接读）
     let ext = path
         .rsplit('.')
@@ -151,11 +152,32 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
         .unwrap_or("")
         .to_lowercase();
     let content_b64 = match ext.as_str() {
-        "jpg" | "jpeg" | "png" => Some(scanner::read_file_base64(&path)?),
+        "jpg" | "jpeg" | "png" => {
+            match scanner::read_file_base64(&path) {
+                Ok(b64) => {
+                    println!("[recognize] 读取图片成功: {} bytes(base64 长度 {})", name, b64.len());
+                    Some(b64)
+                }
+                Err(e) => {
+                    println!("[recognize] 读取图片失败: {name}: {e}");
+                    return Err(format!("读取图片失败: {e}"));
+                }
+            }
+        }
         _ => None,
     };
 
-    let recognized = recognizer::recognize_file(&path, &name, content_b64).await?;
+    println!("[recognize] 发送给 Kimi: name={name}, ext={ext}, content_b64={}", content_b64.is_some());
+    let recognized = match recognizer::recognize_file(&path, &name, content_b64).await {
+        Ok(r) => {
+            println!("[recognize] Kimi 识别成功: category={}, fields={}", r.category, r.fields);
+            r
+        }
+        Err(e) => {
+            println!("[recognize] Kimi 识别失败: {e}");
+            return Err(e);
+        }
+    };
 
     // 更新扫描记录中的识别状态
     if let Ok(mut scanned) = store::load_scanned(&app) {

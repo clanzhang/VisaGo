@@ -40,22 +40,31 @@ pub struct ChatOptions {
     pub response_format: Option<serde_json::Value>,
 }
 
-/// 从环境变量读取 Kimi Key（Tauri 打包时通过 .env / 环境注入，不硬编码进二进制源码）
+/// 从环境变量读取 Kimi Key（优先环境变量，其次从项目根 .env 读取）
 pub fn api_key() -> Result<String, String> {
-    std::env::var("KIMI_API_KEY").or_else(|_| {
-        // 尝试读取项目根 .env
-        let env_path = std::path::Path::new(".env");
+    if let Ok(key) = std::env::var("KIMI_API_KEY") {
+        if !key.trim().is_empty() {
+            return Ok(key);
+        }
+    }
+    // 尝试读取项目根 .env（向上级目录查找，兼容 src-tauri 作为 cwd 的情况）
+    let candidates = [
+        std::path::Path::new(".env"),
+        std::path::Path::new("../.env"),
+        std::path::Path::new("../../.env"),
+    ];
+    for env_path in candidates {
         if let Ok(content) = std::fs::read_to_string(env_path) {
             for line in content.lines() {
                 if let Some((k, v)) = line.trim().split_once('=') {
-                    if k.trim() == "KIMI_API_KEY" {
+                    if k.trim() == "KIMI_API_KEY" && !v.trim().is_empty() {
                         return Ok(v.trim().to_string());
                     }
                 }
             }
         }
-        Err("未找到 KIMI_API_KEY，请在环境变量或 .env 中配置".to_string())
-    })
+    }
+    Err("未找到 KIMI_API_KEY，请在环境变量或项目根 .env 中配置".to_string())
 }
 
 /// 调用 Kimi Chat Completions，返回回复文本
