@@ -13,6 +13,7 @@ export default function Encyclopedia() {
   const [query, setQuery] = useState('')
   const [difficulty, setDifficulty] = useState<DifficultyFilter>('all')
   const [aiOpen, setAiOpen] = useState(false)
+  const [compareMode, setCompareMode] = useState(false)
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [compareOpen, setCompareOpen] = useState(false)
 
@@ -78,13 +79,22 @@ export default function Encyclopedia() {
             <span className="text-sm">🤖</span> {t('encyclopedia.askAI')}
           </VButton>
           <VButton
-            variant="secondary"
+            variant={compareMode ? 'primary' : 'secondary'}
             size="sm"
-            disabled={compareIds.length < 2}
-            onClick={() => setCompareOpen(true)}
+            onClick={() => setCompareMode((v) => !v)}
           >
-            {t('encyclopedia.compare')} ({compareIds.length})
+            {t('encyclopedia.compareMode')}
           </VButton>
+          {compareMode && (
+            <VButton
+              variant="secondary"
+              size="sm"
+              disabled={compareIds.length < 2}
+              onClick={() => setCompareOpen(true)}
+            >
+              {t('encyclopedia.compare')} ({compareIds.length})
+            </VButton>
+          )}
         </div>
       </div>
 
@@ -95,20 +105,23 @@ export default function Encyclopedia() {
           return (
             <div key={c.id} className="relative">
               <CountryCard country={c} index={i} />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleCompare(c.id)
-                }}
-                className={`absolute right-4 top-4 z-10 flex h-6 w-6 items-center justify-center rounded-full border text-xs transition-colors ${
-                  selected
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-ink/15 bg-white text-ink/40 hover:border-primary/50 hover:text-primary'
-                }`}
-                aria-label={t('encyclopedia.addToCompare')}
-              >
-                {selected ? '✓' : '+'}
-              </button>
+              {compareMode && (
+                <label
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-4 top-4 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded border-2 bg-white shadow-sm transition-colors"
+                  style={{
+                    borderColor: selected ? '#1460A4' : '#d1d5db',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => toggleCompare(c.id)}
+                    className="h-4 w-4 accent-[#1460A4]"
+                    aria-label={t('encyclopedia.addToCompare')}
+                  />
+                </label>
+              )}
             </div>
           )
         })}
