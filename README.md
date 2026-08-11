@@ -91,7 +91,7 @@ npx tauri build
 
 ## 📁 项目结构
 
-```
+```text
 visago/
 ├── src/                    # 前端源码
 │   ├── pages/              # 页面（Home/Assistant/Scan/Tracker/Documents/Encyclopedia...）
@@ -139,6 +139,6 @@ VisaGo 提供的签证信息仅供参考，不构成法律建议。签证政策�
 
 <div align="center">
 
-Made with ❤️ by [VisaGo Team](https://github.com/yourusername/visago)
+Made with ❤️ by [VisaGo Team](https://github.com/clanz/visago)
 
 </div>

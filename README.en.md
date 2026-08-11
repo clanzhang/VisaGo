@@ -91,7 +91,7 @@ npx tauri build
 
 ## 📁 Project Structure
 
-```
+```text
 visago/
 ├── src/                    # Frontend source
 │   ├── pages/              # Pages (Home/Assistant/Scan/Tracker/Documents/Encyclopedia...)
@@ -139,6 +139,6 @@ VisaGo provides visa information for reference only and does not constitute lega
 
 <div align="center">
 
-Made with ❤️ by [VisaGo Team](https://github.com/yourusername/visago)
+Made with ❤️ by [VisaGo Team](https://github.com/clanz/visago)
 
 </div>
