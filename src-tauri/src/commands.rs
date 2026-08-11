@@ -292,7 +292,13 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
 /// IPC: save_profile — 保存用户资料
 #[tauri::command]
 pub(crate) fn save_profile(app: tauri::AppHandle, profile: store::UserProfile) -> Result<(), String> {
-    store::save_profile(&app, &profile)
+    println!("[IPC] save_profile 被调用: name={}, passport={}", profile.name, profile.passport_number);
+    let r = store::save_profile(&app, &profile);
+    match &r {
+        Ok(_) => println!("[IPC] save_profile 保存成功"),
+        Err(e) => println!("[IPC] save_profile 失败: {e}"),
+    }
+    r
 }
 
 /// IPC: load_profile — 加载用户资料

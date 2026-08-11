@@ -112,8 +112,37 @@ export function recognizeFile(path: string, name: string): Promise<RecognizeResu
 
 // ===== 用户资料 =====
 
-export function saveProfile(profile: UserProfile): Promise<void> {
-  return invoke<void>('save_profile', { profile })
+/**
+ * 保存用户资料到 Rust 端（snake_case 结构）。
+ * 前端可能传 camelCase 或 snake_case，这里统一归一化并补全缺失字段，
+ * 避免 serde 反序列化失败导致保存失败。
+ */
+export function saveProfile(profile: UserProfile | Record<string, unknown>): Promise<void> {
+  const src = (profile ?? {}) as Record<string, unknown>
+  const str = (v: unknown): string => {
+    if (v === null || v === undefined) return ''
+    const s = String(v).trim()
+    return s === 'null' || s === 'undefined' ? '' : s
+  }
+  const data = {
+    name: str(src.name ?? src['name']),
+    passport_number: str(src.passport_number ?? src.passportNumber),
+    nationality: str(src.nationality ?? src['nationality']),
+    birth_date: str(src.birth_date ?? src.birthDate),
+    gender: str(src.gender ?? src['gender']),
+    id_number: str(src.id_number ?? src.idNumber),
+    phone: str(src.phone ?? src['phone']),
+    address: str(src.address ?? src['address'] ?? src.home_address ?? src.homeAddress),
+    home_province: str(src.home_province ?? src.homeProvince),
+    occupation: str(src.occupation ?? src['occupation']),
+    company: str(src.company ?? src['company']),
+    position: str(src.position ?? src['position']),
+    salary: str(src.salary ?? src['salary']),
+    passport_issued_in: str(src.passport_issued_in ?? src.passportIssuedIn),
+    has_history_visa: Boolean(src.has_history_visa ?? src.hasHistoryVisa ?? false),
+  }
+  console.log('[saveProfile] 发送数据:', JSON.stringify(data))
+  return invoke<void>('save_profile', { profile: data })
 }
 
 export function loadProfile(): Promise<UserProfile | null> {

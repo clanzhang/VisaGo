@@ -3,21 +3,38 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::Manager;
 
+/// 用户资料（所有字段可空/默认，容忍前端缺字段）
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct UserProfile {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub passport_number: String,
+    #[serde(default)]
     pub nationality: String,
+    #[serde(default)]
     pub birth_date: String,
+    #[serde(default)]
     pub gender: String,
+    #[serde(default)]
     pub id_number: String,
+    #[serde(default)]
     pub phone: String,
+    #[serde(default)]
     pub address: String,
+    #[serde(default)]
     pub home_province: String,
+    #[serde(default)]
     pub occupation: String,
+    #[serde(default)]
     pub company: String,
+    #[serde(default)]
     pub position: String,
+    #[serde(default)]
     pub salary: String,
+    #[serde(default)]
+    pub passport_issued_in: String,
+    #[serde(default)]
     pub has_history_visa: bool,
 }
 

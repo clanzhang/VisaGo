@@ -286,10 +286,13 @@ export default function Scan() {
 
   async function handleSaveProfile() {
     try {
-      await saveProfile(profile as never)
+      console.log('[Scan] handleSaveProfile 被调用，profile=', profile)
+      await saveProfile(profile)
       toast('资料已保存', 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : '保存失败', 'error')
+      console.error('[Scan] 保存失败:', e)
+      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+      toast(`保存失败: ${msg}`, 'error')
     }
   }
 
