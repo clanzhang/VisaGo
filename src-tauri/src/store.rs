@@ -86,6 +86,7 @@ pub fn load_scanned(app: &tauri::AppHandle) -> Result<Option<ScannedFiles>, Stri
 }
 
 /// 保存申请记录
+#[allow(dead_code)] // 供申请记录持久化使用
 pub fn save_application(
     app: &tauri::AppHandle,
     id: &str,
@@ -98,6 +99,7 @@ pub fn save_application(
 }
 
 /// 列出申请记录
+#[allow(dead_code)] // 供申请记录列表展示使用
 pub fn list_applications(app: &tauri::AppHandle) -> Result<Vec<String>, String> {
     let dir = data_dir(app)?.join("applications");
     let mut names = Vec::new();

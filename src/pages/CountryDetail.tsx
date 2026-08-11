@@ -23,7 +23,7 @@ export default function CountryDetail() {
   const navigate = useNavigate()
   const { t } = useI18n()
   const country = countries.find((c) => c.id === id)
-  const { data: aiData, loading: aiLoading, error: aiError, refresh: aiRefresh } = useCountryAIData(id)
+  const { data: aiData, loading: aiLoading, refresh: aiRefresh } = useCountryAIData(id)
 
   const [visaTypeId, setVisaTypeId] = useState(country?.visaTypes[0]?.id ?? '')
   const [tab, setTab] = useState<'materials' | 'fee' | 'districts' | 'faq'>('materials')
@@ -163,14 +163,15 @@ export default function CountryDetail() {
           </div>
         </div>
 
-        {aiError && (
+        {/* 隐藏 AI 数据加载报错横幅（仅静默失败，保留静态数据展示） */}
+        {/* {aiError && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {aiError}
             <button onClick={() => aiRefresh()} className="ml-3 font-medium underline underline-offset-2">
               点击重试
             </button>
           </div>
-        )}
+        )} */}
 
         {aiLoading && !ai ? (
           <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/50">

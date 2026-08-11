@@ -8,7 +8,7 @@ import { useAppStore } from '@/stores/appStore'
 import { VButton } from '@/components/common'
 
 export default function Home() {
-  const { data, loading, error, refreshing, refresh } = useHomeAIData()
+  const { data, loading, refreshing, refresh } = useHomeAIData()
   const { toast } = useAppStore()
 
   return (
@@ -40,7 +40,8 @@ export default function Home() {
         </div>
       </div>
 
-      {error && (
+      {/* 隐藏 AI 数据加载报错横幅（仅静默失败，数据回退静态） */}
+      {/* {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
           <button
@@ -50,7 +51,7 @@ export default function Home() {
             点击重试
           </button>
         </div>
-      )}
+      )} */}
 
       <HeroCards hero={data.hero} />
       <StatsSection

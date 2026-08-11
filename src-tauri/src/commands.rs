@@ -96,11 +96,16 @@ pub(crate) async fn kimi_chat(prompt: String) -> Result<String, String> {
 /// IPC: scan_folder — 系统文件选择器选文件夹，递归扫描
 #[tauri::command]
 pub(crate) async fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, String> {
+    println!("[IPC] scan_folder 被调用");
     let picked = rfd::FileDialog::new().pick_folder();
     let folder = match picked {
         Some(dir) => dir.to_string_lossy().to_string(),
-        None => return Err("用户取消了选择".to_string()),
+        None => {
+            println!("[IPC] scan_folder: 用户取消了选择");
+            return Err("用户取消了选择".to_string());
+        }
     };
+    println!("[IPC] scan_folder: 选择了文件夹 {folder}");
 
     let files = scanner::scan_folder(&folder)?;
     let result = ScanResult {
@@ -135,6 +140,7 @@ pub(crate) async fn scan_folder(app: tauri::AppHandle) -> Result<ScanResult, Str
 /// IPC: recognize_file — 读文件内容，调 Kimi 识别类型 + 提取字段
 #[tauri::command]
 pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: String) -> Result<RecognizeResult, String> {
+    println!("[IPC] recognize_file 被调用: {name} ({path})");
     // 读取文件内容（图片转 base64，文本直接读）
     let ext = path
         .rsplit('.')

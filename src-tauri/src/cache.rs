@@ -48,6 +48,7 @@ pub fn write(app_dir: &std::path::Path, key: &str, data: serde_json::Value) {
 }
 
 /// 判断缓存是否存在且未过期
+#[allow(dead_code)] // 供 7 天缓存刷新策略使用
 pub fn is_fresh(app_dir: &std::path::Path, key: &str) -> bool {
     read(app_dir, key).is_some()
 }

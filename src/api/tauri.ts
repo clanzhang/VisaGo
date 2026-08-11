@@ -3,7 +3,13 @@
 import type { UserProfile } from '@/types'
 
 export function isTauri(): boolean {
-  return typeof (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined'
+  const w = window as unknown as Record<string, unknown>
+  return (
+    typeof w.__TAURI_INTERNALS__ !== 'undefined' ||
+    typeof w.__TAURI__ !== 'undefined' ||
+    typeof w.ipc !== 'undefined' ||
+    typeof w.invoke === 'function'
+  )
 }
 
 interface TauriCore {
@@ -11,11 +17,17 @@ interface TauriCore {
 }
 
 function core(): TauriCore {
-  const tauri = (window as unknown as { __TAURI__?: { core?: TauriCore } }).__TAURI__
-  if (tauri?.core?.invoke) return tauri.core
-  const anyWin = window as unknown as { invoke?: TauriCore['invoke'] }
-  if (typeof anyWin.invoke === 'function') return { invoke: anyWin.invoke }
-  throw new Error('Tauri IPC 不可用')
+  const w = window as unknown as {
+    __TAURI__?: { core?: TauriCore }
+    __TAURI_INTERNALS__?: { invoke?: TauriCore['invoke'] }
+    invoke?: TauriCore['invoke']
+  }
+  if (w.__TAURI__?.core?.invoke) return w.__TAURI__.core
+  if (typeof w.__TAURI_INTERNALS__?.invoke === 'function') {
+    return { invoke: w.__TAURI_INTERNALS__.invoke }
+  }
+  if (typeof w.invoke === 'function') return { invoke: w.invoke }
+  throw new Error('Tauri IPC 不可用：window.__TAURI__ / invoke 未注入')
 }
 
 export function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {

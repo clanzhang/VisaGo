@@ -67,7 +67,9 @@ export default function Scan() {
   async function handleScan() {
     setScanning(true)
     try {
+      console.log('[Scan] 调用 scan_folder...')
       const result: ScanResult = await scanFolder()
+      console.log('[Scan] scan_folder 成功:', result)
       setFolder(result.folder)
       setItems(
         result.files.map((f) => ({
@@ -82,7 +84,11 @@ export default function Scan() {
       )
       setStep(2)
     } catch (e) {
-      toast(e instanceof Error ? e.message : '扫描失败', 'error')
+      console.error('[Scan] scan_folder 失败:', e)
+      toast(
+        e instanceof Error ? `${e.name}: ${e.message}` : `扫描失败: ${String(e)}`,
+        'error',
+      )
     } finally {
       setScanning(false)
     }
@@ -94,7 +100,9 @@ export default function Scan() {
       prev.map((x) => (x.path === item.path ? { ...x, status: 'recognizing' } : x)),
     )
     try {
+      console.log('[Scan] 调用 recognize_file:', item.name)
       const res: RecognizeResult = await recognizeFile(item.path, item.name)
+      console.log('[Scan] recognize_file 成功:', res)
       setItems((prev) =>
         prev.map((x) =>
           x.path === item.path
@@ -109,10 +117,11 @@ export default function Scan() {
         ),
       )
     } catch (e) {
+      console.error('[Scan] recognize_file 失败:', item.name, e)
       setItems((prev) =>
         prev.map((x) =>
           x.path === item.path
-            ? { ...x, status: 'error', error: e instanceof Error ? e.message : '识别失败' }
+            ? { ...x, status: 'error', error: e instanceof Error ? `${e.name}: ${e.message}` : '识别失败' }
             : x,
         ),
       )
