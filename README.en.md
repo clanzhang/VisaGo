@@ -9,7 +9,6 @@
 <div align="center">
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -131,10 +130,6 @@ Issues and Pull Requests are welcome! Please ensure:
 - Code passes `npm run build`
 - Follow existing code style and structure
 - Open an Issue first for major changes
-
-## 📄 License
-
-This project is open-sourced under the [MIT](./LICENSE) license.
 
 ## ⚠️ Disclaimer
 

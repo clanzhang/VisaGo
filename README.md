@@ -9,7 +9,6 @@
 <div align="center">
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -131,10 +130,6 @@ visago/
 - 代码通过 `npm run build` 构建检查
 - 遵循现有的代码风格与结构
 - 重大改动请先开 Issue 讨论
-
-## 📄 许可证
-
-本项目基于 [MIT](./LICENSE) 许可证开源。
 
 ## ⚠️ 免责声明
 
