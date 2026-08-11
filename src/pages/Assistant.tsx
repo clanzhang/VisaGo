@@ -60,7 +60,7 @@ export default function Assistant() {
     return f ? f.visaFee + f.serviceFee + f.courierFee + f.photoFee : visaType.fee.amount + (visaType.serviceFee?.amount ?? 0)
   }, [visaType, extra])
 
-  const { recommend, loading: aiLoading, error: aiError } = useAIRecruit()
+  const { recommend, loading: aiLoading } = useAIRecruit()
   const [recommendation, setRecommendation] = useState<RecommendResult | null>(null)
   const [aiRequested, setAiRequested] = useState(false)
 
@@ -357,11 +357,12 @@ export default function Assistant() {
               )}
             </div>
 
-            {aiError && (
+            {/* 隐藏 Kimi 个性化推荐报错横幅（失败时静默跳过推荐，保留静态材料清单） */}
+            {/* {aiError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
                 {aiError}
               </div>
-            )}
+            )} */}
 
             {recommendation ? (
               <div className="space-y-4">

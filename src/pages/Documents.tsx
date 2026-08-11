@@ -23,7 +23,7 @@ const EMPTY_PROFILE: UserProfile = {
 export default function Documents() {
   const { t } = useI18n()
   const { savedProfile, saveProfile } = useVisaStore()
-  const { generate, loading: aiLoading, error: aiError } = useAIDocuments()
+  const { generate, loading: aiLoading } = useAIDocuments()
   const [profile, setProfile] = useState<UserProfile>(savedProfile ?? EMPTY_PROFILE)
   const [destination, setDestination] = useState('日本')
   const [startDate, setStartDate] = useState(todayISO())
@@ -181,11 +181,12 @@ export default function Documents() {
               <p className="mt-1.5 text-xs text-ink/50">
                 根据你的资料自动生成行程单、在职证明、邀请函、个人陈述，可编辑后导出 PDF
               </p>
-              {aiError && (
+              {/* 隐藏 Kimi 文档生成报错横幅（失败时静默，保留本地模板预览） */}
+              {/* {aiError && (
                 <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
                   {aiError}
                 </div>
-              )}
+              )} */}
               <VButton
                 className="mt-3 w-full"
                 variant="secondary"
