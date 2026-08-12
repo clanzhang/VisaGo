@@ -150,19 +150,8 @@ export function SettingsModal() {
         </div>
 
         {/* 右侧内容区 */}
-        <div className="relative flex-1 min-w-0 p-6">
-          {/* 右上角关闭按钮 */}
-          <button
-            onClick={closeSettings}
-            className="absolute right-4 top-4 rounded-lg p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
-            aria-label="关闭"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          </button>
-
-          <div className="h-full overflow-y-auto pr-1">
+        <div className="relative flex min-w-0 flex-1 flex-col p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {section === 'notify' && (
               <div className="space-y-6">
                 {/* 启用桌面通知 */}
@@ -251,6 +240,16 @@ export function SettingsModal() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 底部居中「完成」按钮（macOS 风格） */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={closeSettings}
+              className="rounded-lg bg-white px-6 py-2 text-sm font-medium text-[#1460A4] shadow-sm ring-1 ring-ink/10 transition-colors duration-150 hover:bg-[#F3F4F6]"
+            >
+              完成
+            </button>
           </div>
         </div>
       </div>
