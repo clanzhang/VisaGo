@@ -50,19 +50,9 @@ export function Header() {
 
         {/* 搜索框 */}
         <div className="relative w-full max-w-xl">
-          <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-[calc(50%+2px)] text-[#9CA3AF]"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
+          <i
+            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9CA3AF] transition-colors duration-150 hover:text-[#6B7280] icon-[mdi-light--magnify]"
+          />
           <input
             value={query}
             onChange={(e) => {
