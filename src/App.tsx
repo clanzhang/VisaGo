@@ -12,7 +12,6 @@ import Tracker from '@/pages/Tracker'
 import Encyclopedia from '@/pages/Encyclopedia'
 import CountryDetail from '@/pages/CountryDetail'
 import Scan from '@/pages/Scan'
-import Settings from '@/pages/Settings'
 
 export default function App() {
   return (
@@ -28,7 +27,6 @@ export default function App() {
                 <Route path="/encyclopedia" element={<Encyclopedia />} />
                 <Route path="/encyclopedia/:id" element={<CountryDetail />} />
                 <Route path="/scan" element={<Scan />} />
-                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Home />} />
               </Routes>
               <VToast />

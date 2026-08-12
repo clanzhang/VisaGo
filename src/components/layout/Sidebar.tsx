@@ -2,6 +2,7 @@
 import { NavLink } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useVisaStore } from '@/stores/visaStore'
+import { useAppStore } from '@/stores/appStore'
 
 const NAV_ITEMS = [
   { to: '/', key: 'home', icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
+  const { openSettings } = useAppStore()
 
   return (
     <aside className="flex h-full w-[240px] shrink-0 flex-col bg-sidebar text-white">
@@ -91,37 +93,27 @@ export function Sidebar() {
 
       {/* 底部 */}
       <div className="space-y-3 px-4 pb-5">
-        {/* 设置入口 */}
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-colors duration-150 ${
-              isActive ? 'bg-white/10 font-medium text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-            }`
-          }
+        {/* 设置入口（打开弹窗） */}
+        <button
+          onClick={openSettings}
+          className="group relative flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm text-white/60 transition-colors duration-150 hover:bg-white/5 hover:text-white"
         >
-          {({ isActive }) => (
-            <>
-              <span
-                className={`absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[#1460A4] transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}
-              />
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h.01a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
-              </svg>
-              <span>设置</span>
-            </>
-          )}
-        </NavLink>
+          <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[#1460A4] opacity-0 transition-opacity group-hover:opacity-100" />
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h.01a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+          <span>设置</span>
+        </button>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1">

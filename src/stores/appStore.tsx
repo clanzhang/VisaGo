@@ -21,10 +21,13 @@ interface AppStoreValue {
   theme: 'light' | 'dark'
   toasts: ToastItem[]
   isZh: boolean
+  settingsOpen: boolean
   setLanguage: (lang: Language) => void
   toggleTheme: () => void
   toast: (message: string, type?: ToastItem['type']) => void
   dismissToast: (id: number) => void
+  openSettings: () => void
+  closeSettings: () => void
 }
 
 const AppStoreContext = createContext<AppStoreValue | null>(null)
@@ -36,6 +39,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const toastId = useRef(0)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const setLanguage = useCallback((lang: Language) => {
     localStorage.setItem('visago:lang', lang)
@@ -61,12 +65,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       theme,
       toasts,
       isZh: language === 'zh-CN',
+      settingsOpen,
       setLanguage,
       toggleTheme: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')),
       toast,
       dismissToast,
+      openSettings: () => setSettingsOpen(true),
+      closeSettings: () => setSettingsOpen(false),
     }),
-    [language, theme, toasts, setLanguage, toast, dismissToast],
+    [language, theme, toasts, settingsOpen, setLanguage, toast, dismissToast],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>

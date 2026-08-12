@@ -1,4 +1,4 @@
-// pages/Settings.tsx — 设置页（通用/通知/关于，左右分栏）
+// components/common/SettingsModal.tsx — 设置弹窗（通用/通知/关于，左右分栏）
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { useAppStore } from '@/stores/appStore'
@@ -34,9 +34,9 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   )
 }
 
-export default function Settings() {
+export function SettingsModal() {
   const { setLang } = useI18n()
-  const { toast } = useAppStore()
+  const { toast, settingsOpen, closeSettings } = useAppStore()
   const [section, setSection] = useState<Section>('general')
   const [settings, setSettings] = useState<AppSettings>({
     desktop_notification: false,
@@ -45,24 +45,41 @@ export default function Settings() {
     language: 'zh-CN',
   })
 
-  // 加载设置
+  // 打开时加载设置 + Esc 关闭
   useEffect(() => {
+    if (!settingsOpen) return
+    setSection('general')
     if (!isTauri()) return
     loadSettings()
       .then((s) => {
         setSettings(s)
         if (s.language) setLang(s.language === 'en-US' ? 'en-US' : 'zh-CN')
       })
-      .catch((e) => console.warn('[Settings] 加载设置失败:', e))
+      .catch((e) => console.warn('[SettingsModal] 加载设置失败:', e))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [settingsOpen])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeSettings()
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [settingsOpen, closeSettings])
+
+  if (!settingsOpen) return null
 
   // 更新设置并持久化
   const update = (patch: Partial<AppSettings>) => {
     const next = { ...settings, ...patch }
     setSettings(next)
     if (!isTauri()) return
-    saveSettings(next).catch((e) => console.warn('[Settings] 保存设置失败:', e))
+    saveSettings(next).catch((e) => console.warn('[SettingsModal] 保存设置失败:', e))
     if (patch.language) setLang(patch.language === 'en-US' ? 'en-US' : 'zh-CN')
   }
 
@@ -74,54 +91,58 @@ export default function Settings() {
         const granted = await requestNotificationPermission()
         toast(granted ? '通知权限已开启' : '未获得通知权限，请在系统设置中允许', granted ? 'success' : 'warning')
       } catch (e) {
-        console.warn('[Settings] 请求通知权限失败:', e)
+        console.warn('[SettingsModal] 请求通知权限失败:', e)
       }
     }
   }
 
-  const rows = useMemo(
+  const notifyItems = useMemo(
     () => [
-      {
-        section: 'notify' as Section,
-        items: [
-          { key: 'desktop_notification' as const, title: '启用桌面通知', desc: '开启后，递签提醒、出签提醒将推送到系统通知中心' },
-          { key: 'notify_submission' as const, title: '递签日提醒', desc: '递签当天提醒你带齐材料前往签证中心' },
-          { key: 'notify_pre_issue' as const, title: '出签前 3 天提醒', desc: '预计出签前 3 天提醒你留意结果' },
-        ],
-      },
+      { key: 'notify_submission' as const, title: '递签日提醒', desc: '递签当天提醒你带齐材料前往签证中心' },
+      { key: 'notify_pre_issue' as const, title: '出签前 3 天提醒', desc: '预计出签前 3 天提醒你留意结果' },
     ],
     [],
   )
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-ink">设置</h1>
-        <p className="mt-1 text-base font-medium text-subtle">偏好、通知与应用信息</p>
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* 遮罩 */}
+      <div className="absolute inset-0 bg-black/40 animate-[fadeIn_0.15s_ease]" onClick={closeSettings} />
 
-      <div className="mx-auto w-full max-w-[680px] rounded-2xl bg-white p-6 shadow-card">
-        <div className="flex gap-6">
-          {/* 左侧分类菜单 */}
-          <div className="w-[160px] shrink-0 space-y-1">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setSection(s.key)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150 ${
-                  section === s.key ? 'bg-[#1460A4] font-medium text-white' : 'text-ink/55 hover:bg-ink/5 hover:text-ink'
-                }`}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={s.icon} />
-                </svg>
-                {s.label}
-              </button>
-            ))}
-          </div>
+      {/* 弹窗主体：640x420 白底圆角16 shadow-2xl */}
+      <div className="relative flex h-[420px] w-[640px] max-w-full overflow-hidden rounded-2xl bg-white shadow-2xl animate-[fadeInUp_0.25s_ease]">
+        {/* 左侧分类栏（160px 浅灰 #F3F4F6） */}
+        <div className="w-[160px] shrink-0 space-y-1 bg-[#F3F4F6] p-3">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setSection(s.key)}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150 ${
+                section === s.key ? 'bg-[#1460A4] font-medium text-white' : 'text-ink/55 hover:bg-white hover:text-ink'
+              }`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d={s.icon} />
+              </svg>
+              {s.label}
+            </button>
+          ))}
+        </div>
 
-          {/* 右侧内容区 */}
-          <div className="min-w-0 flex-1 border-l border-ink/8 pl-6">
+        {/* 右侧内容区 */}
+        <div className="relative flex-1 min-w-0 p-6">
+          {/* 右上角关闭按钮 */}
+          <button
+            onClick={closeSettings}
+            className="absolute right-4 top-4 rounded-lg p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+            aria-label="关闭"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <div className="h-full overflow-y-auto pr-1">
             {section === 'notify' && (
               <div className="space-y-6">
                 {/* 启用桌面通知 */}
@@ -136,7 +157,7 @@ export default function Settings() {
                 {/* 通知类型（开启后才显示） */}
                 {settings.desktop_notification && (
                   <div className="space-y-4 border-t border-ink/8 pt-5">
-                    {rows[0].items.filter((i) => i.key !== 'desktop_notification').map((item) => (
+                    {notifyItems.map((item) => (
                       <div key={item.key} className="flex items-start justify-between gap-4">
                         <div>
                           <div className="text-sm font-medium text-ink">☑ {item.title}</div>
@@ -205,6 +226,14 @@ export default function Settings() {
                     </svg>
                     GitHub 仓库
                   </a>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toast('当前已是最新版本 v0.0.9', 'info')}
+                      className="flex items-center gap-2 rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-[#1460A4]/40 hover:text-[#1460A4]"
+                    >
+                      🔄 检查更新
+                    </button>
+                  </div>
                   <div className="text-xs text-ink/40">Copyright © 2026 VisaGo. 保留所有权利。</div>
                 </div>
               </div>
