@@ -210,13 +210,6 @@ export function SettingsModal() {
                     <option value="en-US">English</option>
                   </select>
                 </div>
-                <div className="flex items-center justify-between gap-4 border-t border-ink/8 pt-5">
-                  <div>
-                    <div className="text-sm font-semibold text-ink">开机自动启动</div>
-                    <div className="mt-0.5 text-xs text-ink/50">登录 macOS 后自动打开 VisaGo</div>
-                  </div>
-                  <Toggle checked={false} onChange={() => toast('开机自启暂未支持', 'info')} />
-                </div>
               </div>
             )}
 
