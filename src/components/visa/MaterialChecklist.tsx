@@ -1,0 +1,283 @@
+// components/visa/MaterialChecklist.tsx — 材料清单（自动推进式）
+// 页面加载自动完成可自动化的 6 项，用户只需处理证件照 + 银行流水
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { VButton } from '@/components/common'
+import { loadUserProfile } from '@/lib/user-profile'
+import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/material-check'
+import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
+import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
+import { checkBankStatement, BANK_EXPORT_STEPS, type BankCheckResult } from '@/lib/bank-check'
+import { exportPdf } from '@/api/tauri'
+
+interface Props {
+  countryName?: string
+  tripDates?: { start: string; end: string }
+}
+
+export function MaterialChecklist({ countryName = '目标国家', tripDates }: Props) {
+  const [items, setItems] = useState<MaterialItem[]>([])
+  const [showBankGuide, setShowBankGuide] = useState(false)
+  const [photoResult, setPhotoResult] = useState<PhotoCheckResult | null>(null)
+  const [bankResult, setBankResult] = useState<BankCheckResult | null>(null)
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const dates = tripDates ?? {
+    start: new Date().toISOString().slice(0, 10),
+    end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+  }
+
+  // 页面加载自动跑一遍检测 + 生成
+  useEffect(() => {
+    const profile = loadUserProfile()
+    setItems(checkMaterials(profile))
+    // 自动生成行程（Kimi）——静默执行，失败不阻塞
+    if (!profile) return
+    const run = async () => {
+      try {
+        setGenerating(true)
+        await generateItinerary(countryName, dates)
+      } catch {
+        /* 静默 */
+      } finally {
+        setGenerating(false)
+      }
+    }
+    void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const percent = useMemo(() => materialProgress(items), [items])
+
+  const updateItem = (id: string, patch: Partial<MaterialItem>) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)))
+  }
+
+  // 一键生成：申请表 + 在职证明 + 行程
+  async function handleGenerateAll() {
+    const profile = loadUserProfile()
+    if (!profile) return
+    setGenerating(true)
+    try {
+      const [app, emp, iti] = await Promise.all([
+        generateApplicationForm(profile, countryName),
+        generateEmploymentCertificate(profile, dates),
+        generateItinerary(countryName, dates),
+      ])
+      updateItem('application', { status: 'auto-generate', progress: 100, label: '已生成', labelCls: 'bg-[#1460A4]/10 text-[#1460A4]' })
+      updateItem('employment', { status: 'auto-generate', progress: 100, label: '已生成', labelCls: 'bg-[#1460A4]/10 text-[#1460A4]' })
+      updateItem('itinerary', { status: 'auto-generate', progress: 100, label: '已生成', labelCls: 'bg-[#1460A4]/10 text-[#1460A4]' })
+      // 导出第一份（申请表）作为示例
+      await exportPdf(app.content, app.filename.replace('.pdf', '')).catch(() => {})
+      void emp
+      void iti
+    } catch {
+      /* 静默 */
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // 证件照上传 + 检测
+  async function handlePhotoUpload(file: File) {
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = reader.result as string
+      setPhotoDataUrl(dataUrl)
+      const base64 = dataUrl.split(',')[1]
+      const result = await checkPassportPhoto(base64)
+      setPhotoResult(result)
+      if (result.passed) {
+        updateItem('photo', { status: 'ready', progress: 100, label: '已归档', labelCls: 'bg-success/10 text-success' })
+      } else {
+        updateItem('photo', { status: 'need-photo', progress: 30, label: '不合规', labelCls: 'bg-red-500/10 text-red-600' })
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // 银行流水上传 + 检查
+  async function handleBankUpload(file: File) {
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl.split(',')[1]
+      const profile = loadUserProfile()
+      const result = await checkBankStatement(base64, {
+        applicantName: profile?.passport?.pinyinName || profile?.id?.name,
+      })
+      setBankResult(result)
+      updateItem('bank', {
+        status: result.coversRequired && result.matchApplicant ? 'ready' : 'need-user',
+        progress: result.matchApplicant ? 80 : 40,
+        label: result.coversRequired && result.matchApplicant ? '已归档' : '待上传',
+        labelCls: result.coversRequired && result.matchApplicant ? 'bg-success/10 text-success' : 'bg-amber-500/10 text-amber-600',
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // 操作按钮
+  function renderAction(item: MaterialItem) {
+    if (item.status === 'ready' || item.status === 'auto-generate') {
+      return (
+        <div className="flex shrink-0 items-center gap-2">
+          <VButton size="sm" variant="secondary" onClick={() => exportPdf(`<pre>${item.name}</pre>`, item.name).catch(() => {})}>
+            预览
+          </VButton>
+          <VButton size="sm" variant="secondary" onClick={handleGenerateAll} disabled={generating}>
+            重新生成
+          </VButton>
+        </div>
+      )
+    }
+    if (item.status === 'need-photo') {
+      return (
+        <VButton size="sm" onClick={() => fileRef.current?.click()}>上传</VButton>
+      )
+    }
+    // need-user：上传 / 银行流水弹指引
+    return (
+      <VButton
+        size="sm"
+        onClick={() => {
+          if (item.id === 'bank') setShowBankGuide(true)
+          else fileRef.current?.click()
+        }}
+      >
+        上传
+      </VButton>
+    )
+  }
+
+  return (
+    <div>
+      {/* 进度条 */}
+      <div className="mb-5 flex items-center gap-3">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#F3F4F6]">
+          <div
+            className="h-full rounded-full bg-[#39A2B8] transition-all duration-700 ease-out"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <span className="text-sm font-semibold text-ink/70">{percent}%</span>
+      </div>
+
+      {/* 自动推进提示 */}
+      <div className="mb-4 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-2.5 text-xs text-ink/60">
+        🔄 系统已自动完成资料库复用与可生成项（{items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length}/8），你只需处理需要手动操作的项
+      </div>
+
+      {/* 一键生成 */}
+      <div className="mb-5">
+        <VButton onClick={handleGenerateAll} disabled={generating} className="w-full">
+          {generating ? '正在生成…' : '⚡ 一键生成（申请表 + 在职证明 + 行程单）'}
+        </VButton>
+      </div>
+
+      {/* 材料列表 */}
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
+            <span className="text-base">{item.id === 'photo' ? '📸' : item.id === 'bank' ? '🏦' : '📄'}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-ink">{item.name}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${item.labelCls}`}>
+                  {item.status === 'need-photo' || item.status === 'need-user' ? (item.status === 'need-photo' ? '📸 待拍照' : '📤 待上传') : item.label}
+                </span>
+              </div>
+              <div className="mt-1 text-xs text-ink/45">{item.action}</div>
+              {/* 进度 */}
+              <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-[#F3F4F6]">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${item.status === 'need-photo' || item.status === 'need-user' ? 'bg-amber-400' : 'bg-[#39A2B8]'}`}
+                  style={{ width: `${item.progress}%` }}
+                />
+              </div>
+            </div>
+            {renderAction(item)}
+          </div>
+        ))}
+      </div>
+
+      {/* 隐藏文件输入（用于拍照/上传） */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) {
+            if (items.some((i) => i.status === 'need-photo')) handlePhotoUpload(f)
+            else handleBankUpload(f)
+          }
+          e.target.value = ''
+        }}
+      />
+
+      {/* 证件照检测结果 */}
+      {photoResult && (
+        <div className={`mt-4 rounded-xl border px-4 py-3 ${photoResult.passed ? 'border-success/40 bg-success/5' : 'border-red-200 bg-red-50'}`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-sm font-semibold ${photoResult.passed ? 'text-success' : 'text-red-600'}`}>
+              {photoResult.passed ? '✅ 证件照合格' : '❌ 证件照不合规'}
+            </span>
+            <span className="text-xs text-ink/45">评分 {photoResult.score}/100</span>
+          </div>
+          {!photoResult.passed && (
+            <ul className="mt-2 space-y-1 text-xs text-red-600/80">
+              {photoResult.issues.map((iss, i) => (
+                <li key={i}>· {iss}</li>
+              ))}
+            </ul>
+          )}
+          {photoDataUrl && <img src={photoDataUrl} alt="证件照预览" className="mt-3 h-24 rounded-lg border border-ink/10" />}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {PHOTO_CHECKS.map((c) => (
+              <span key={c} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-ink/50">{c}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 银行流水检查结果 */}
+      {bankResult && (
+        <div className={`mt-4 rounded-xl border px-4 py-3 ${bankResult.matchApplicant && bankResult.coversRequired ? 'border-success/40 bg-success/5' : 'border-amber-200 bg-amber-50'}`}>
+          <div className="text-sm font-semibold text-ink">{bankResult.bank || '银行流水'}</div>
+          <div className="mt-1 space-y-0.5 text-xs text-ink/60">
+            <div>账户名：{bankResult.accountName || '—'}{bankResult.matchApplicant ? ' ✅' : ' ⚠️ 与申请人不符'}</div>
+            <div>覆盖时间：{bankResult.coversRequired ? '✅ 满足 6 个月' : '⚠️ 未满足'}</div>
+            <div>最终余额：¥{bankResult.balance.toLocaleString()}</div>
+          </div>
+          {bankResult.issues.length > 0 && (
+            <div className="mt-1 text-xs text-amber-700">{bankResult.issues[0]}</div>
+          )}
+        </div>
+      )}
+
+      {/* 银行导出指引弹窗 */}
+      {showBankGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowBankGuide(false)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-ink">🏦 银行流水导出指引</h3>
+            <ol className="mt-4 space-y-2.5">
+              {BANK_EXPORT_STEPS.map((step, i) => (
+                <li key={i} className="flex gap-2.5 text-sm text-ink/70">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E0F7FA] text-[11px] font-semibold text-[#1460A4]">{i + 1}</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+            <div className="mt-5 flex justify-end gap-2">
+              <VButton variant="secondary" size="sm" onClick={() => setShowBankGuide(false)}>取消</VButton>
+              <VButton size="sm" onClick={() => { setShowBankGuide(false); fileRef.current?.click(); }}>去上传</VButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

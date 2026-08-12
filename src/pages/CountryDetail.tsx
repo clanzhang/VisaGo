@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
-import { Checklist, FeeCalculator, AIAssistant } from '@/components/visa'
+import { FeeCalculator, AIAssistant, MaterialChecklist } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
 import {
   identityExtraRequirements,
@@ -304,7 +304,13 @@ export default function CountryDetail() {
 
         {tab === 'materials' && (
           <div className="space-y-6">
-            <Checklist requirements={allRequirements} />
+            <MaterialChecklist
+              countryName={country.name.zh}
+              tripDates={{
+                start: new Date().toISOString().slice(0, 10),
+                end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+              }}
+            />
             {grouped.size > 0 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 {Array.from(grouped.entries()).map(([cat, reqs]) =>
