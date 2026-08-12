@@ -241,6 +241,13 @@ pub fn load_scanned(app: &tauri::AppHandle) -> Result<Option<ScannedFiles>, Stri
     Ok(read_json(&path))
 }
 
+/// 申请记录目录（公共，供命令删除用）
+pub fn applications_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = data_dir(app)?.join("applications");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建申请目录失败: {e}"))?;
+    Ok(dir)
+}
+
 /// 保存申请记录
 #[allow(dead_code)] // 供申请记录持久化使用
 pub fn save_application(
@@ -248,8 +255,7 @@ pub fn save_application(
     id: &str,
     data: &serde_json::Value,
 ) -> Result<(), String> {
-    let dir = data_dir(app)?.join("applications");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let dir = applications_dir(app)?;
     let path = dir.join(format!("{id}.json"));
     write_json(&path, data)
 }
@@ -267,4 +273,21 @@ pub fn list_applications(app: &tauri::AppHandle) -> Result<Vec<String>, String> 
         }
     }
     Ok(names)
+}
+
+/// 读取 applications 目录下全部申请 JSON（含 submission_date / expected_issue_date）
+pub fn load_all_applications(app: &tauri::AppHandle) -> Vec<serde_json::Value> {
+    let dir = data_dir(app).unwrap_or_default().join("applications");
+    let mut apps = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map(|e| e == "json").unwrap_or(false) {
+                if let Some(v) = read_json::<serde_json::Value>(&path) {
+                    apps.push(v);
+                }
+            }
+        }
+    }
+    apps
 }

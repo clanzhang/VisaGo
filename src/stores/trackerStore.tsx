@@ -1,5 +1,7 @@
-// stores/trackerStore.tsx — 进度追踪状态（localStorage 持久化）
+// stores/trackerStore.tsx — 进度追踪状态（localStorage 持久化 + Rust 申请目录同步）
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { isTauri, saveApplication, deleteApplication } from '@/api/tauri'
+import { countries } from '@/data/countries'
 import type { TimelineNode, VisaApplication } from '@/types'
 
 function uid(): string {
@@ -12,6 +14,24 @@ function load(): VisaApplication[] {
   } catch {
     return []
   }
+}
+
+/** 把申请同步到 Rust applications/<id>.json（含提醒日期，供 check_reminders 读取） */
+function syncToRust(app: VisaApplication) {
+  if (!isTauri()) return
+  const country = countries.find((c) => c.id === app.countryId)
+  const visaType = country?.visaTypes.find((v) => v.id === app.visaTypeId)
+  const payload: Record<string, unknown> = {
+    id: app.id,
+    title: `${country?.name.zh ?? ''} ${visaType?.name.zh ?? ''}`.trim(),
+    countryName: country?.name.zh ?? '',
+    visaTypeName: visaType?.name.zh ?? '',
+    status: app.status,
+    submission_date: app.submissionDate ?? null,
+    expected_issue_date: app.expectedIssueDate ?? null,
+    updated_at: app.updatedAt,
+  }
+  saveApplication(app.id, payload).catch((e) => console.warn('[tracker] 同步到 Rust 失败:', e))
 }
 
 interface TrackerStoreValue {
@@ -46,6 +66,7 @@ export function TrackerStoreProvider({ children }: { children: ReactNode }) {
         persist(next)
         return next
       })
+      syncToRust(newApp)
       return newApp
     },
     [persist],
@@ -54,9 +75,12 @@ export function TrackerStoreProvider({ children }: { children: ReactNode }) {
   const updateApplication = useCallback(
     (id: string, patch: Partial<VisaApplication>) => {
       setApplications((prev) => {
-        const next = prev.map((a) =>
-          a.id === id ? { ...a, ...patch, updatedAt: new Date().toISOString() } : a,
-        )
+        const next = prev.map((a) => {
+          if (a.id !== id) return a
+          const updated = { ...a, ...patch, updatedAt: new Date().toISOString() }
+          syncToRust(updated)
+          return updated
+        })
         persist(next)
         return next
       })
@@ -71,6 +95,9 @@ export function TrackerStoreProvider({ children }: { children: ReactNode }) {
         persist(next)
         return next
       })
+      if (isTauri()) {
+        deleteApplication(id).catch((e) => console.warn('[tracker] 删除 Rust 申请失败:', e))
+      }
     },
     [persist],
   )

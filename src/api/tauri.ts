@@ -195,3 +195,31 @@ export function kimiChat(prompt: string): Promise<string> {
 export function exportPdf(html: string, filename: string): Promise<string> {
   return invoke<string>('export_pdf', { html, filename })
 }
+
+// ===== 签证提醒 =====
+
+export interface Reminder {
+  id: string
+  title: string
+  kind: 'submission' | 'issue'
+  date: string
+  body: string
+}
+
+export function checkReminders(): Promise<Reminder[]> {
+  return invoke<Reminder[]>('check_reminders')
+}
+
+export function pushNotification(title: string, body: string): Promise<void> {
+  return invoke<void>('push_notification', { title, body })
+}
+
+// ===== 申请记录同步（写 Rust applications 目录，供提醒读取）=====
+
+export function saveApplication(id: string, data: Record<string, unknown>): Promise<void> {
+  return invoke<void>('save_application', { id, data })
+}
+
+export function deleteApplication(id: string): Promise<void> {
+  return invoke<void>('delete_application', { id })
+}

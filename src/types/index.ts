@@ -76,6 +76,10 @@ export interface VisaApplication {
   updatedAt: string
   timeline: TimelineNode[]
   notes: string
+  /** 递签日期（YYYY-MM-DD），可选 */
+  submissionDate?: string
+  /** 预计出签日期（YYYY-MM-DD），可选 */
+  expectedIssueDate?: string
 }
 
 export type ApplicationStatus =

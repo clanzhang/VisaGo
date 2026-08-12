@@ -111,6 +111,8 @@ export default {
     statusLabel: '当前状态',
     submitDate: '递签日期',
     expectedDate: '预计出签日期',
+    submissionDate: '递签日期',
+    expectedIssueDate: '预计出签日期',
     notes: '备注',
     create: '创建',
     cancel: '取消',

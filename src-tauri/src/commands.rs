@@ -400,6 +400,118 @@ pub(crate) fn export_pdf(html: String, filename: String) -> Result<String, Strin
     exporter::export_pdf(html, filename)
 }
 
+// ===== 签证提醒 =====
+
+/// 提醒项 DTO
+#[derive(Serialize)]
+pub struct ReminderDto {
+    pub id: String,          // 申请 id
+    pub title: String,       // 标题（国家+签证类型）
+    pub kind: String,        // submission / issue
+    pub date: String,        // 提醒日期
+    pub body: String,        // 提醒内容
+}
+
+/// IPC: check_reminders — 检查所有申请的递签/出签提醒
+/// 返回今天有提醒的列表（submission_date 或 expected_issue_date 与今天匹配），
+/// 并自动推送 macOS 系统通知（即使应用最小化也能弹出）。
+#[tauri::command]
+pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
+    println!("[IPC] check_reminders 被调用");
+    let mut reminders = Vec::new();
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+
+    for app_json in store::load_all_applications(&app) {
+        let id = app_json["id"].as_str().unwrap_or("").to_string();
+        // 标题：国家名 + 签证类型名
+        let title = app_json["title"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                let c = app_json["countryName"].as_str().unwrap_or("申请");
+                let v = app_json["visaTypeName"].as_str().unwrap_or("");
+                if v.is_empty() { c.to_string() } else { format!("{c} {v}") }
+            });
+
+        // 递签提醒：submission_date == 今天
+        if let Some(d) = app_json["submission_date"].as_str() {
+            if d == today {
+                println!("[IPC] 匹配到递签提醒: {title} @ {d}");
+                let body = format!("今天（{d}）是递签日期，请带齐材料前往签证中心");
+                reminders.push(ReminderDto {
+                    id: id.clone(),
+                    title: title.clone(),
+                    kind: "submission".into(),
+                    date: d.to_string(),
+                    body: body.clone(),
+                });
+                // 自动推送系统通知
+                push_system_notification(&app, "VisaGo 签证提醒", &body);
+            }
+        }
+        // 出签提醒：expected_issue_date == 今天
+        if let Some(d) = app_json["expected_issue_date"].as_str() {
+            if d == today {
+                println!("[IPC] 匹配到出签提醒: {title} @ {d}");
+                let body = format!("今天（{d}）是预计出签日期，请留意结果通知");
+                reminders.push(ReminderDto {
+                    id,
+                    title: title.clone(),
+                    kind: "issue".into(),
+                    date: d.to_string(),
+                    body: body.clone(),
+                });
+                push_system_notification(&app, "VisaGo 签证提醒", &body);
+            }
+        }
+    }
+    println!("[IPC] check_reminders: 共 {} 条提醒", reminders.len());
+    reminders
+}
+
+/// 推送 macOS 系统通知
+fn push_system_notification(app: &tauri::AppHandle, title: &str, body: &str) {
+    use tauri_plugin_notification::NotificationExt;
+    if let Err(e) = app
+        .notification()
+        .builder()
+        .title(title.to_string())
+        .body(body.to_string())
+        .show()
+    {
+        println!("[IPC] 系统通知发送失败: {e}");
+    } else {
+        println!("[IPC] 系统通知已发送: {title} - {body}");
+    }
+}
+
+/// IPC: push_notification — 手动推送 macOS 系统通知
+#[tauri::command]
+pub(crate) fn push_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
+    println!("[IPC] push_notification: {title} - {body}");
+    push_system_notification(&app, &title, &body);
+    Ok(())
+}
+
+/// IPC: save_application — 保存申请记录到 applications/<id>.json（供提醒检查读取）
+#[tauri::command]
+pub(crate) fn save_application(app: tauri::AppHandle, id: String, data: serde_json::Value) -> Result<(), String> {
+    println!("[IPC] save_application: id={id}, 含日期 submission/issue");
+    store::save_application(&app, &id, &data)
+}
+
+/// IPC: delete_application — 删除申请记录
+#[tauri::command]
+pub(crate) fn delete_application(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    println!("[IPC] delete_application: id={id}");
+    let dir = store::applications_dir(&app)?;
+    let path = dir.join(format!("{id}.json"));
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| format!("删除申请记录失败: {e}"))?;
+    }
+    Ok(())
+}
+
 // ===== 注册 =====
 
 // 命令函数通过 lib.rs 的 Builder.invoke_handler 注册（见 lib.rs）

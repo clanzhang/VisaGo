@@ -109,6 +109,8 @@ export default {
     statusLabel: 'Current Status',
     submitDate: 'Submission Date',
     expectedDate: 'Expected Date',
+    submissionDate: 'Submission Date',
+    expectedIssueDate: 'Expected Issue Date',
     notes: 'Notes',
     create: 'Create',
     cancel: 'Cancel',

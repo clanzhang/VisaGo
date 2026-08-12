@@ -3,6 +3,7 @@ import { Header } from '@/components/layout'
 import { HeroCards } from '@/components/home/HeroCards'
 import { StatsSection } from '@/components/home/StatsSection'
 import { DestinationGrid } from '@/components/home/DestinationGrid'
+import { ReminderBanner } from '@/components/common/ReminderBanner'
 import { useHomeAIData } from '@/hooks/useAIData'
 import { useAppStore } from '@/stores/appStore'
 import { VButton } from '@/components/common'
@@ -39,6 +40,9 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* 顶部提醒横幅（今天有递签/出签安排的申请） */}
+      <ReminderBanner />
 
       {/* 隐藏 AI 数据加载报错横幅（仅静默失败，数据回退静态） */}
       {/* {error && (

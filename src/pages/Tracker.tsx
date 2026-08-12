@@ -35,6 +35,8 @@ export default function Tracker() {
   const [visaTypeId, setVisaTypeId] = useState('')
   const [status, setStatus] = useState<ApplicationStatus>('preparing')
   const [notes, setNotes] = useState('')
+  const [submissionDate, setSubmissionDate] = useState('')
+  const [expectedIssueDate, setExpectedIssueDate] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<VisaApplication | null>(null)
 
   const countryOptions = countries.filter((c) => c.visaTypes.length > 0)
@@ -49,6 +51,8 @@ export default function Tracker() {
     setVisaTypeId('')
     setStatus('preparing')
     setNotes('')
+    setSubmissionDate('')
+    setExpectedIssueDate('')
     setModalOpen(true)
   }
 
@@ -58,15 +62,17 @@ export default function Tracker() {
     setVisaTypeId(app.visaTypeId)
     setStatus(app.status)
     setNotes(app.notes)
+    setSubmissionDate(app.submissionDate ?? '')
+    setExpectedIssueDate(app.expectedIssueDate ?? '')
     setModalOpen(true)
   }
 
   function submit() {
     if (!countryId || !visaTypeId) return
     if (editing) {
-      updateApplication(editing.id, { countryId, visaTypeId, status, notes })
+      updateApplication(editing.id, { countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
     } else {
-      addApplication({ countryId, visaTypeId, status, notes })
+      addApplication({ countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
     }
     setModalOpen(false)
   }
@@ -231,6 +237,26 @@ export default function Tracker() {
               rows={3}
               className="w-full resize-none rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.submissionDate')}</label>
+              <input
+                type="date"
+                value={submissionDate}
+                onChange={(e) => setSubmissionDate(e.target.value)}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.expectedIssueDate')}</label>
+              <input
+                type="date"
+                value={expectedIssueDate}
+                onChange={(e) => setExpectedIssueDate(e.target.value)}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+              />
+            </div>
           </div>
         </div>
       </VModal>
