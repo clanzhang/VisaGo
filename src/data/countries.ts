@@ -1,7 +1,8 @@
 // data/countries.ts
-// 7 个国家的签证静态数据
+// 40 个国家的签证静态数据（7 国完整详情 + 33 国基础结构）
 
-import type { Country, Localized } from '../types'
+import type { Country, Localized, VisaType, Requirement, FAQ } from '../types'
+import { COUNTRY_LIST } from './country-list'
 
 export const PROVINCES = [
   '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江',
@@ -18,7 +19,7 @@ export const OCCUPATIONS = [
   { value: 'freelance', icon: 'ri:group-line' },
 ] as const
 
-export const countries: Country[] = [
+const detailedCountriesSeed: Country[] = [
   // ==================== 日本 ====================
   {
     id: 'japan',
@@ -390,7 +391,7 @@ export const countries: Country[] = [
     name: { zh: '美国', en: 'United States' },
     flag: '🇺🇸',
     difficulty: 'hard',
-    region: '北美',
+    region: '美洲',
     overview: { zh: '需面签，B 类签证有效期最长 10 年。', en: 'Interview required; B visas up to 10 years.' },
     visaFree: { zh: '美国对中国公民无免签政策，需申请 B1/B2 签证并面签。', en: 'US requires B1/B2 visa and interview.' },
     announcements: [
@@ -551,6 +552,63 @@ export const countries: Country[] = [
     ],
   },
 ]
+
+// ===== 33 国基础结构生成（保留上面 7 国完整详情，其余由 COUNTRY_LIST 生成） =====
+
+const DETAILED_IDS = ['japan', 'korea', 'thailand', 'schengen', 'usa', 'uk', 'australia']
+
+function buildBasicVisaType(meta: (typeof COUNTRY_LIST)[number]): VisaType {
+  const name = `${meta.zh}旅游签证`
+  return {
+    id: `${meta.id}-tourist`,
+    name: { zh: name, en: `${meta.en} Tourist Visa` },
+    category: 'tourist',
+    duration: '最长 30 天',
+    validity: '3 个月',
+    entries: 'single',
+    fee: { amount: 300, currency: 'CNY' },
+    serviceFee: { amount: 200, currency: 'CNY' },
+    processingDays: { min: 5, max: 10 },
+    needInterview: false,
+    canApplyOnline: true,
+    acceptPersonal: true,
+    targetAudience: { zh: `赴${meta.zh}旅游的申请人`, en: `Travelers to ${meta.en}` },
+    tips: { zh: `请以${meta.zh}驻华使领馆最新要求为准。`, en: `Refer to ${meta.en} embassy for latest requirements.` },
+    rejectionReasons: [{ zh: '材料不齐全', en: 'Incomplete documents' }],
+    consularDistricts: [
+      { name: { zh: `${meta.zh}驻华使领馆`, en: `${meta.en} Embassy` }, provinces: ['北京', '上海', '广东'] },
+    ],
+    requirements: [
+      { id: 'passport', name: { zh: '有效护照', en: 'Valid passport' }, category: 'basic', required: true, format: 'original', translationRequired: false },
+      { id: 'photo', name: { zh: '证件照 2 张', en: '2 photos' }, category: 'basic', required: true, format: 'original', translationRequired: false },
+      { id: 'application', name: { zh: '签证申请表', en: 'Application form' }, category: 'basic', required: true, format: 'original', translationRequired: false },
+      { id: 'employment', name: { zh: '在职证明', en: 'Employment cert' }, category: 'identity', required: true, format: 'copy', translationRequired: false },
+      { id: 'bank', name: { zh: '银行流水', en: 'Bank statement' }, category: 'financial', required: true, format: 'copy', translationRequired: false },
+      { id: 'itinerary', name: { zh: '行程安排', en: 'Itinerary' }, category: 'travel', required: true, format: 'copy', translationRequired: false },
+    ] as Requirement[],
+    faq: [
+      { question: { zh: `去${meta.zh}需要什么材料？`, en: `What's needed for ${meta.en}?` }, answer: { zh: '护照、照片、申请表、在职证明、流水、行程。', en: 'Passport, photo, form, employment, bank, itinerary.' } },
+    ] as FAQ[],
+  }
+}
+
+function buildBasicCountry(meta: (typeof COUNTRY_LIST)[number]): Country {
+  return {
+    id: meta.id,
+    name: { zh: meta.zh, en: meta.en },
+    flag: meta.flag,
+    difficulty: meta.difficulty,
+    region: meta.region,
+    overview: { zh: meta.desc, en: meta.desc },
+    visaFree: { zh: '请以官方最新政策为准', en: 'Check official policy' },
+    announcements: [],
+    visaTypes: [buildBasicVisaType(meta)],
+  }
+}
+
+// 合并：7 国详情 + 33 国基础
+const basicCountries = COUNTRY_LIST.filter((m) => !DETAILED_IDS.includes(m.id)).map(buildBasicCountry)
+export const countries: Country[] = [...detailedCountriesSeed, ...basicCountries]
 
 export const DIFFICULTY_LABELS: Record<'easy' | 'medium' | 'hard', Localized> = {
   easy: { zh: '易', en: 'Easy' },

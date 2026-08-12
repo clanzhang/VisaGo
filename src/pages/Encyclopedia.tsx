@@ -5,6 +5,7 @@ import { CountryCard, AIAssistant } from '@/components/visa'
 import { VButton, VModal } from '@/components/common'
 import { ComparisonTable } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS, searchCountries } from '@/data/countries'
+import { REGION_ORDER } from '@/data/country-list'
 
 type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard'
 
@@ -24,6 +25,26 @@ export default function Encyclopedia() {
     }
     return result
   }, [query, difficulty])
+
+  // 按区域分组（保留用户指定顺序：亚洲→欧洲→美洲→大洋洲→非洲）
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof list>()
+    for (const c of list) {
+      const region = c.region || '其他'
+      if (!map.has(region)) map.set(region, [])
+      map.get(region)!.push(c)
+    }
+    // 按 REGION_ORDER 排序，未在列表中的区域放最后
+    const regions = [...map.keys()].sort((a, b) => {
+      const ia = REGION_ORDER.indexOf(a)
+      const ib = REGION_ORDER.indexOf(b)
+      if (ia === -1 && ib === -1) return a.localeCompare(b, 'zh')
+      if (ia === -1) return 1
+      if (ib === -1) return -1
+      return ia - ib
+    })
+    return regions.map((r) => ({ region: r, items: map.get(r)! }))
+  }, [list])
 
   const compareCountries = useMemo(
     () => countries.filter((c) => compareIds.includes(c.id)),
@@ -98,36 +119,45 @@ export default function Encyclopedia() {
         </div>
       </div>
 
-      {/* 国家列表 */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {list.map((c, i) => {
-          const selected = compareIds.includes(c.id)
-          return (
-            <div key={c.id} className="group relative">
-              <CountryCard country={c} index={i} />
-              {compareMode && (
-                <label
-                  onClick={(e) => e.stopPropagation()}
-                  className={`absolute right-4 top-4 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 bg-white shadow-sm transition-opacity duration-150 ${
-                    selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                  style={{
-                    borderColor: selected ? '#1460A4' : '#d1d5db',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => toggleCompare(c.id)}
-                    className="h-4 w-4 accent-[#1460A4]"
-                    aria-label={t('encyclopedia.addToCompare')}
-                  />
-                </label>
-              )}
-            </div>
-          )
-        })}
-      </div>
+      {/* 国家列表（按区域分组） */}
+      {grouped.map((group) => (
+        <section key={group.region}>
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="font-display text-base font-bold tracking-tight text-ink">{group.region}</h2>
+            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/50">{group.items.length} 个</span>
+            <div className="h-px flex-1 bg-ink/8" />
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {group.items.map((c, i) => {
+              const selected = compareIds.includes(c.id)
+              return (
+                <div key={c.id} className="group relative">
+                  <CountryCard country={c} index={i} />
+                  {compareMode && (
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute right-4 top-4 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 bg-white shadow-sm transition-opacity duration-150 ${
+                        selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                      style={{
+                        borderColor: selected ? '#1460A4' : '#d1d5db',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleCompare(c.id)}
+                        className="h-4 w-4 accent-[#1460A4]"
+                        aria-label={t('encyclopedia.addToCompare')}
+                      />
+                    </label>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      ))}
       {list.length === 0 && (
         <div className="rounded-2xl bg-white p-12 text-center text-sm text-ink/40 shadow-card">
           {t('common.noData')}
