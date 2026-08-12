@@ -25,16 +25,17 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
   const name = `${meta.zh}旅游签证`
   const canApplyOnline = meta.visaType === '电子签' || meta.visaType === '落地签'
   const needInterview = meta.difficulty === 'hard'
+  const isVisaFree = meta.visaType === '互免签证' || meta.visaType === '单方面免签'
   return {
     id: `${meta.id}-tourist`,
     name: { zh: name, en: `${meta.en} Tourist Visa` },
     category: 'tourist',
     duration: '最长 30 天',
     validity: '3 个月',
-    entries: meta.visaType === '免签' ? 'multiple' : 'single',
-    fee: { amount: meta.visaType === '免签' ? 0 : 300, currency: 'CNY' },
-    serviceFee: { amount: meta.visaType === '免签' ? 0 : 200, currency: 'CNY' },
-    processingDays: { min: meta.visaType === '免签' ? 0 : 5, max: meta.visaType === '免签' ? 0 : 10 },
+    entries: isVisaFree ? 'multiple' : 'single',
+    fee: { amount: isVisaFree ? 0 : 300, currency: 'CNY' },
+    serviceFee: { amount: isVisaFree ? 0 : 200, currency: 'CNY' },
+    processingDays: { min: isVisaFree ? 0 : 5, max: isVisaFree ? 0 : 10 },
     needInterview,
     canApplyOnline,
     acceptPersonal: true,
@@ -67,7 +68,7 @@ function buildCountry(meta: CountryMeta): Country {
     visaType: meta.visaType,
     region: meta.region,
     overview: { zh: meta.desc, en: meta.desc },
-    visaFree: meta.visaType === '免签'
+    visaFree: (meta.visaType === '互免签证' || meta.visaType === '单方面免签')
       ? { zh: meta.desc, en: meta.desc }
       : { zh: '请以官方最新政策为准', en: 'Check official policy' },
     announcements: [],
@@ -85,7 +86,8 @@ export const DIFFICULTY_LABELS: Record<'easy' | 'medium' | 'hard', Localized> = 
 
 /** 签证类型标签配色 */
 export const VISA_TYPE_STYLE: Record<Country['visaType'], { label: string; cls: string }> = {
-  免签: { label: '免签', cls: 'bg-success/10 text-success' },
+  互免签证: { label: '互免签证', cls: 'bg-green-700/10 text-green-800' },
+  单方面免签: { label: '单方面免签', cls: 'bg-green-500/10 text-green-600' },
   落地签: { label: '落地签', cls: 'bg-[#1460A4]/10 text-[#1460A4]' },
   电子签: { label: '电子签', cls: 'bg-[#7B2FBE]/10 text-[#7B2FBE]' },
   需签证: { label: '需签证', cls: 'bg-ink/5 text-ink/60' },

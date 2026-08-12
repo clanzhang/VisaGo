@@ -4,32 +4,25 @@ import { useI18n } from '@/i18n'
 import { CountryCard, AIAssistant } from '@/components/visa'
 import { VButton, VModal } from '@/components/common'
 import { ComparisonTable } from '@/components/visa'
-import { countries, DIFFICULTY_LABELS, searchCountries } from '@/data/countries'
+import { countries, searchCountries } from '@/data/countries'
 import { VISA_TYPE_ORDER, REGION_ORDER } from '@/data/country-list'
 
-// 筛选：全部 / 免签 / 容易 / 中等 / 困难
-type DifficultyFilter = 'all' | 'visa-free' | 'easy' | 'medium' | 'hard'
+// 筛选：全部 / 免签 / 落地签 / 电子签 / 需签证
+type VisaFilter = 'all' | '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证'
 
-const FILTERS: { key: DifficultyFilter; labelKey: string }[] = [
-  { key: 'all', labelKey: 'encyclopedia.all' },
-  { key: 'visa-free', labelKey: 'encyclopedia.visaFreeFilter' },
-  { key: 'easy', labelKey: 'encyclopedia.easy' },
-  { key: 'medium', labelKey: 'encyclopedia.medium' },
-  { key: 'hard', labelKey: 'encyclopedia.hard' },
+const FILTERS: { key: VisaFilter; label: string }[] = [
+  { key: 'all', label: '全部' },
+  { key: '互免签证', label: '互免' },
+  { key: '单方面免签', label: '单免' },
+  { key: '落地签', label: '落地签' },
+  { key: '电子签', label: '电子签' },
+  { key: '需签证', label: '需签证' },
 ]
-
-/** 判断国家属于哪个大组：互免 / 单方面免签 / 落地签 / 电子签 */
-function groupOf(c: (typeof countries)[number]): string {
-  if (c.visaType !== '免签') return c.visaType
-  // 免签细分为互免 / 单方面免签（单免国家 id 在集合中）
-  const unilateral = new Set(['korea-jeju', 'iran', 'pakistan', 'philippines', 'turkey', 'morocco', 'tunisia', 'zambia', 'gabon', 'mozambique', 'benin', 'angola', 'jamaica', 'cuba', 'antigua-barbuda', 'haiti', 'saint-kitts', 'samoa', 'french-polynesia', 'northern-mariana'])
-  return unilateral.has(c.id) ? '单方面免签' : '互免签证'
-}
 
 export default function Encyclopedia() {
   const { t } = useI18n()
   const [query, setQuery] = useState('')
-  const [difficulty, setDifficulty] = useState<DifficultyFilter>('all')
+  const [filter, setFilter] = useState<VisaFilter>('all')
   const [aiOpen, setAiOpen] = useState(false)
   const [compareMode, setCompareMode] = useState(false)
   const [compareIds, setCompareIds] = useState<string[]>([])
@@ -37,19 +30,17 @@ export default function Encyclopedia() {
 
   const list = useMemo(() => {
     let result = searchCountries(query)
-    if (difficulty === 'visa-free') {
-      result = result.filter((c) => c.visaType === '免签')
-    } else if (difficulty !== 'all') {
-      result = result.filter((c) => c.difficulty === difficulty)
+    if (filter !== 'all') {
+      result = result.filter((c) => c.visaType === filter)
     }
     return result
-  }, [query, difficulty])
+  }, [query, filter])
 
-  // 按签证类型大组分组（互免 → 单免 → 落地 → 电子）
+  // 按签证类型分组（互免 → 单免 → 落地 → 电子）
   const grouped = useMemo(() => {
     const map = new Map<string, typeof list>()
     for (const c of list) {
-      const g = groupOf(c)
+      const g = c.visaType
       if (!map.has(g)) map.set(g, [])
       map.get(g)!.push(c)
     }
@@ -113,14 +104,14 @@ export default function Encyclopedia() {
           {FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => setDifficulty(f.key)}
+              onClick={() => setFilter(f.key)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
-                difficulty === f.key
+                filter === f.key
                   ? 'bg-ink text-white'
                   : 'bg-white text-ink/60 shadow-card hover:bg-ink/5'
               }`}
             >
-              {f.key === 'all' ? t('encyclopedia.all') : f.key === 'visa-free' ? t('encyclopedia.visaFreeFilter') : DIFFICULTY_LABELS[f.key].zh}
+              {f.label}
             </button>
           ))}
         </div>

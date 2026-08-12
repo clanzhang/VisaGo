@@ -189,7 +189,6 @@ export default {
     filterDifficulty: 'Filter by difficulty',
     filterRegion: 'Filter by region',
     all: 'All',
-    visaFreeFilter: 'Visa-Free',
     easy: 'Easy',
     medium: 'Medium',
     hard: 'Hard',
