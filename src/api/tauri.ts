@@ -214,6 +214,11 @@ export function pushNotification(title: string, body: string): Promise<void> {
   return invoke<void>('push_notification', { title, body })
 }
 
+/** 发送 macOS 系统通知（别名命令，等价 push_notification） */
+export function sendNotification(title: string, body: string): Promise<void> {
+  return invoke<void>('send_notification', { title, body })
+}
+
 // ===== 申请记录同步（写 Rust applications 目录，供提醒读取）=====
 
 export function saveApplication(id: string, data: Record<string, unknown>): Promise<void> {

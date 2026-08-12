@@ -11,7 +11,7 @@ use commands::{
     export_pdf, get_active_profile_id, get_visa_data, kimi_chat, list_profiles,
     load_profile, push_notification, recognize_file, refresh_visa_data,
     save_application, save_profile, save_profile_card, scan_files, scan_folder,
-    set_active_profile_id,
+    send_notification, set_active_profile_id,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -38,6 +38,7 @@ pub fn run() {
             load_profile,
             check_reminders,
             push_notification,
+            send_notification,
             save_application,
             delete_application,
             get_visa_data,

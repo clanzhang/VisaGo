@@ -493,6 +493,14 @@ pub(crate) fn push_notification(app: tauri::AppHandle, title: String, body: Stri
     Ok(())
 }
 
+/// IPC: send_notification — 发送系统通知（用户命名，等价 push_notification）
+#[tauri::command]
+pub(crate) fn send_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
+    println!("[IPC] send_notification: {title} - {body}");
+    push_system_notification(&app, &title, &body);
+    Ok(())
+}
+
 /// IPC: save_application — 保存申请记录到 applications/<id>.json（供提醒检查读取）
 #[tauri::command]
 pub(crate) fn save_application(app: tauri::AppHandle, id: String, data: serde_json::Value) -> Result<(), String> {

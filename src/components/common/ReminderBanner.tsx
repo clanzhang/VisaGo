@@ -1,6 +1,6 @@
 // components/common/ReminderBanner.tsx — 首页顶部签证提醒横幅（黄色，可逐条关闭）
 import { useEffect, useState } from 'react'
-import { checkReminders, isTauri, type Reminder } from '@/api/tauri'
+import { checkReminders, sendNotification, isTauri, type Reminder } from '@/api/tauri'
 
 const KIND_ICON: Record<Reminder['kind'], string> = {
   submission: '📅',
@@ -10,7 +10,7 @@ const KIND_ICON: Record<Reminder['kind'], string> = {
 export function ReminderBanner() {
   const [reminders, setReminders] = useState<Reminder[]>([])
 
-  // 应用启动时检查提醒
+  // 应用启动时检查提醒 + 逐条推送系统通知
   useEffect(() => {
     if (!isTauri()) return
     ;(async () => {
@@ -18,6 +18,12 @@ export function ReminderBanner() {
         const list = await checkReminders()
         console.log('[ReminderBanner] 检查到提醒:', list)
         setReminders(list)
+        // 前端逐条推送 macOS 系统通知（Rust 端 check_reminders 也会推，双保险）
+        for (const r of list) {
+          await sendNotification('VisaGo 签证提醒', r.body).catch((e) =>
+            console.warn('[ReminderBanner] 系统通知发送失败:', e),
+          )
+        }
       } catch (e) {
         console.warn('[ReminderBanner] 检查提醒失败:', e)
       }
