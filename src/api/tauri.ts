@@ -219,6 +219,27 @@ export function sendNotification(title: string, body: string): Promise<void> {
   return invoke<void>('send_notification', { title, body })
 }
 
+// ===== 设置 =====
+
+export interface AppSettings {
+  desktop_notification: boolean
+  notify_submission: boolean
+  notify_pre_issue: boolean
+  language: string
+}
+
+export function loadSettings(): Promise<AppSettings> {
+  return invoke<AppSettings>('load_settings')
+}
+
+export function saveSettings(settings: AppSettings): Promise<void> {
+  return invoke<void>('save_settings', { settings })
+}
+
+export function requestNotificationPermission(): Promise<boolean> {
+  return invoke<boolean>('request_notification_permission')
+}
+
 // ===== 申请记录同步（写 Rust applications 目录，供提醒读取）=====
 
 export function saveApplication(id: string, data: Record<string, unknown>): Promise<void> {

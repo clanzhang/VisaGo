@@ -90,21 +90,55 @@ export function Sidebar() {
       </nav>
 
       {/* 底部 */}
-      <div className="flex items-center justify-between px-5 py-5">
-        <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1">
-          {(['zh-CN', 'en-US'] as const).map((l) => (
-            <button
-              key={l}
-              onClick={() => setLang(l)}
-              className={`rounded-md px-2 py-1 text-xs transition-colors duration-150 ${
-                lang === l ? 'bg-white font-semibold text-ink' : 'text-white/50 hover:text-white'
-              }`}
-            >
-              {l === 'zh-CN' ? '中' : 'EN'}
-            </button>
-          ))}
+      <div className="space-y-3 px-4 pb-5">
+        {/* 设置入口 */}
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-colors duration-150 ${
+              isActive ? 'bg-white/10 font-medium text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span
+                className={`absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[#1460A4] transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}
+              />
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h.01a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+              <span>设置</span>
+            </>
+          )}
+        </NavLink>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1">
+            {(['zh-CN', 'en-US'] as const).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`rounded-md px-2 py-1 text-xs transition-colors duration-150 ${
+                  lang === l ? 'bg-white font-semibold text-ink' : 'text-white/50 hover:text-white'
+                }`}
+              >
+                {l === 'zh-CN' ? '中' : 'EN'}
+              </button>
+            ))}
+          </div>
+          <div className="text-[11px] text-white/30">v0.0.9</div>
         </div>
-        <div className="text-[11px] text-white/30">v0.1.0</div>
       </div>
     </aside>
   )

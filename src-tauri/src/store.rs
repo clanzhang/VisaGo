@@ -241,6 +241,33 @@ pub fn load_scanned(app: &tauri::AppHandle) -> Result<Option<ScannedFiles>, Stri
     Ok(read_json(&path))
 }
 
+/// 用户设置
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct AppSettings {
+    #[serde(default)]
+    pub desktop_notification: bool,
+    #[serde(default)]
+    pub notify_submission: bool,
+    #[serde(default)]
+    pub notify_pre_issue: bool,
+    #[serde(default)]
+    pub language: String, // zh-CN / en-US
+}
+
+/// 读取用户设置（src-tauri/data/settings.json）
+pub fn load_settings(app: &tauri::AppHandle) -> Result<AppSettings, String> {
+    let path = data_dir(app)?.join("settings.json");
+    Ok(read_json::<AppSettings>(&path).unwrap_or_default())
+}
+
+/// 保存用户设置
+pub fn save_settings(app: &tauri::AppHandle, settings: &AppSettings) -> Result<(), String> {
+    let path = data_dir(app)?.join("settings.json");
+    write_json(&path, settings)
+}
+
+// ===== 申请记录管理 =====
+
 /// 申请记录目录（公共，供命令删除用）
 pub fn applications_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = data_dir(app)?.join("applications");

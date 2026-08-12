@@ -421,6 +421,11 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
     let mut reminders = Vec::new();
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
 
+    // 读取设置：desktopNotification 为 true 才推系统通知
+    let settings = store::load_settings(&app).unwrap_or_default();
+    let push_system = settings.desktop_notification;
+    println!("[IPC] check_reminders: desktop_notification={push_system}");
+
     for app_json in store::load_all_applications(&app) {
         let id = app_json["id"].as_str().unwrap_or("").to_string();
         // 标题：国家名 + 签证类型名
@@ -435,7 +440,7 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
 
         // 递签提醒：submission_date == 今天
         if let Some(d) = app_json["submission_date"].as_str() {
-            if d == today {
+            if d == today && settings.notify_submission {
                 println!("[IPC] 匹配到递签提醒: {title} @ {d}");
                 let body = format!("今天（{d}）是递签日期，请带齐材料前往签证中心");
                 reminders.push(ReminderDto {
@@ -445,15 +450,22 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
                     date: d.to_string(),
                     body: body.clone(),
                 });
-                // 自动推送系统通知
-                push_system_notification(&app, "VisaGo 签证提醒", &body);
+                if push_system {
+                    push_system_notification(&app, "VisaGo 签证提醒", &body);
+                }
             }
         }
-        // 出签提醒：expected_issue_date == 今天
+        // 出签提醒：expected_issue_date == 今天 或 前 3 天（notify_pre_issue）
         if let Some(d) = app_json["expected_issue_date"].as_str() {
-            if d == today {
+            let is_today = d == today;
+            let is_pre_issue = settings.notify_pre_issue && is_within_days(d, &today, 3);
+            if (is_today && settings.notify_submission) || (is_pre_issue && !is_today) {
                 println!("[IPC] 匹配到出签提醒: {title} @ {d}");
-                let body = format!("今天（{d}）是预计出签日期，请留意结果通知");
+                let body = if is_today {
+                    format!("今天（{d}）是预计出签日期，请留意结果通知")
+                } else {
+                    format!("预计 {d} 出签，请留意结果通知（约 3 天内）")
+                };
                 reminders.push(ReminderDto {
                     id,
                     title: title.clone(),
@@ -461,12 +473,26 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
                     date: d.to_string(),
                     body: body.clone(),
                 });
-                push_system_notification(&app, "VisaGo 签证提醒", &body);
+                if push_system {
+                    push_system_notification(&app, "VisaGo 签证提醒", &body);
+                }
             }
         }
     }
     println!("[IPC] check_reminders: 共 {} 条提醒", reminders.len());
     reminders
+}
+
+/// 判断 target 是否在 today 之后的 n 天内（含当天）
+fn is_within_days(target: &str, today: &str, n: i64) -> bool {
+    let parse = |s: &str| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok();
+    match (parse(target), parse(today)) {
+        (Some(t), Some(td)) => {
+            let diff = (t - td).num_days();
+            diff >= 0 && diff <= n
+        }
+        _ => false,
+    }
 }
 
 /// 推送 macOS 系统通知
@@ -499,6 +525,40 @@ pub(crate) fn send_notification(app: tauri::AppHandle, title: String, body: Stri
     println!("[IPC] send_notification: {title} - {body}");
     push_system_notification(&app, &title, &body);
     Ok(())
+}
+
+// ===== 设置 =====
+
+/// IPC: load_settings — 读取用户设置
+#[tauri::command]
+pub(crate) fn load_settings(app: tauri::AppHandle) -> Result<store::AppSettings, String> {
+    store::load_settings(&app)
+}
+
+/// IPC: save_settings — 保存用户设置
+#[tauri::command]
+pub(crate) fn save_settings(app: tauri::AppHandle, settings: store::AppSettings) -> Result<(), String> {
+    println!("[IPC] save_settings: desktop={}, submission={}, pre_issue={}, lang={}",
+        settings.desktop_notification, settings.notify_submission, settings.notify_pre_issue, settings.language);
+    store::save_settings(&app, &settings)
+}
+
+/// IPC: request_notification_permission — 请求 macOS 通知权限
+#[tauri::command]
+pub(crate) fn request_notification_permission(app: tauri::AppHandle) -> Result<bool, String> {
+    use tauri_plugin_notification::NotificationExt;
+    // permission_state() / request_permission() 均为同步方法
+    let state = app.notification().permission_state().unwrap_or(tauri_plugin_notification::PermissionState::Prompt);
+    if state == tauri_plugin_notification::PermissionState::Granted {
+        println!("[IPC] 通知权限已授予");
+        return Ok(true);
+    }
+    let granted = app
+        .notification()
+        .request_permission()
+        .map_err(|e| format!("请求通知权限失败: {e}"))?;
+    println!("[IPC] 通知权限请求结果: {granted:?}");
+    Ok(granted == tauri_plugin_notification::PermissionState::Granted)
 }
 
 /// IPC: save_application — 保存申请记录到 applications/<id>.json（供提醒检查读取）
