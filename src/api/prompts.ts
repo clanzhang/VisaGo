@@ -89,26 +89,6 @@ export const ASSISTANT_RECOMMEND_PROMPT = `你是签证申请顾问。根据用�
   "feeEstimate": "预计总费用"
 }`
 
-/** 文档生成 Prompt */
-export const DOCUMENT_GENERATE_PROMPT = `你是签证文书写作专家。根据用户提供的资料生成签证申请文档内容。
-输出严格 JSON，不要任何额外文字：
-{
-  "itinerary": {
-    "days": [
-      { "date": "2025-01-01", "city": "东京", "transport": "飞机", "accommodation": "XX酒店", "activity": "浅草寺游览" }
-    ]
-  },
-  "employment": {
-    "content": "在职证明全文（公司抬头、职位、薪资、准假日期、盖章栏）"
-  },
-  "invitation": {
-    "content": "邀请函全文"
-  },
-  "cover": {
-    "content": "个人陈述全文（旅行目的、行程概述、归国约束力）"
-  }
-}`
-
 /** 问答助手 Prompt（带国家上下文） */
 export function aiChatPrompt(countryName?: string): string {
   const ctx = countryName

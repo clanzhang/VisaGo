@@ -26,8 +26,6 @@ export default {
     entryAssistantDesc: '四步生成专属材料清单',
     entryTracker: '进度追踪',
     entryTrackerDesc: '实时掌握申请进度',
-    entryDocuments: '资料生成',
-    entryDocumentsDesc: '一次填写，生成全部文档',
     entryEncyclopedia: '签证百科',
     entryEncyclopediaDesc: '各国签证要求一站了解',
     popularDestinations: '热门目的地',

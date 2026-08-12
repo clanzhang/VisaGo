@@ -110,6 +110,41 @@ export function recognizeFile(path: string, name: string): Promise<RecognizeResu
   return invoke<RecognizeResult>('recognize_file', { path, name })
 }
 
+// ===== 资料卡（多用户资料管理）=====
+
+/** 资料卡（对应 Rust store::ProfileCard，snake_case 字段） */
+export interface ProfileCard {
+  id: string // profile_001
+  name: string // 用户命名
+  fields: Record<string, unknown> // 提取/填写的字段（snake_case）
+  created_at: string
+  updated_at: string
+}
+
+export function listProfiles(): Promise<ProfileCard[]> {
+  return invoke<ProfileCard[]>('list_profiles')
+}
+
+export function createProfile(name: string): Promise<ProfileCard> {
+  return invoke<ProfileCard>('create_profile', { name })
+}
+
+export function saveProfileCard(card: ProfileCard): Promise<void> {
+  return invoke<void>('save_profile_card', { card })
+}
+
+export function deleteProfile(id: string): Promise<void> {
+  return invoke<void>('delete_profile', { id })
+}
+
+export function getActiveProfileId(): Promise<string | null> {
+  return invoke<string | null>('get_active_profile_id')
+}
+
+export function setActiveProfileId(id: string | null): Promise<void> {
+  return invoke<void>('set_active_profile_id', { id })
+}
+
 // ===== 用户资料 =====
 
 /**

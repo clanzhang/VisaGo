@@ -289,6 +289,57 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
 
 // ===== 用户资料 =====
 
+/// IPC: list_profiles — 列出全部资料卡
+#[tauri::command]
+pub(crate) fn list_profiles(app: tauri::AppHandle) -> Result<Vec<store::ProfileCard>, String> {
+    let r = store::list_profiles(&app);
+    match &r {
+        Ok(cards) => println!("[IPC] list_profiles: {} 张资料卡", cards.len()),
+        Err(e) => println!("[IPC] list_profiles 失败: {e}"),
+    }
+    r
+}
+
+/// IPC: create_profile — 新建资料卡
+#[tauri::command]
+pub(crate) fn create_profile(app: tauri::AppHandle, name: String) -> Result<store::ProfileCard, String> {
+    println!("[IPC] create_profile: name={name}");
+    store::create_profile(&app, &name)
+}
+
+/// IPC: save_profile_card — 保存资料卡（新增/覆盖）
+#[tauri::command]
+pub(crate) fn save_profile_card(
+    app: tauri::AppHandle,
+    card: store::ProfileCard,
+) -> Result<(), String> {
+    println!("[IPC] save_profile_card: id={}, name={}", card.id, card.name);
+    store::save_profile_card(&app, &card)
+}
+
+/// IPC: delete_profile — 删除资料卡
+#[tauri::command]
+pub(crate) fn delete_profile(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    println!("[IPC] delete_profile: id={id}");
+    store::delete_profile(&app, &id)
+}
+
+/// IPC: get_active_profile_id — 读取当前活跃资料卡 id
+#[tauri::command]
+pub(crate) fn get_active_profile_id(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    store::get_active_profile_id(&app)
+}
+
+/// IPC: set_active_profile_id — 设置当前活跃资料卡 id
+#[tauri::command]
+pub(crate) fn set_active_profile_id(
+    app: tauri::AppHandle,
+    id: Option<String>,
+) -> Result<(), String> {
+    println!("[IPC] set_active_profile_id: {id:?}");
+    store::set_active_profile_id(&app, id.as_deref())
+}
+
 /// IPC: save_profile — 保存用户资料
 #[tauri::command]
 pub(crate) fn save_profile(app: tauri::AppHandle, profile: store::UserProfile) -> Result<(), String> {

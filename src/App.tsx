@@ -9,7 +9,6 @@ import { TrackerStoreProvider } from '@/stores/trackerStore'
 import Home from '@/pages/Home'
 import Assistant from '@/pages/Assistant'
 import Tracker from '@/pages/Tracker'
-import Documents from '@/pages/Documents'
 import Encyclopedia from '@/pages/Encyclopedia'
 import CountryDetail from '@/pages/CountryDetail'
 import Scan from '@/pages/Scan'
@@ -25,7 +24,6 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/assistant" element={<Assistant />} />
                 <Route path="/tracker" element={<Tracker />} />
-                <Route path="/documents" element={<Documents />} />
                 <Route path="/encyclopedia" element={<Encyclopedia />} />
                 <Route path="/encyclopedia/:id" element={<CountryDetail />} />
                 <Route path="/scan" element={<Scan />} />

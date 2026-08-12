@@ -26,8 +26,6 @@ export default {
     entryAssistantDesc: 'Generate a checklist in 4 steps',
     entryTracker: 'Progress Tracker',
     entryTrackerDesc: 'Track your applications',
-    entryDocuments: 'Documents',
-    entryDocumentsDesc: 'Fill once, generate everything',
     entryEncyclopedia: 'Encyclopedia',
     entryEncyclopediaDesc: 'All visa requirements in one place',
     popularDestinations: 'Popular Destinations',

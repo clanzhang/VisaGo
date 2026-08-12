@@ -9,12 +9,18 @@ import {
   pickFolder,
   pickFiles,
   recognizeFile,
-  saveProfile,
   exportPdf,
   kimiChat,
   isTauri,
+  listProfiles,
+  createProfile,
+  saveProfileCard,
+  deleteProfile,
+  getActiveProfileId,
+  setActiveProfileId,
   type ScanResult,
   type RecognizeResult,
+  type ProfileCard,
 } from '@/api/tauri'
 
 type Step = 1 | 2 | 3
@@ -79,6 +85,107 @@ export default function Scan() {
   const [generating, setGenerating] = useState(false)
 
   const tauriEnv = isTauri()
+
+  // ===== 资料卡（多用户资料）=====
+  const [cards, setCards] = useState<ProfileCard[]>([])
+  const [activeCardId, setActiveCardId] = useState<string | null>(null)
+  const [showNameDialog, setShowNameDialog] = useState(false)
+  const [newCardName, setNewCardName] = useState('')
+
+  // 加载资料卡列表与活跃卡
+  useEffect(() => {
+    if (!tauriEnv) return
+    ;(async () => {
+      try {
+        const list = await listProfiles()
+        setCards(list)
+        const active = await getActiveProfileId()
+        setActiveCardId(active)
+      } catch (e) {
+        console.warn('[Scan] 加载资料卡失败:', e)
+      }
+    })()
+  }, [tauriEnv])
+
+  // 新建资料卡
+  async function handleCreateProfile() {
+    if (!tauriEnv) {
+      toast('请使用 Tauri 桌面端管理资料卡', 'warning')
+      return
+    }
+    try {
+      const card = await createProfile(newCardName.trim() || '')
+      setCards((prev) => [...prev, card])
+      setActiveCardId(card.id)
+      await setActiveProfileId(card.id)
+      setShowNameDialog(false)
+      setNewCardName('')
+      toast(`已创建「${card.name}」`, 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '创建失败', 'error')
+    }
+  }
+
+  // 切换活跃资料卡
+  async function handleSwitchCard(id: string) {
+    setActiveCardId(id)
+    try {
+      await setActiveProfileId(id)
+      toast('已切换到该资料卡', 'success')
+    } catch (e) {
+      console.warn('[Scan] 切换活跃卡失败:', e)
+    }
+  }
+
+  // 删除资料卡
+  async function handleDeleteCard(card: ProfileCard) {
+    if (!window.confirm(`确定删除「${card.name}」？此操作不可恢复。`)) return
+    try {
+      await deleteProfile(card.id)
+      setCards((prev) => prev.filter((c) => c.id !== card.id))
+      if (activeCardId === card.id) {
+        setActiveCardId(null)
+        await setActiveProfileId(null)
+      }
+      toast('资料卡已删除', 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '删除失败', 'error')
+    }
+  }
+
+  // 保存核对资料到当前活跃资料卡
+  async function handleSaveToCard(cardName?: string) {
+    if (!tauriEnv) {
+      toast('请使用 Tauri 桌面端保存', 'warning')
+      return
+    }
+    try {
+      // 若没有活跃卡，自动新建一张
+      let id = activeCardId
+      let cardsNow = cards
+      if (!id) {
+        const card = await createProfile(cardName ?? '')
+        cardsNow = [...cards, card]
+        setCards(cardsNow)
+        id = card.id
+        setActiveCardId(id)
+        await setActiveProfileId(id)
+      }
+      // 更新卡片字段（snake_case，与 Rust UserProfile 一致）
+      const target = cardsNow.find((c) => c.id === id)
+      if (!target) return
+      const fields: Record<string, unknown> = { ...profile }
+      // 姓名兜底
+      if (!fields['name'] && cardName) fields['name'] = cardName
+      await saveProfileCard({ ...target, fields })
+      // 同步更新列表
+      setCards((prev) => prev.map((c) => (c.id === id ? { ...c, fields, updated_at: new Date().toISOString() } : c)))
+      toast('已保存到资料卡', 'success')
+    } catch (e) {
+      console.error('[Scan] 保存资料卡失败:', e)
+      toast(e instanceof Error ? e.message : '保存失败', 'error')
+    }
+  }
 
   // 用 ref 跟踪 items，供追加合并与导航重置使用
   const itemsRef = useRef<RecognizedItem[]>([])
@@ -308,8 +415,7 @@ export default function Scan() {
   async function handleSaveProfile() {
     try {
       console.log('[Scan] handleSaveProfile 被调用，profile=', profile)
-      await saveProfile(profile)
-      toast('资料已保存', 'success')
+      await handleSaveToCard()
     } catch (e) {
       console.error('[Scan] 保存失败:', e)
       const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
@@ -388,6 +494,93 @@ export default function Scan() {
           <VBadge tone="warning">当前为 Web 模式，需在 Tauri 桌面端使用完整功能</VBadge>
         )}
       </div>
+
+      {/* 资料卡列表（多用户资料） */}
+      <div className="rounded-2xl bg-white p-5 shadow-card">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-ink">👤 资料卡</h2>
+            <p className="text-xs text-ink/45">每次扫描保存为一张资料卡，切换即可使用不同人（如自己 / 家人）的资料</p>
+          </div>
+          <VButton size="sm" onClick={() => setShowNameDialog(true)}>
+            ＋ 新建资料卡
+          </VButton>
+        </div>
+
+        {cards.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-4 py-5 text-center text-xs text-ink/45">
+            还没有资料卡。扫描识别后保存，或点击右上角「＋ 新建资料卡」。
+          </div>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {cards.map((card) => {
+              const isActive = card.id === activeCardId
+              const name = (card.fields?.['name'] as string) || card.name || '未命名'
+              const passport = String(card.fields?.['passport_number'] ?? card.fields?.['passportNumber'] ?? '')
+              const tail = passport.length >= 4 ? passport.slice(-4) : passport
+              return (
+                <div
+                  key={card.id}
+                  onClick={() => handleSwitchCard(card.id)}
+                  className={`group relative w-44 shrink-0 cursor-pointer rounded-xl border p-3 transition-all duration-150 ${
+                    isActive
+                      ? 'border-[#1460A4] bg-[#E0F7FA]/60 shadow-sm'
+                      : 'border-ink/8 bg-white hover:border-[#1460A4]/40 hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-xs font-semibold text-white">
+                      {(name || '?').slice(0, 1)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-[13px] font-semibold text-ink">{name}</div>
+                      <div className="text-[11px] text-ink/45">{tail ? `护照 ···${tail}` : '未填护照号'}</div>
+                    </div>
+                    {isActive && (
+                      <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[#1460A4]" title="当前活跃" />
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-ink/40">
+                    <span>{card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : ''}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteCard(card)
+                      }}
+                      className="rounded px-1 text-ink/30 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                      title="删除资料卡"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 新建资料卡命名弹窗 */}
+      {showNameDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4" onClick={() => setShowNameDialog(false)}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-ink">新建资料卡</h3>
+            <p className="mt-1 text-xs text-ink/50">给这张资料卡起个名字，例如「我的资料」「老婆的资料」「爸妈的资料」</p>
+            <input
+              autoFocus
+              value={newCardName}
+              onChange={(e) => setNewCardName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateProfile()}
+              placeholder="如：我的资料"
+              className="mt-4 w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <VButton variant="secondary" size="sm" onClick={() => setShowNameDialog(false)}>取消</VButton>
+              <VButton size="sm" onClick={handleCreateProfile} disabled={!newCardName.trim()}>创建</VButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 步骤指示器 */}
       <div className="flex items-center gap-2">

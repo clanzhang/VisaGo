@@ -5,14 +5,34 @@ import { useI18n } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
 import { Checklist } from '@/components/visa'
 import { useVisaStore } from '@/stores/visaStore'
-import { useAppStore } from '@/stores/appStore'
 import { useTrackerStore } from '@/stores/trackerStore'
 import { useAIRecruit, type RecommendResult } from '@/hooks/useAIRecruit'
+import { listProfiles, getActiveProfileId, isTauri } from '@/api/tauri'
 import { countries, PROVINCES, OCCUPATIONS, DIFFICULTY_LABELS } from '@/data/countries'
 import { getVisaExtra, identityExtraRequirements, extraBasicRequirements } from '@/data/encyclopedia-extra'
 import type { Requirement, UserProfile } from '@/types'
 
 const STEPS = ['step1', 'step2', 'step3', 'step4']
+
+/** 把 Rust 资料卡 snake_case fields 转成前端 camelCase UserProfile */
+function cardFieldsToProfile(fields: Record<string, unknown>): UserProfile {
+  const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+  const occ = str(fields['occupation']).toLowerCase()
+  const occupation = (['employed', 'student', 'retired', 'freelance'].includes(occ) ? occ : 'employed') as UserProfile['occupation']
+  return {
+    name: str(fields['name']),
+    passportNumber: str(fields['passport_number']),
+    nationality: str(fields['nationality']),
+    birthDate: str(fields['birth_date']),
+    occupation,
+    company: str(fields['company']) || undefined,
+    position: str(fields['position']) || undefined,
+    salary: str(fields['salary']) || undefined,
+    homeProvince: str(fields['home_province']),
+    passportIssuedIn: str(fields['passport_issued_in']),
+    hasHistoryVisa: Boolean(fields['has_history_visa']),
+  }
+}
 
 export default function Assistant() {
   const { t } = useI18n()
@@ -26,18 +46,38 @@ export default function Assistant() {
     savedProfile, saveProfile,
   } = useVisaStore()
   const { addApplication } = useTrackerStore()
-  const { toast } = useAppStore()
   const [search, setSearch] = useState('')
   const [added, setAdded] = useState(false)
-  // 已保存资料卡片：内联编辑开关 + 填入闪烁
-  const [editingSaved, setEditingSaved] = useState(false)
-  const [flashFilled, setFlashFilled] = useState(false)
+  // 活跃资料卡（从材料扫描保存，自动读取）
+  const [activeCard, setActiveCard] = useState<UserProfile | null>(null)
+  const [activeCardName, setActiveCardName] = useState('')
 
-  // 更新已保存资料（内联编辑）
-  function updateSaved(patch: Partial<UserProfile>) {
-    if (!savedProfile) return
-    saveProfile({ ...savedProfile, ...patch })
-  }
+  // 挂载时读取活跃资料卡
+  useEffect(() => {
+    if (!isTauri()) return
+    ;(async () => {
+      try {
+        const id = await getActiveProfileId()
+        if (!id) {
+          // 兼容旧版 localStorage 保存的资料
+          if (savedProfile) setActiveCard(savedProfile)
+          return
+        }
+        const cards = await listProfiles()
+        const card = cards.find((c) => c.id === id)
+        if (card) {
+          const p = cardFieldsToProfile(card.fields ?? {})
+          setActiveCard(p)
+          setActiveCardName(card.name)
+          // 自动填入申请流程
+          setProfile(p)
+        }
+      } catch (e) {
+        console.warn('[Assistant] 读取活跃资料卡失败:', e)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 从详情页跳转带参
   useEffect(() => {
@@ -231,139 +271,33 @@ export default function Assistant() {
         <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
           <h2 className="mb-5 text-lg font-bold text-ink">{t('assistant.identityTitle')}</h2>
 
-          {/* 已保存资料摘要卡片 / 空状态卡片 */}
-          {savedProfile ? (
-            <div className="group mb-6 overflow-hidden rounded-xl border-l-[3px] border-[#1460A4] bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-              <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                {/* 顶部：头像 + 姓名 + 已保存标签 */}
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-base font-semibold text-white">
-                    {(savedProfile.name || '用').slice(0, 1)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-semibold text-ink">{savedProfile.name || '未命名'}</span>
-                      <span className="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">✓ 已保存</span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink/55">
-                      <span>护照 {savedProfile.passportNumber || '—'}</span>
-                      <span className="text-ink/20">|</span>
-                      <span>国籍 {savedProfile.nationality || '—'}</span>
-                      <span className="text-ink/20">|</span>
-                      <span>职业 {t(`documents.occupation${savedProfile.occupation.charAt(0).toUpperCase() + savedProfile.occupation.slice(1)}`)}</span>
-                      <span className="text-ink/20">|</span>
-                      <span>户籍 {savedProfile.homeProvince || '—'}</span>
-                    </div>
-                  </div>
+          {/* 活跃资料卡提示（从材料扫描自动读取） */}
+          {activeCard ? (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-success/30 bg-success/5 px-4 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
+                {(activeCard.name || '用').slice(0, 1)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-ink">
+                  {activeCard.name || '未命名'} <span className="ml-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">✓ 已自动读取</span>
                 </div>
-                {/* 底部操作按钮 */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <VButton size="sm" variant="secondary" onClick={() => setEditingSaved(true)}>
-                    ✏️ 编辑
-                  </VButton>
-                  <VButton
-                    size="sm"
-                    onClick={() => {
-                      setProfile(savedProfile)
-                      setFlashFilled(true)
-                      toast('已填入已保存资料', 'success')
-                      setTimeout(() => setFlashFilled(false), 1200)
-                    }}
-                  >
-                    ✓ 使用此资料
-                  </VButton>
+                <div className="mt-0.5 truncate text-xs text-ink/50">
+                  护照 {activeCard.passportNumber || '—'} · 国籍 {activeCard.nationality || '—'} · 职业 {t(`documents.occupation${activeCard.occupation.charAt(0).toUpperCase() + activeCard.occupation.slice(1)}`)} · 户籍 {activeCard.homeProvince || '—'}
+                  {activeCardName && `（${activeCardName}）`}
                 </div>
               </div>
-
-              {/* 内联编辑表单（点「编辑」展开） */}
-              {editingSaved && (
-                <div className="border-t border-ink/5 bg-[#F9F9F6]/60 p-5">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('documents.name')}</label>
-                      <input
-                        value={savedProfile.name}
-                        onChange={(e) => updateSaved({ name: e.target.value })}
-                        className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('documents.passportNumber')}</label>
-                      <input
-                        value={savedProfile.passportNumber}
-                        onChange={(e) => updateSaved({ passportNumber: e.target.value })}
-                        className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('documents.nationality')}</label>
-                      <input
-                        value={savedProfile.nationality}
-                        onChange={(e) => updateSaved({ nationality: e.target.value })}
-                        className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('documents.occupation')}</label>
-                      <select
-                        value={savedProfile.occupation}
-                        onChange={(e) => updateSaved({ occupation: e.target.value as UserProfile['occupation'] })}
-                        className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                      >
-                        {OCCUPATIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {t(`documents.occupation${o.value.charAt(0).toUpperCase() + o.value.slice(1)}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('assistant.homeProvince')}</label>
-                      <select
-                        value={savedProfile.homeProvince}
-                        onChange={(e) => updateSaved({ homeProvince: e.target.value })}
-                        className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                      >
-                        {PROVINCES.map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('assistant.passportIssuedIn')}</label>
-                      <input
-                        value={savedProfile.passportIssuedIn}
-                        onChange={(e) => updateSaved({ passportIssuedIn: e.target.value })}
-                        className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex justify-end gap-2">
-                    <VButton variant="secondary" size="sm" onClick={() => setEditingSaved(false)}>取消</VButton>
-                    <VButton
-                      size="sm"
-                      onClick={() => {
-                        saveProfile(savedProfile)
-                        setEditingSaved(false)
-                        toast('资料已更新', 'success')
-                      }}
-                    >
-                      💾 保存修改
-                    </VButton>
-                  </div>
-                </div>
-              )}
+              <VButton variant="secondary" size="sm" onClick={() => navigate('/scan')}>
+                📁 管理资料卡
+              </VButton>
             </div>
           ) : (
-            <div className="mb-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-6 py-8 text-center">
-              <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-ink/5">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" strokeWidth="1.6">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <span className="text-lg">📢</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-amber-700">请先去材料扫描录入信息</div>
+                <div className="mt-0.5 text-xs text-amber-600/70">扫描身份证、护照等材料会自动提取信息保存为资料卡，申请时自动填入</div>
               </div>
-              <div className="text-sm font-medium text-ink">还没有保存的资料</div>
-              <p className="mt-1 text-xs text-ink/50">扫描你的身份证、护照等材料，自动提取信息</p>
-              <VButton size="sm" className="mt-4" onClick={() => navigate('/scan')}>
+              <VButton size="sm" onClick={() => navigate('/scan')}>
                 📁 去扫描材料
               </VButton>
             </div>
@@ -375,7 +309,7 @@ export default function Assistant() {
               <input
                 value={profile?.name ?? ''}
                 onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                className={`w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${flashFilled && profile?.name ? 'border-success bg-success/10' : ''}`}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -383,7 +317,7 @@ export default function Assistant() {
               <input
                 value={profile?.passportNumber ?? ''}
                 onChange={(e) => setProfile({ ...profile, passportNumber: e.target.value })}
-                className={`w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${flashFilled && profile?.passportNumber ? 'border-success bg-success/10' : ''}`}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -392,7 +326,7 @@ export default function Assistant() {
                 value={profile?.nationality ?? ''}
                 onChange={(e) => setProfile({ ...profile, nationality: e.target.value })}
                 placeholder="中国"
-                className={`w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${flashFilled && profile?.nationality ? 'border-success bg-success/10' : ''}`}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -400,7 +334,7 @@ export default function Assistant() {
               <select
                 value={profile?.occupation ?? ''}
                 onChange={(e) => setProfile({ ...profile, occupation: e.target.value as UserProfile['occupation'] })}
-                className={`w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${flashFilled && profile?.occupation ? 'border-success bg-success/10' : ''}`}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               >
                 <option value="">{t('common.select')}</option>
                 {OCCUPATIONS.map((o) => (
@@ -415,7 +349,7 @@ export default function Assistant() {
               <input
                 value={profile?.passportIssuedIn ?? ''}
                 onChange={(e) => setProfile({ ...profile, passportIssuedIn: e.target.value })}
-                className={`w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${flashFilled && profile?.passportIssuedIn ? 'border-success bg-success/10' : ''}`}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -423,7 +357,7 @@ export default function Assistant() {
               <select
                 value={profile?.homeProvince ?? ''}
                 onChange={(e) => setProfile({ ...profile, homeProvince: e.target.value })}
-                className={`w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${flashFilled && profile?.homeProvince ? 'border-success bg-success/10' : ''}`}
+                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               >
                 <option value="">{t('common.select')}</option>
                 {PROVINCES.map((p) => (

@@ -7,8 +7,10 @@ pub mod scanner;
 mod store;
 
 use commands::{
-    ai_chat, export_pdf, get_visa_data, kimi_chat, load_profile, recognize_file,
-    refresh_visa_data, save_profile, scan_files, scan_folder,
+    ai_chat, create_profile, delete_profile, export_pdf, get_active_profile_id,
+    get_visa_data, kimi_chat, list_profiles, load_profile, recognize_file,
+    refresh_visa_data, save_profile, save_profile_card, scan_files, scan_folder,
+    set_active_profile_id,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -24,6 +26,12 @@ pub fn run() {
             scan_folder,
             scan_files,
             recognize_file,
+            list_profiles,
+            create_profile,
+            save_profile_card,
+            delete_profile,
+            get_active_profile_id,
+            set_active_profile_id,
             save_profile,
             load_profile,
             get_visa_data,
