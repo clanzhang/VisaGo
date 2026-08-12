@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.8-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.9-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,17 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.0.8 (当前版本)
+### v0.0.9 (当前版本)
+
+- ✅ 多资料卡管理：每次扫描保存为一张资料卡（可命名），支持切换/新建/删除
+- ✅ 申请助手自动读取活跃资料卡，一键填入申请信息
+- ✅ 材料扫描支持选文件夹或单个/多个文件（系统选择器）
+- ✅ 扫描页支持追加文件、自动识别新文件
+- ✅ 行程单识别提取真实行程数据，AI 生成不再使用占位符
+- ✅ 保存功能修复（字段归一化 + 容忍缺字段）
+- ✅ 移除「资料生成」独立页，材料流程统一为扫描 → 识别 → 核对 → 自动填写 → 保存
+
+### v0.0.8
 
 - 🎉 版本更新发布
 - ✅ 签证百科（免签/落地签/需提前办理分类）

@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.8-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.9-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,17 @@ visago/
 
 ## 📦 Changelog
 
-### v0.0.8 (Current)
+### v0.0.9 (Current)
+
+- ✅ Multi-profile cards: each scan saves as a named profile card; switch / create / delete
+- ✅ Assistant auto-loads the active profile card to prefill application info
+- ✅ Material scanning supports folder or single/multi file via native picker
+- ✅ Append more files in Scan, auto-recognize new files
+- ✅ Itinerary recognition extracts real trip data; AI generation no longer uses placeholders
+- ✅ Fixed save (field normalization + tolerant of missing fields)
+- ✅ Removed standalone "Documents" page; material flow unified as scan → recognize → verify → auto-fill → save
+
+### v0.0.8
 
 - 🎉 Version update release
 - ✅ Visa Encyclopedia (visa-free / VOA / advance visa categories)
