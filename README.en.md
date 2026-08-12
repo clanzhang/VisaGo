@@ -87,7 +87,7 @@ npx tauri build
 | Styling | Tailwind CSS |
 | Build Tool | Vite 6 |
 | Routing | React Router 7 |
-| AI Engine | Moonshot Kimi (moonshot-v1-128k) |
+| AI Engine | Moonshot Kimi (moonshot-v1-8k) |
 
 ## 📁 Project Structure
 

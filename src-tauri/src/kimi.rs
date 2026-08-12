@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 const BASE_URL: &str = "https://api.moonshot.cn/v1/chat/completions";
-const MODEL: &str = "moonshot-v1-128k";
+const MODEL: &str = "moonshot-v1-8k";
 const TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Serialize, Deserialize, Clone)]

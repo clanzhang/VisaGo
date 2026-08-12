@@ -91,7 +91,7 @@ export async function kimiChat(
   messages: KimiMessage[],
   options: KimiChatOptions = {},
 ): Promise<string> {
-  const { model = 'moonshot-v1-128k', temperature = 0.3, maxTokens = 8192, responseFormat } = options
+  const { model = 'moonshot-v1-8k', temperature = 0.3, maxTokens = 8192, responseFormat } = options
 
   if (isTauri()) {
     // Tauri 模式：Rust 后端持有 Key，通过 IPC 调用
@@ -178,4 +178,4 @@ export async function kimiJson<T>(
   return extractJson<T>(raw)
 }
 
-export const KIMI_MODEL = 'moonshot-v1-128k'
+export const KIMI_MODEL = 'moonshot-v1-8k'
