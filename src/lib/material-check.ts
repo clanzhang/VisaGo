@@ -32,7 +32,7 @@ export const MATERIAL_TEMPLATE: Omit<MaterialItem, 'status' | 'progress' | 'acti
   { id: 'application', name: '签证申请表' },
   { id: 'employment', name: '在职证明' },
   { id: 'itinerary', name: '行程安排' },
-  { id: 'photo', name: '证件照' },
+  { id: 'photo', name: '白底证件照（35×45mm）' },
   { id: 'bank', name: '银行流水' },
 ]
 
@@ -76,7 +76,7 @@ export function checkMaterials(profile: UserProfile | null): MaterialItem[] {
       ? itemOf('employment', '在职证明', 'auto-generate', 100, '已从在职信息+行程日期套模板生成')
       : itemOf('employment', '在职证明', 'auto-generate', 60, '在职信息不全，已按模板生成，可补全后重新生成'),
     itemOf('itinerary', '行程安排', 'auto-generate', 100, '已由 Kimi 根据目的地+日期生成'),
-    itemOf('photo', '证件照', 'need-photo', 0, '拍照或上传，系统自动检测合规性'),
+    itemOf('photo', '白底证件照（35×45mm）', 'need-photo', 0, '上传一张独立白底证件照，非身份证照片，系统自动检测合规性'),
     itemOf('bank', '银行流水', 'need-user', 0, '按指引从银行 APP 导出后上传，自动检查'),
   ]
 }
