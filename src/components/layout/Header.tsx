@@ -51,7 +51,7 @@ export function Header() {
         {/* 搜索框 */}
         <div className="relative w-full max-w-xl">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-[calc(50%+2px)] text-[#9CA3AF]"
             width="16"
             height="16"
             viewBox="0 0 24 24"
