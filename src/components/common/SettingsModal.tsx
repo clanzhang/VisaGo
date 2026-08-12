@@ -91,6 +91,15 @@ export function SettingsModal() {
     }
   }, [settingsOpen, closeSettings])
 
+  // 注意：所有 hooks 必须在条件 return 之前调用（React Hooks 规则）
+  const notifyItems = useMemo(
+    () => [
+      { key: 'notify_submission' as const, title: '递签日提醒', desc: '递签当天提醒你带齐材料前往签证中心' },
+      { key: 'notify_pre_issue' as const, title: '出签前 3 天提醒', desc: '预计出签前 3 天提醒你留意结果' },
+    ],
+    [],
+  )
+
   if (!settingsOpen) return null
 
   // 更新设置并持久化
@@ -114,14 +123,6 @@ export function SettingsModal() {
       }
     }
   }
-
-  const notifyItems = useMemo(
-    () => [
-      { key: 'notify_submission' as const, title: '递签日提醒', desc: '递签当天提醒你带齐材料前往签证中心' },
-      { key: 'notify_pre_issue' as const, title: '出签前 3 天提醒', desc: '预计出签前 3 天提醒你留意结果' },
-    ],
-    [],
-  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
