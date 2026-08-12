@@ -30,7 +30,7 @@ export function DestinationCard({ item, index }: Props) {
 
   return (
     <div
-      className="anim-card group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-card transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg active:translate-y-[-2px] active:shadow-sm"
+      className="anim-card group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg"
       style={{ animationDelay: `${index * 80}ms` }}
       onClick={() => navigate(`/encyclopedia/${item.id}`)}
     >
@@ -43,11 +43,6 @@ export function DestinationCard({ item, index }: Props) {
         />
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-ink backdrop-blur">
           {item.flag} {item.name}
-        </span>
-        <span
-          className={`absolute right-3 top-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium backdrop-blur ${difficultyTone[item.difficulty]} bg-white/90`}
-        >
-          {item.difficulty}
         </span>
       </div>
 
@@ -62,6 +57,11 @@ export function DestinationCard({ item, index }: Props) {
 
         <div className="mt-4 flex items-center justify-between border-t border-ink/5 pt-3.5">
           <span className="text-sm font-semibold text-primary">{item.fee}</span>
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${difficultyTone[item.difficulty]}`}
+          >
+            {item.difficulty}
+          </span>
         </div>
       </div>
     </div>

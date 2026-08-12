@@ -13,7 +13,7 @@ export default {
     encyclopedia: 'Encyclopedia',
   },
   home: {
-    greeting: 'Good evening, today is {date}',
+    greeting: 'Good evening, {name}!',
     greetingSub: '{count} application(s) in progress',
     searchPlaceholder: 'Search countries...',
     heroTitle: 'Visa Made Easy',
@@ -29,9 +29,6 @@ export default {
     entryEncyclopedia: 'Encyclopedia',
     entryEncyclopediaDesc: 'All visa requirements in one place',
     popularDestinations: 'Popular Destinations',
-    recentActivity: 'Recent Activity',
-    refresh: 'Refresh',
-    hotSearch: 'Hot Searches',
     recentApplications: 'Recent Applications',
     noApplications: 'No active applications',
     viewAll: 'View all',
