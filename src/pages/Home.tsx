@@ -6,7 +6,6 @@ import { DestinationGrid } from '@/components/home/DestinationGrid'
 import { ReminderBanner } from '@/components/common/ReminderBanner'
 import { useHomeAIData } from '@/hooks/useAIData'
 import { useAppStore } from '@/stores/appStore'
-import { VButton } from '@/components/common'
 
 export default function Home() {
   const { data, loading, refreshing, refresh } = useHomeAIData()
@@ -16,29 +15,30 @@ export default function Home() {
     <div className="flex flex-col gap-8">
       <div className="flex items-start justify-between">
         <Header />
-        <div className="flex items-center gap-2 pt-1">
-          {refreshing ? (
-            <span className="inline-flex items-center gap-1.5 text-xs text-ink/45">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
-              更新中…
-            </span>
-          ) : (
-            <VButton
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                refresh()
-                toast('已触发数据刷新', 'info')
-              }}
-              disabled={loading}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6" />
-              </svg>
-              刷新数据
-            </VButton>
-          )}
-        </div>
+        <button
+          onClick={() => {
+            if (loading || refreshing) return
+            refresh()
+            toast('已触发数据刷新', 'info')
+          }}
+          disabled={loading || refreshing}
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-ink/40 shadow-card transition-all duration-150 hover:text-[#1460A4] hover:shadow-card-lg disabled:opacity-60"
+          title="刷新数据"
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={refreshing ? 'animate-spin' : ''}
+          >
+            <path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6" />
+          </svg>
+        </button>
       </div>
 
       {/* 顶部提醒横幅（今天有递签/出签安排的申请） */}

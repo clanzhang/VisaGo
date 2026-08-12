@@ -30,19 +30,25 @@ export function DestinationCard({ item, index }: Props) {
 
   return (
     <div
-      className="anim-card group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg"
+      className="anim-card group cursor-pointer overflow-hidden rounded-3xl bg-white shadow-card transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-card-lg"
       style={{ animationDelay: `${index * 80}ms` }}
       onClick={() => navigate(`/encyclopedia/${item.id}`)}
     >
-      <div className="relative h-[120px] w-full overflow-hidden">
+      <div className="relative h-[140px] w-full overflow-hidden">
         <img
           src={item.image}
           alt={item.name}
-          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
           loading="lazy"
         />
-        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-ink backdrop-blur">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur">
           {item.flag} {item.name}
+        </span>
+        <span
+          className={`absolute right-3 top-3 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium shadow-sm backdrop-blur ${difficultyTone[item.difficulty]} bg-white/90`}
+        >
+          {item.difficulty}
         </span>
       </div>
 
@@ -57,10 +63,11 @@ export function DestinationCard({ item, index }: Props) {
 
         <div className="mt-4 flex items-center justify-between border-t border-ink/5 pt-3.5">
           <span className="text-sm font-semibold text-primary">{item.fee}</span>
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${difficultyTone[item.difficulty]}`}
-          >
-            {item.difficulty}
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#1460A4] transition-all duration-200 group-hover:gap-2">
+            查看详情
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </span>
         </div>
       </div>

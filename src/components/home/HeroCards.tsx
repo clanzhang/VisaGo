@@ -75,39 +75,49 @@ export function HeroCards({ hero }: { hero?: HeroText }) {
     <div className="grid gap-6 md:grid-cols-2">
       {/* 签证申请助手 */}
       <div
-        className="anim-card flex cursor-pointer items-center justify-between rounded-2xl bg-[#E0F7FA] p-8 transition-all duration-200 hover:-translate-y-1 hover:shadow-card-lg"
+        className="anim-card group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-[#E0F7FA] via-[#EAF9FB] to-[#D6F1F5] p-8 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-float"
         style={{ animationDelay: '0ms' }}
         onClick={() => navigate('/assistant')}
       >
-        <PassportIllustration />
-        <div className="ml-6 flex-1 text-left">
-          <h3 className="font-display text-xl font-bold text-ink">{text.assistantTitle}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.assistantDesc}</p>
-          <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-colors duration-150 hover:bg-gray-50">
-            {t('home.heroAssistantCta')}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </button>
+        {/* 装饰圆点 */}
+        <span className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/40" />
+        <span className="pointer-events-none absolute right-10 top-10 h-10 w-10 rounded-full bg-[#39A2B8]/20" />
+        <div className="relative flex items-center justify-between">
+          <PassportIllustration />
+          <div className="ml-6 flex-1 text-left">
+            <h3 className="font-display text-xl font-bold tracking-tight text-ink">{text.assistantTitle}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.assistantDesc}</p>
+            <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-all duration-150 group-hover:gap-2.5 hover:shadow-card-lg">
+              {t('home.heroAssistantCta')}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 签证百科 */}
       <div
-        className="anim-card flex cursor-pointer items-center justify-between rounded-2xl bg-[#E8F5E9] p-8 transition-all duration-200 hover:-translate-y-1 hover:shadow-card-lg"
+        className="anim-card group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-[#E8F5E9] via-[#F0FAF1] to-[#DCF0DE] p-8 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-float"
         style={{ animationDelay: '80ms' }}
         onClick={() => navigate('/encyclopedia')}
       >
-        <MapIllustration />
-        <div className="ml-6 flex-1 text-left">
-          <h3 className="font-display text-xl font-bold text-ink">{text.encyclopediaTitle}</h3>
-          <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.encyclopediaDesc}</p>
-          <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-colors duration-150 hover:bg-gray-50">
-            {t('home.heroEncyclopediaCta')}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </button>
+        {/* 装饰圆点 */}
+        <span className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/40" />
+        <span className="pointer-events-none absolute right-10 top-10 h-10 w-10 rounded-full bg-[#4F9E28]/20" />
+        <div className="relative flex items-center justify-between">
+          <MapIllustration />
+          <div className="ml-6 flex-1 text-left">
+            <h3 className="font-display text-xl font-bold tracking-tight text-ink">{text.encyclopediaTitle}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.encyclopediaDesc}</p>
+            <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-all duration-150 group-hover:gap-2.5 hover:shadow-card-lg">
+              {t('home.heroEncyclopediaCta')}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

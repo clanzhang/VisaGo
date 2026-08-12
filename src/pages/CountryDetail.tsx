@@ -3,18 +3,11 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
-import { FeeCalculator, AIAssistant, MaterialChecklist } from '@/components/visa'
+import { FeeCalculator, AIAssistant } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
-import {
-  identityExtraRequirements,
-  extraBasicRequirements,
-} from '@/data/encyclopedia-extra'
 import { PROVINCES } from '@/data/countries'
 import { useCountryAIData } from '@/hooks/useAIData'
 import type { AiCountryData } from '@/types/ai'
-import type { Requirement } from '@/types'
-
-const categoryOrder: Requirement['category'][] = ['basic', 'identity', 'financial', 'travel', 'extra']
 
 const IDENTITY_KEYS = ['employed', 'student', 'retired', 'freelance'] as const
 
@@ -37,23 +30,6 @@ export default function CountryDetail() {
     () => country?.visaTypes.find((v) => v.id === visaTypeId) ?? country?.visaTypes[0],
     [country, visaTypeId],
   )
-
-  const allRequirements = useMemo(() => {
-    if (!visaType) return []
-    const extra = identityExtraRequirements.employed // 简化：默认在职材料
-    return [
-      ...extraBasicRequirements,
-      ...visaType.requirements,
-      ...extra,
-    ].filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
-  }, [visaType])
-
-  const grouped = useMemo(() => {
-    const groups = new Map<Requirement['category'], Requirement[]>()
-    for (const cat of categoryOrder) groups.set(cat, [])
-    for (const r of allRequirements) groups.get(r.category)?.push(r)
-    return groups
-  }, [allRequirements])
 
   const matchedDistrict = useMemo(() => {
     if (!province) return null
@@ -303,46 +279,23 @@ export default function CountryDetail() {
         </div>
 
         {tab === 'materials' && (
-          <div className="space-y-6">
-            <MaterialChecklist
-              countryName={country.name.zh}
-              tripDates={{
-                start: new Date().toISOString().slice(0, 10),
-                end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-              }}
-            />
-            {grouped.size > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {Array.from(grouped.entries()).map(([cat, reqs]) =>
-                  reqs.length === 0 ? null : (
-                    <div key={cat} className="rounded-xl border border-ink/5 p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-ink">
-                          {t(`encyclopedia.${cat}Materials`)}
-                        </span>
-                        <VBadge>{reqs.length}</VBadge>
-                      </div>
-                      <ul className="space-y-2">
-                        {reqs.map((r) => (
-                          <li key={r.id} className="flex items-start gap-2 text-[13px] text-ink/65">
-                            <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${r.required ? 'bg-primary' : 'bg-ink/25'}`} />
-                            <span>
-                              {r.name.zh}
-                              {r.translationRequired && (
-                                <VBadge tone="warning" className="ml-2">{t('encyclopedia.translation')}</VBadge>
-                              )}
-                              <span className="ml-2 text-xs text-ink/35">
-                                {r.format === 'original' ? t('encyclopedia.original') : r.format === 'copy' ? t('encyclopedia.copy') : t('encyclopedia.both')}
-                              </span>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ),
-                )}
-              </div>
-            )}
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-6 py-12 text-center">
+            <span className="text-4xl">📋</span>
+            <h4 className="text-base font-bold text-ink">查看详细材料</h4>
+            <p className="max-w-md text-sm text-ink/50">
+              材料清单、自动检测、一键生成与递交均在「申请签证」页面完成，避免信息分散。
+            </p>
+            <VButton
+              size="lg"
+              className="mt-2"
+              onClick={() =>
+                navigate('/assistant', {
+                  state: { countryId: country.id, visaTypeId: visaType.id },
+                })
+              }
+            >
+              去申请签证 →
+            </VButton>
           </div>
         )}
 

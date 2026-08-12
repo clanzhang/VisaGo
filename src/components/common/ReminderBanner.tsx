@@ -44,11 +44,11 @@ export function ReminderBanner() {
   if (reminders.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       {reminders.map((r) => (
         <div
           key={`${r.id}-${r.kind}`}
-          className="flex items-center gap-3 rounded-lg border border-amber-200 bg-[#FFF8E1] px-4 py-3 text-sm"
+          className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-gradient-to-r from-[#FFFBEB] to-[#FFF7E6] px-4 py-3 shadow-card"
         >
           <span className="text-lg">{KIND_ICON[r.kind] ?? '🔔'}</span>
           <div className="min-w-0 flex-1">
@@ -59,7 +59,7 @@ export function ReminderBanner() {
           </div>
           <button
             onClick={() => setReminders((prev) => prev.filter((x) => x.id !== r.id || x.kind !== r.kind))}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-amber-700/60 transition-colors hover:bg-amber-200/60 hover:text-amber-800"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-amber-700/60 transition-colors hover:bg-amber-100 hover:text-amber-800"
             title="关闭提醒"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

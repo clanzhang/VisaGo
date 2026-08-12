@@ -3,14 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
-import { Checklist } from '@/components/visa'
+import { MaterialChecklist } from '@/components/visa'
 import { useVisaStore } from '@/stores/visaStore'
 import { useTrackerStore } from '@/stores/trackerStore'
 import { useAIRecruit, type RecommendResult } from '@/hooks/useAIRecruit'
 import { listProfiles, getActiveProfileId, isTauri } from '@/api/tauri'
 import { countries, PROVINCES, OCCUPATIONS, DIFFICULTY_LABELS } from '@/data/countries'
-import { getVisaExtra, identityExtraRequirements, extraBasicRequirements } from '@/data/encyclopedia-extra'
-import type { Requirement, UserProfile } from '@/types'
+import { getVisaExtra } from '@/data/encyclopedia-extra'
+import type { UserProfile } from '@/types'
 
 const STEPS = ['step1', 'step2', 'step3', 'step4']
 
@@ -96,14 +96,6 @@ export default function Assistant() {
     () => countries.filter((c) => c.name.zh.includes(search) || c.name.en.toLowerCase().includes(search.toLowerCase())),
     [search],
   )
-
-  const requirements = useMemo<Requirement[]>(() => {
-    if (!visaType) return []
-    const key = (profile?.occupation || 'employed') as keyof typeof identityExtraRequirements
-    const extraReqs = identityExtraRequirements[key] ?? []
-    const merged = [...extraBasicRequirements, ...visaType.requirements, ...extraReqs]
-    return merged.filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
-  }, [visaType, profile?.occupation])
 
   const totalFees = useMemo(() => {
     if (!visaType) return 0
@@ -526,11 +518,17 @@ export default function Assistant() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* 材料 */}
+            {/* 材料（自动检测/上传/生成） */}
             <div>
               <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.materials')}</h3>
-              <div className="max-h-[420px] overflow-y-auto rounded-xl border border-ink/5 p-4">
-                <Checklist requirements={requirements} />
+              <div className="max-h-[640px] overflow-y-auto rounded-xl border border-ink/5 p-4">
+                <MaterialChecklist
+                  countryName={country?.name.zh ?? ''}
+                  tripDates={{
+                    start: new Date().toISOString().slice(0, 10),
+                    end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+                  }}
+                />
               </div>
             </div>
 

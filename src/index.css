@@ -4,20 +4,25 @@
 /* ===== VisaGo 设计系统 ===== */
 
 @theme {
-  --color-bg: #f9f9f6;
-  --color-sidebar: #121c19;
-  --color-ink: #121c19;
-  --color-subtle: #6b7280;
+  --color-bg: #f7f8fa;
+  --color-sidebar: #101828;
+  --color-ink: #101828;
+  --color-subtle: #667085;
   --color-primary: #1460a4;
   --color-cyan: #39a2b8;
-  --color-success: #4f9e28;
+  --color-success: #16a34a;
   --color-card: #ffffff;
 
   --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", "Inter", "PingFang SC", system-ui, sans-serif;
 
-  --shadow-card: 0 1px 3px rgba(18, 28, 25, 0.08), 0 1px 2px rgba(18, 28, 25, 0.06);
-  --shadow-card-lg: 0 10px 30px rgba(18, 28, 25, 0.12);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 8px rgba(16, 24, 40, 0.06);
+  --shadow-card-lg: 0 4px 12px rgba(16, 24, 40, 0.08), 0 12px 32px rgba(16, 24, 40, 0.12);
+  --shadow-float: 0 8px 24px rgba(16, 24, 40, 0.1), 0 24px 48px rgba(16, 24, 40, 0.14);
 }
 
 :root {
