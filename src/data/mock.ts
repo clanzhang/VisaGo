@@ -20,12 +20,16 @@ export const progressData: ProgressItem[] = [
   { country: '申根', flag: '🇪🇺', progress: 30 },
 ]
 
-/** 热门目的地卡片（含原有 7 国中的 6 个 + 申根） */
+/**
+ * 热门目的地卡片（含原有 7 国中的 6 个 + 申根）。
+ * fee 从官方费用数据生成（如 ¥715 起 / €90 起 / 免费）。
+ */
 export const destinations = [
-  { id: 'japan', name: '日本', flag: '🇯🇵', days: '15天', desc: '樱花季·东京大阪双城游', fee: '¥800 起', difficulty: '易' as const, image: '/images/japan.svg' },
-  { id: 'korea', name: '韩国', flag: '🇰🇷', days: '7天', desc: '首尔购物·济州岛度假', fee: '¥500 起', difficulty: '易' as const, image: '/images/korea.svg' },
-  { id: 'thailand', name: '泰国', flag: '🇹🇭', days: '10天', desc: '曼谷·普吉岛海岛风情', fee: '¥400 起', difficulty: '易' as const, image: '/images/thailand.svg' },
-  { id: 'schengen', name: '申根', flag: '🇪🇺', days: '20天', desc: '法瑞意·欧洲多国深度游', fee: '¥1,200 起', difficulty: '难' as const, image: '/images/schengen.svg' },
-  { id: 'usa', name: '美国', flag: '🇺🇸', days: '15天', desc: '美西自驾·纽约都市之旅', fee: '¥1,990 起', difficulty: '难' as const, image: '/images/usa.svg' },
-  { id: 'uk', name: '英国', flag: '🇬🇧', days: '12天', desc: '伦敦·爱丁堡英伦风情', fee: '¥1,750 起', difficulty: '中' as const, image: '/images/uk.svg' },
+  { id: 'japan', name: '日本', flag: '🇯🇵', days: '15天', desc: '樱花季·东京大阪双城游', fee: '¥715 起', difficulty: '易' as const, image: '/images/japan.svg' },
+  { id: 'korea', name: '韩国', flag: '🇰🇷', days: '7天', desc: '首尔购物·济州岛度假', fee: '¥260 起', difficulty: '易' as const, image: '/images/korea.svg' },
+  { id: 'thailand', name: '泰国', flag: '🇹🇭', days: '10天', desc: '曼谷·普吉岛海岛风情', fee: '฿1,000 起', difficulty: '易' as const, image: '/images/thailand.svg' },
+  { id: 'schengen', name: '申根', flag: '🇪🇺', days: '20天', desc: '法瑞意·欧洲多国深度游', fee: '€90 起', difficulty: '难' as const, image: '/images/schengen.svg' },
+  { id: 'usa', name: '美国', flag: '🇺🇸', days: '15天', desc: '美西自驾·纽约都市之旅', fee: '$185 起', difficulty: '难' as const, image: '/images/usa.svg' },
+  { id: 'uk', name: '英国', flag: '🇬🇧', days: '12天', desc: '伦敦·爱丁堡英伦风情', fee: '£135 起', difficulty: '中' as const, image: '/images/uk.svg' },
 ]
+

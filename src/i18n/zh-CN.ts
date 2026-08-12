@@ -271,6 +271,7 @@ export default {
     photoFee: '照片费',
     total: '合计',
     feeNote: '以上费用为参考值，实际以使馆/代办机构为准',
+    effectiveFrom: '生效日期',
     provinceSearch: '输入省份匹配领区',
     provincePlaceholder: '如：北京、上海、浙江...',
     currentDistrict: '当前匹配领区',

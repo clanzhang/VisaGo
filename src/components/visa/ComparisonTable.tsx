@@ -2,6 +2,7 @@
 import { useI18n } from '@/i18n'
 import { VBadge } from '@/components/common'
 import { DIFFICULTY_LABELS } from '@/data/countries'
+import { getVisaOfficialFee } from '@/data/visa-fees'
 import type { Country } from '@/types'
 
 interface Props {
@@ -38,11 +39,36 @@ export function ComparisonTable({ countries }: Props) {
           </tr>
           <tr>
             <td className="py-3 pr-4 text-ink/55">{t('encyclopedia.fee')}</td>
-            {countries.map((c) => (
-              <td key={c.id} className="py-3 pr-4 font-medium text-primary">
-                ¥{Math.min(...c.visaTypes.map((v) => v.fee.amount + (v.serviceFee?.amount ?? 0)))} 起
-              </td>
-            ))}
+            {countries.map((c) => {
+              const firstVt = c.visaTypes[0]
+              const official = firstVt
+                ? getVisaOfficialFee(c.id, firstVt.id, {
+                    serviceFee: firstVt.serviceFee?.amount ?? 0,
+                    courierFee: 0,
+                    photoFee: 0,
+                  })
+                : undefined
+              if (official) {
+                const isFree = official.tiers.every((tr) => tr.currency === 'FREE' || tr.amount === 0)
+                return (
+                  <td key={c.id} className="py-3 pr-4 font-medium text-primary">
+                    {isFree ? '免费' : (
+                      <span className="inline-flex flex-col">
+                        <span>{official.visaFee} {official.currency} 起</span>
+                        {official.effectiveFrom && (
+                          <span className="text-[10px] font-normal text-ink/35">{official.effectiveFrom} 起</span>
+                        )}
+                      </span>
+                    )}
+                  </td>
+                )
+              }
+              return (
+                <td key={c.id} className="py-3 pr-4 font-medium text-primary">
+                  ¥{Math.min(...c.visaTypes.map((v) => v.fee.amount + (v.serviceFee?.amount ?? 0)))} 起
+                </td>
+              )
+            })}
           </tr>
           <tr>
             <td className="py-3 pr-4 text-ink/55">{t('encyclopedia.materialsCount')}</td>

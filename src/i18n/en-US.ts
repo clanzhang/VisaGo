@@ -269,6 +269,7 @@ export default {
     photoFee: 'Photo fee',
     total: 'Total',
     feeNote: 'Reference values only; check with embassy/agency',
+    effectiveFrom: 'Effective from',
     provinceSearch: 'Type a province to match districts',
     provincePlaceholder: 'e.g. Beijing, Shanghai, Zhejiang...',
     currentDistrict: 'Matched District',

@@ -128,8 +128,8 @@ export const visaFees: Record<string, VisaFeeItem[]> = {
         { amount: 1430, currency: 'CNY', scope: { zh: '多次', en: 'Multiple entry' } },
       ],
       effectiveFrom: '2026.7.1',
-      note: { zh: '人民币计费，另加代办手续费', en: 'CNY; agency handling fee extra' },
-      sourceUrl: 'https://www.cn.emb-japan.go.jp/itpr_zh/visa_fee.html',
+      note: { zh: '使馆签证费，另需代办机构手续费', en: 'Embassy fee; agency handling fee extra' },
+      sourceUrl: 'https://www.cn.emb-japan.go.jp/itpr_zh/00_000485_00222.html',
       lastVerified: '2026-08-12',
     },
   ],
@@ -228,6 +228,42 @@ export const visaFeeCountryOrder: string[] = [
   'schengen',
 ]
 
+/**
+ * UI visaType.id（如 japan-tourist）→ 官方费用项 id（如 jp-short-stay）映射。
+ * 用于 getVisaOfficialFee 按 visaType 查询官方费用。
+ */
+export const VISATYPE_TO_FEE_ITEM: Record<string, string> = {
+  'japan-tourist': 'jp-short-stay',
+  'japan-business': 'jp-short-stay',
+  'korea-tourist': 'kr-c3',
+  'korea-multiple': 'kr-c3',
+  'thailand-tourist': 'th-tr',
+  'thailand-business': 'th-metv',
+  'schengen-tourist': 'schengen-type-c',
+  'schengen-business': 'schengen-type-c',
+  'usa-tourist': 'us-b1b2',
+  'uk-tourist': 'uk-standard-visitor',
+  'australia-tourist': 'au-600',
+  'new-zealand-tourist': 'nz-visitor',
+  'canada-tourist': 'ca-visitor',
+  'singapore-tourist': 'sg-entry',
+  'malaysia-tourist': 'my-visa-free',
+}
+
+/**
+ * 按国家 ID + visaType.id 查询官方费用。
+ * 返回 undefined 表示无官方数据（调用方回退旧数据）。
+ */
+export function getVisaOfficialFee(
+  countryId: string,
+  visaTypeId: string,
+  fallback: { serviceFee: number; courierFee: number; photoFee: number },
+): OfficialFeeBreakdown | undefined {
+  const feeItemId = VISATYPE_TO_FEE_ITEM[visaTypeId]
+  if (!feeItemId) return undefined
+  return getOfficialFeeBreakdown(countryId, feeItemId, fallback)
+}
+
 /** 币种符号映射 */
 export const CURRENCY_SYMBOL: Record<CurrencyCode, string> = {
   AUD: 'A$',
@@ -273,4 +309,54 @@ export function minFee(item: VisaFeeItem): number {
 /** 计算某签证费用项的合计（多个必缴项相加，如 NZD 441 + 100） */
 export function totalFee(item: VisaFeeItem): number {
   return item.tiers.reduce((sum, t) => sum + t.amount, 0)
+}
+
+/** 把官方费用映射为 UI 现有 FeeBreakdown（人民币估算） */
+export interface OfficialFeeBreakdown {
+  visaFee: number
+  serviceFee: number
+  courierFee: number
+  photoFee: number
+  /** 原币种，供展示真实币种 */
+  currency: CurrencyCode
+  /** 各档位（单次/多次/成人/儿童等），供明细展示 */
+  tiers: { label: Localized; amount: number; currency: CurrencyCode }[]
+  /** 生效日期说明 */
+  effectiveFrom?: string
+  /** 附注（代办费、服务费等） */
+  note?: Localized
+  /** 免费说明 */
+  freeNote?: Localized
+  sourceUrl: string
+  lastVerified: string
+}
+
+/**
+ * 官方费用 → UI FeeBreakdown 桥接。
+ * - visaFee = 首个非免费档位金额（如日本单次 715）
+ * - serviceFee/courierFee/photoFee 由旧数据补充（传入 fallback）
+ * - 返回 undefined 表示该国家无官方数据（调用方回退旧数据）
+ */
+export function getOfficialFeeBreakdown(
+  countryId: string,
+  feeItemId: string,
+  fallback: { serviceFee: number; courierFee: number; photoFee: number },
+): OfficialFeeBreakdown | undefined {
+  const item = getVisaFee(countryId, feeItemId)
+  if (!item) return undefined
+  const firstPaid = item.tiers.find((t) => t.currency !== 'FREE')
+  const visaFee = firstPaid ? firstPaid.amount : 0
+  return {
+    visaFee,
+    serviceFee: fallback.serviceFee,
+    courierFee: fallback.courierFee,
+    photoFee: fallback.photoFee,
+    currency: firstPaid?.currency ?? 'CNY',
+    tiers: item.tiers.map((t) => ({ label: t.scope ?? { zh: '', en: '' }, amount: t.amount, currency: t.currency })),
+    effectiveFrom: item.effectiveFrom,
+    note: item.note,
+    freeNote: item.freeNote,
+    sourceUrl: item.sourceUrl,
+    lastVerified: item.lastVerified,
+  }
 }

@@ -73,8 +73,14 @@ export function useHomeAIData() {
         temperature: 0.2,
         maxTokens: 6000,
       })
+      // 目的地卡片费用以官方数据为准（id 对应），避免 AI 生成过时金额
+      const aiDests = result.destinations?.length ? result.destinations : fallbackDestinations
+      const dests = aiDests.map((d) => {
+        const official = fallbackDestinations.find((o) => o.id === d.id)
+        return official ? { ...d, fee: official.fee } : d
+      })
       const merged: HomeAIData = {
-        destinations: result.destinations?.length ? result.destinations : fallbackDestinations,
+        destinations: dests,
         progress: result.progress?.length ? result.progress : fallbackProgress,
         feeCategories: fallbackFee.categories,
         feeTotal: fallbackFee.total,

@@ -9,6 +9,7 @@ import { useTrackerStore } from '@/stores/trackerStore'
 import { listProfiles, getActiveProfileId, isTauri } from '@/api/tauri'
 import { countries, PROVINCES, OCCUPATIONS, DIFFICULTY_LABELS } from '@/data/countries'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
+import { getVisaOfficialFee, formatFee } from '@/data/visa-fees'
 import type { UserProfile } from '@/types'
 
 const STEPS = ['step1', 'step2', 'step3', 'step4']
@@ -192,7 +193,15 @@ export default function Assistant() {
             {country.visaTypes.map((v) => {
               const active = v.id === selectedVisaTypeId
               const vExtra = getVisaExtra(country.id, v.id)
+              const vOfficial = getVisaOfficialFee(country.id, v.id, {
+                serviceFee: vExtra?.fees.serviceFee ?? v.serviceFee?.amount ?? 0,
+                courierFee: vExtra?.fees.courierFee ?? 0,
+                photoFee: vExtra?.fees.photoFee ?? 0,
+              })
               const total = vExtra ? vExtra.fees.visaFee + vExtra.fees.serviceFee + vExtra.fees.courierFee + vExtra.fees.photoFee : v.fee.amount
+              const showFrom = vOfficial && vOfficial.tiers.length > 1
+              const allFree = vOfficial ? vOfficial.tiers.every((tr) => tr.currency === 'FREE' || tr.amount === 0) : false
+              const firstPaid = vOfficial?.tiers.find((tr) => tr.currency !== 'FREE')
               return (
                 <button
                   key={v.id}
@@ -209,7 +218,22 @@ export default function Assistant() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-display text-lg font-bold text-primary">¥{total}</div>
+                      <div className="font-display text-lg font-bold text-primary">
+                        {vOfficial
+                          ? allFree
+                            ? '免费'
+                            : showFrom
+                              ? `${firstPaid ? formatFee(firstPaid) : ''} 起`
+                              : firstPaid
+                                ? formatFee(firstPaid)
+                                : `¥${total}`
+                          : `¥${total}`}
+                      </div>
+                      {showFrom && (
+                        <div className="mt-0.5 text-[11px] text-ink/45">
+                          {vOfficial?.tiers.map((tr) => formatFee(tr)).join(' / ')}
+                        </div>
+                      )}
                       <div className="text-xs text-ink/40">{t('assistant.total')}</div>
                     </div>
                   </div>
@@ -412,6 +436,57 @@ export default function Assistant() {
                 <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.feeBreakdown')}</h3>
                 {(() => {
                   const f = extra?.fees
+                  const official = getVisaOfficialFee(country.id, visaType.id, {
+                    serviceFee: f?.serviceFee ?? visaType.serviceFee?.amount ?? 0,
+                    courierFee: f?.courierFee ?? 0,
+                    photoFee: f?.photoFee ?? 0,
+                  })
+                  if (official && official.tiers.length > 0) {
+                    const firstPaidTier = official.tiers.find((tr) => tr.currency !== 'FREE')
+                    return (
+                      <>
+                        <div className="space-y-2">
+                          {official.tiers.map((tr, i) => (
+                            <div key={i} className="flex justify-between text-sm">
+                              <span className="text-ink/55">{tr.label.zh}</span>
+                              <span className="font-medium">{formatFee(tr)}</span>
+                            </div>
+                          ))}
+                          {official.serviceFee > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-ink/55">{t('assistant.serviceFee')}</span>
+                              <span className="font-medium">¥{official.serviceFee}</span>
+                            </div>
+                          )}
+                          {official.courierFee > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-ink/55">{t('encyclopedia.courierFee')}</span>
+                              <span className="font-medium">¥{official.courierFee}</span>
+                            </div>
+                          )}
+                          {official.photoFee > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-ink/55">{t('encyclopedia.photoFee')}</span>
+                              <span className="font-medium">¥{official.photoFee}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-3 flex justify-between border-t border-ink/10 pt-3">
+                          <span className="text-sm font-medium">{t('assistant.total')}</span>
+                          <span className="font-display text-lg font-bold text-primary">
+                            {firstPaidTier ? `${formatFee(firstPaidTier)} 起` : '免费'}
+                          </span>
+                        </div>
+                        {(official.effectiveFrom || official.note || official.freeNote) && (
+                          <div className="mt-3 space-y-1 text-xs text-ink/40">
+                            {official.effectiveFrom && <p>📅 {t('encyclopedia.effectiveFrom')}: {official.effectiveFrom}</p>}
+                            {official.freeNote && <p>{official.freeNote.zh}</p>}
+                            {official.note && <p>ℹ️ {official.note.zh}</p>}
+                          </div>
+                        )}
+                      </>
+                    )
+                  }
                   const rows = [
                     { label: t('assistant.visaFee'), value: f?.visaFee ?? visaType.fee.amount },
                     { label: t('assistant.serviceFee'), value: f?.serviceFee ?? visaType.serviceFee?.amount ?? 0 },
