@@ -18,11 +18,36 @@ use commands::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
 pub fn run() {
+    use tauri::Emitter;
+    use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
+        // macOS 应用菜单：visago → 偏好设置... ⌘,
+        .setup(|app| {
+            let settings = MenuItemBuilder::with_id("open-preferences", "偏好设置...")
+                .accelerator("CmdOrCtrl+,")
+                .build(app)?;
+            let app_menu = SubmenuBuilder::new(app, "VisaGo")
+                .item(&settings)
+                .separator()
+                .quit()
+                .build()?;
+            let menu = MenuBuilder::new(app)
+                .items(&[&app_menu])
+                .build()?;
+            app.set_menu(menu)?;
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id.as_ref() == "open-preferences" {
+                println!("[menu] 偏好设置被点击（⌘,），通知前端打开弹窗");
+                let _ = app.emit("open-preferences", ());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             ai_chat,
             kimi_chat,

@@ -36,7 +36,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 
 export function SettingsModal() {
   const { setLang } = useI18n()
-  const { toast, settingsOpen, closeSettings } = useAppStore()
+  const { toast, settingsOpen, openSettings, closeSettings } = useAppStore()
   const [section, setSection] = useState<Section>('general')
   const [settings, setSettings] = useState<AppSettings>({
     desktop_notification: false,
@@ -44,6 +44,25 @@ export function SettingsModal() {
     notify_pre_issue: true,
     language: 'zh-CN',
   })
+
+  // 监听 Tauri 菜单事件 open-preferences（macOS 菜单栏 visago → 偏好设置 ⌘,）
+  useEffect(() => {
+    if (!isTauri()) return
+    let unlisten: (() => void) | undefined
+    let cancelled = false
+    ;(async () => {
+      const { listen } = await import('@tauri-apps/api/event')
+      if (cancelled) return
+      unlisten = await listen('open-preferences', () => {
+        console.log('[SettingsModal] 收到菜单事件 open-preferences，打开弹窗')
+        openSettings()
+      })
+    })()
+    return () => {
+      cancelled = true
+      unlisten?.()
+    }
+  }, [openSettings])
 
   // 打开时加载设置 + Esc 关闭
   useEffect(() => {
