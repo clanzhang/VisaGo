@@ -5,9 +5,26 @@ import { CountryCard, AIAssistant } from '@/components/visa'
 import { VButton, VModal } from '@/components/common'
 import { ComparisonTable } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS, searchCountries } from '@/data/countries'
-import { REGION_ORDER } from '@/data/country-list'
+import { VISA_TYPE_ORDER, REGION_ORDER } from '@/data/country-list'
 
-type DifficultyFilter = 'all' | 'easy' | 'medium' | 'hard'
+// 筛选：全部 / 免签 / 容易 / 中等 / 困难
+type DifficultyFilter = 'all' | 'visa-free' | 'easy' | 'medium' | 'hard'
+
+const FILTERS: { key: DifficultyFilter; labelKey: string }[] = [
+  { key: 'all', labelKey: 'encyclopedia.all' },
+  { key: 'visa-free', labelKey: 'encyclopedia.visaFreeFilter' },
+  { key: 'easy', labelKey: 'encyclopedia.easy' },
+  { key: 'medium', labelKey: 'encyclopedia.medium' },
+  { key: 'hard', labelKey: 'encyclopedia.hard' },
+]
+
+/** 判断国家属于哪个大组：互免 / 单方面免签 / 落地签 / 电子签 */
+function groupOf(c: (typeof countries)[number]): string {
+  if (c.visaType !== '免签') return c.visaType
+  // 免签细分为互免 / 单方面免签（单免国家 id 在集合中）
+  const unilateral = new Set(['korea-jeju', 'iran', 'pakistan', 'philippines', 'turkey', 'morocco', 'tunisia', 'zambia', 'gabon', 'mozambique', 'benin', 'angola', 'jamaica', 'cuba', 'antigua-barbuda', 'haiti', 'saint-kitts', 'samoa', 'french-polynesia', 'northern-mariana'])
+  return unilateral.has(c.id) ? '单方面免签' : '互免签证'
+}
 
 export default function Encyclopedia() {
   const { t } = useI18n()
@@ -20,30 +37,42 @@ export default function Encyclopedia() {
 
   const list = useMemo(() => {
     let result = searchCountries(query)
-    if (difficulty !== 'all') {
+    if (difficulty === 'visa-free') {
+      result = result.filter((c) => c.visaType === '免签')
+    } else if (difficulty !== 'all') {
       result = result.filter((c) => c.difficulty === difficulty)
     }
     return result
   }, [query, difficulty])
 
-  // 按区域分组（保留用户指定顺序：亚洲→欧洲→美洲→大洋洲→非洲）
+  // 按签证类型大组分组（互免 → 单免 → 落地 → 电子）
   const grouped = useMemo(() => {
     const map = new Map<string, typeof list>()
     for (const c of list) {
-      const region = c.region || '其他'
-      if (!map.has(region)) map.set(region, [])
-      map.get(region)!.push(c)
+      const g = groupOf(c)
+      if (!map.has(g)) map.set(g, [])
+      map.get(g)!.push(c)
     }
-    // 按 REGION_ORDER 排序，未在列表中的区域放最后
-    const regions = [...map.keys()].sort((a, b) => {
-      const ia = REGION_ORDER.indexOf(a)
-      const ib = REGION_ORDER.indexOf(b)
+    // 组内按区域排序
+    for (const arr of map.values()) {
+      arr.sort((a, b) => {
+        const ia = REGION_ORDER.indexOf(a.region)
+        const ib = REGION_ORDER.indexOf(b.region)
+        if (ia === -1 && ib === -1) return a.region.localeCompare(b.region, 'zh')
+        if (ia === -1) return 1
+        if (ib === -1) return -1
+        return ia - ib
+      })
+    }
+    const groups = [...map.keys()].sort((a, b) => {
+      const ia = VISA_TYPE_ORDER.indexOf(a as (typeof VISA_TYPE_ORDER)[number])
+      const ib = VISA_TYPE_ORDER.indexOf(b as (typeof VISA_TYPE_ORDER)[number])
       if (ia === -1 && ib === -1) return a.localeCompare(b, 'zh')
       if (ia === -1) return 1
       if (ib === -1) return -1
       return ia - ib
     })
-    return regions.map((r) => ({ region: r, items: map.get(r)! }))
+    return groups.map((g) => ({ group: g, items: map.get(g)! }))
   }, [list])
 
   const compareCountries = useMemo(
@@ -81,17 +110,17 @@ export default function Encyclopedia() {
           />
         </div>
         <div className="flex items-center gap-2">
-          {(['all', 'easy', 'medium', 'hard'] as DifficultyFilter[]).map((d) => (
+          {FILTERS.map((f) => (
             <button
-              key={d}
-              onClick={() => setDifficulty(d)}
+              key={f.key}
+              onClick={() => setDifficulty(f.key)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
-                difficulty === d
+                difficulty === f.key
                   ? 'bg-ink text-white'
                   : 'bg-white text-ink/60 shadow-card hover:bg-ink/5'
               }`}
             >
-              {t(`encyclopedia.${d === 'all' ? 'all' : DIFFICULTY_LABELS[d].zh === '易' ? 'easy' : DIFFICULTY_LABELS[d].zh === '中' ? 'medium' : 'hard'}`)}
+              {f.key === 'all' ? t('encyclopedia.all') : f.key === 'visa-free' ? t('encyclopedia.visaFreeFilter') : DIFFICULTY_LABELS[f.key].zh}
             </button>
           ))}
         </div>
@@ -119,11 +148,11 @@ export default function Encyclopedia() {
         </div>
       </div>
 
-      {/* 国家列表（按区域分组） */}
+      {/* 国家列表（按签证类型大组分组） */}
       {grouped.map((group) => (
-        <section key={group.region}>
+        <section key={group.group}>
           <div className="mb-4 flex items-center gap-3">
-            <h2 className="font-display text-base font-bold tracking-tight text-ink">{group.region}</h2>
+            <h2 className="font-display text-base font-bold tracking-tight text-ink">{group.group}</h2>
             <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/50">{group.items.length} 个</span>
             <div className="h-px flex-1 bg-ink/8" />
           </div>

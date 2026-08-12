@@ -1,7 +1,7 @@
 // components/visa/CountryCard.tsx — 国家卡片（百科列表）
 import { useNavigate } from 'react-router-dom'
 import { VBadge } from '@/components/common'
-import { DIFFICULTY_LABELS } from '@/data/countries'
+import { DIFFICULTY_LABELS, VISA_TYPE_STYLE } from '@/data/countries'
 import type { Country } from '@/types'
 
 interface Props {
@@ -11,13 +11,19 @@ interface Props {
 
 export function CountryCard({ country, index = 0 }: Props) {
   const navigate = useNavigate()
+  const vt = VISA_TYPE_STYLE[country.visaType]
 
   return (
     <div
-      className="anim-card group cursor-pointer rounded-2xl bg-white p-6 shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg"
+      className="anim-card group relative cursor-pointer rounded-2xl bg-white p-6 shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg"
       style={{ animationDelay: `${index * 60}ms` }}
       onClick={() => navigate(`/encyclopedia/${country.id}`)}
     >
+      {/* 签证类型标签（左上角） */}
+      <span className={`absolute left-4 top-4 rounded-full px-2.5 py-0.5 text-xs font-medium ${vt.cls}`}>
+        {vt.label}
+      </span>
+
       <div className="flex items-start gap-3">
         <span className="text-4xl">{country.flag}</span>
         <div className="min-w-0 flex-1">

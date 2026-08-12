@@ -191,6 +191,7 @@ export default {
     filterDifficulty: '按难度筛选',
     filterRegion: '按区域筛选',
     all: '全部',
+    visaFreeFilter: '免签',
     easy: '容易',
     medium: '中等',
     hard: '困难',
