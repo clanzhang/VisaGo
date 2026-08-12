@@ -51,13 +51,13 @@ export function Header() {
         {/* 搜索框 */}
         <div className="relative w-full max-w-xl">
           <svg
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/35"
-            width="18"
-            height="18"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="1.5"
             strokeLinecap="round"
           >
             <circle cx="11" cy="11" r="7" />
@@ -72,7 +72,7 @@ export function Header() {
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             onFocus={() => setOpen(true)}
             placeholder={t('home.searchPlaceholder')}
-            className="w-full rounded-full border border-ink/8 bg-white py-3 pl-11 pr-4 text-sm shadow-card outline-none transition-colors placeholder:text-ink/35 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+            className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-7 pr-4 text-sm outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#1460A4]"
           />
           {open && query && (
             <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-card-lg">
