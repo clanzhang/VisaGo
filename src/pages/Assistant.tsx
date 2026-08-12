@@ -6,7 +6,6 @@ import { VButton, VBadge } from '@/components/common'
 import { MaterialChecklist } from '@/components/visa'
 import { useVisaStore } from '@/stores/visaStore'
 import { useTrackerStore } from '@/stores/trackerStore'
-import { useAIRecruit, type RecommendResult } from '@/hooks/useAIRecruit'
 import { listProfiles, getActiveProfileId, isTauri } from '@/api/tauri'
 import { countries, PROVINCES, OCCUPATIONS, DIFFICULTY_LABELS } from '@/data/countries'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
@@ -102,25 +101,6 @@ export default function Assistant() {
     const f = extra?.fees
     return f ? f.visaFee + f.serviceFee + f.courierFee + f.photoFee : visaType.fee.amount + (visaType.serviceFee?.amount ?? 0)
   }, [visaType, extra])
-
-  const { recommend, loading: aiLoading } = useAIRecruit()
-  const [recommendation, setRecommendation] = useState<RecommendResult | null>(null)
-  const [aiRequested, setAiRequested] = useState(false)
-
-  // 到达结果页时自动触发 Kimi 个性化推荐
-  useEffect(() => {
-    if (step === 3 && country && visaType && !aiRequested) {
-      setAiRequested(true)
-      recommend({
-        country: country.name.zh,
-        visaType: visaType.name.zh,
-        profile: profile ?? {},
-      }).then((res) => {
-        if (res) setRecommendation(res)
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, country, visaType, aiRequested])
 
   function startTracking() {
     if (!country || !visaType) return
@@ -406,116 +386,10 @@ export default function Assistant() {
             <div className="mb-6 rounded-xl bg-[#E0F7FA] px-5 py-4">
               <div className="text-xs text-ink/50">{t('assistant.yourDistrict')}</div>
               <div className="mt-1 text-sm font-semibold text-primary">
-                {recommendation?.district || visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))?.name.zh || t('common.noData')}
+                {visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))?.name.zh || t('common.noData')}
               </div>
             </div>
           )}
-
-          {/* Kimi AI 个性化推荐 */}
-          <div className="mb-6 rounded-2xl border border-[#39A2B8]/20 bg-gradient-to-br from-[#E0F7FA]/60 to-[#E8F5E9]/60 p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#121C19] text-xs font-bold text-[#39A2B8]">K</span>
-              <h3 className="text-sm font-semibold text-ink">Kimi AI 个性化签证方案</h3>
-              {aiLoading && (
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
-              )}
-            </div>
-
-            {/* 隐藏 Kimi 个性化推荐报错横幅（失败时静默跳过推荐，保留静态材料清单） */}
-            {/* {aiError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-                {aiError}
-              </div>
-            )} */}
-
-            {recommendation ? (
-              <div className="space-y-4">
-                {/* 费用/周期估算 */}
-                {(recommendation.feeEstimate || recommendation.processingEstimate) && (
-                  <div className="flex flex-wrap gap-2">
-                    {recommendation.processingEstimate && (
-                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-ink shadow-sm">
-                        ⏱ {recommendation.processingEstimate}
-                      </span>
-                    )}
-                    {recommendation.feeEstimate && (
-                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-ink shadow-sm">
-                        💰 {recommendation.feeEstimate}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* AI 个性化材料 */}
-                {recommendation.materials.length > 0 && (
-                  <div>
-                    <div className="mb-2 text-xs font-medium text-ink/45">AI 个性化材料清单</div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {recommendation.materials.map((m, i) => (
-                        <div key={i} className="flex items-start gap-2 rounded-lg bg-white/80 px-3 py-2 text-[13px] text-ink/70">
-                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${m.required ? 'bg-[#39A2B8]' : 'bg-ink/25'}`} />
-                          <span>
-                            {m.name}
-                            {m.details && <span className="ml-1 text-xs text-ink/40">· {m.details}</span>}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 风险提示 */}
-                {recommendation.riskTips.length > 0 && (
-                  <div className="rounded-lg bg-amber-50 px-3 py-2.5">
-                    <div className="mb-1 text-xs font-semibold text-amber-700">⚠️ 风险提示</div>
-                    <ul className="space-y-1">
-                      {recommendation.riskTips.map((tip, i) => (
-                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-ink/65">
-                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
-                          {tip}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* 提高通过率建议 */}
-                {recommendation.approvalTips.length > 0 && (
-                  <div className="rounded-lg bg-[#E8F5E9] px-3 py-2.5">
-                    <div className="mb-1 text-xs font-semibold text-success">💡 提高通过率建议</div>
-                    <ul className="space-y-1">
-                      {recommendation.approvalTips.map((tip, i) => (
-                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-ink/65">
-                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-success" />
-                          {tip}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* 常见拒签原因 */}
-                {recommendation.rejectionReasons.length > 0 && (
-                  <div className="rounded-lg bg-red-50 px-3 py-2.5">
-                    <div className="mb-1 text-xs font-semibold text-red-600">常见拒签原因</div>
-                    <ul className="space-y-1">
-                      {recommendation.rejectionReasons.map((reason, i) => (
-                        <li key={i} className="flex items-start gap-1.5 text-[13px] text-ink/65">
-                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400" />
-                          {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : aiLoading ? (
-              <div className="flex items-center gap-2 rounded-lg bg-white/70 px-3 py-3 text-[13px] text-ink/50">
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
-                正在根据你的身份生成个性化方案…
-              </div>
-            ) : null}
-          </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* 材料（自动检测/上传/生成） */}
