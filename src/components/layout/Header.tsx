@@ -1,10 +1,20 @@
-// components/layout/Header.tsx — 顶部 Header（问候 + 新建申请按钮 + 搜索）
+// components/layout/Header.tsx — 顶部 Header（问候 + 搜索 + 热门搜索标签）
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useTrackerStore } from '@/stores/trackerStore'
 import { countries } from '@/data/countries'
 import type { Country } from '@/types'
+
+/** 动态日期：YYYY年M月D日 星期X */
+function todayText(): string {
+  const d = new Date()
+  const week = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 星期${week}`
+}
+
+// 热门搜索标签（点击跳转对应国家百科页）
+const HOT_TAGS = ['日本', '泰国', '申根', '韩国', '美国']
 
 export function Header() {
   const { t } = useI18n()
@@ -21,12 +31,17 @@ export function Header() {
     ? countries.filter((c) => c.name.zh.includes(query) || c.name.en.toLowerCase().includes(query.toLowerCase()))
     : []
 
+  function jumpToCountry(name: string) {
+    const c = countries.find((x) => x.name.zh === name)
+    if (c) navigate(`/encyclopedia/${c.id}`)
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-6">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-            {t('home.greeting', { name: '用户' })}
+            {t('home.greeting', { date: todayText() })}
           </h1>
           <p className="mt-1 text-base font-medium text-subtle">
             {t('home.greetingSub', { count: inProgress })}
@@ -85,6 +100,20 @@ export function Header() {
               )}
             </div>
           )}
+
+          {/* 热门搜索标签 */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-ink/35">{t('home.hotSearch')}：</span>
+            {HOT_TAGS.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => jumpToCountry(tag)}
+                className="rounded-full bg-[#F3F4F6] px-3 py-1 text-sm text-ink/60 transition-colors duration-150 hover:bg-[#E0F7FA] hover:text-[#1460A4]"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

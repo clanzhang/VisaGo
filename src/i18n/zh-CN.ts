@@ -13,7 +13,7 @@ export default {
     encyclopedia: '签证百科',
   },
   home: {
-    greeting: '晚上好，{name}！',
+    greeting: '晚上好，今天是 {date}',
     greetingSub: '{count} 个申请进行中',
     searchPlaceholder: '搜索国家...',
     heroTitle: '轻松搞定签证',
@@ -29,6 +29,9 @@ export default {
     entryEncyclopedia: '签证百科',
     entryEncyclopediaDesc: '各国签证要求一站了解',
     popularDestinations: '热门目的地',
+    recentActivity: '最近活动',
+    refresh: '刷新',
+    hotSearch: '热门搜索',
     recentApplications: '最近申请',
     noApplications: '暂无进行中的申请',
     viewAll: '查看全部',

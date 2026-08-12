@@ -12,9 +12,12 @@ export interface StatsData {
 
 interface Props {
   stats?: Partial<StatsData>
+  refreshing?: boolean
+  updatedAt?: string
+  onRefresh?: () => void
 }
 
-export function StatsSection({ stats }: Props) {
+export function StatsSection({ stats, refreshing, updatedAt, onRefresh }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
 
@@ -31,9 +34,36 @@ export function StatsSection({ stats }: Props) {
 
   return (
     <section>
-      <h2 className="font-display mb-5 text-xl font-bold tracking-tight text-ink">
-        {t('home.statsTitle')}
-      </h2>
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="font-display text-xl font-bold tracking-tight text-ink">
+          {t('home.statsTitle')}
+        </h2>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ink/40">{updatedAt ?? '更新于 10 分钟前'}</span>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-ink/40 transition-colors duration-150 hover:bg-[#F3F4F6] hover:text-[#1460A4] disabled:opacity-60"
+              title={t('home.refresh')}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={refreshing ? 'animate-spin' : ''}
+              >
+                <path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         {/* 费用概览 */}
         <div
