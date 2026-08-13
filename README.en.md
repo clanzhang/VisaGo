@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.10-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.11-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,15 @@ visago/
 
 ## 📦 Changelog
 
-### v0.0.10 (Current)
+### v0.0.11 (Current)
+
+- ✅ Home stats computed from real application records (fees + progress)
+- ✅ Added Hong Kong & Taiwan to encyclopedia and assistant (travel permit type)
+- ✅ Country selection page: visa-type filter tabs (mutual-free / unilateral-free / VOA / e-visa / permit)
+- ✅ HK/TW fees itemized (passport / endorsement / entry permit)
+- ✅ Several countries' region moved to Europe (Georgia / Belarus / Turkey, etc.)
+
+### v0.0.10
 
 - ✅ Official visa fee data (11 countries, multi-currency, effective dates & sources)
 - ✅ Japan visa fee updated to official rates (single ¥715 / double ¥1430 / multi ¥1430)
@@ -154,7 +162,7 @@ visago/
 - ✅ Application progress tracking
 - ✅ Visa comparison
 
-### v0.0.10 (Planned)
+### v0.0.11 (Planned)
 
 - 🔜 More countries visa data
 - 🔜 AI chat assistant widget

@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.10-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.11-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,15 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.0.10 (当前版本)
+### v0.0.11 (当前版本)
+
+- ✅ 首页统计模块改为从真实申请记录计算（费用 + 进度）
+- ✅ 新增香港、台湾到签证百科与申请签证（需通行证类型）
+- ✅ 选国家页加签证类型筛选 tab（互免/单免/落地/电子/需通行证）
+- ✅ 港澳台费用细化（通行证/签注/入台证）
+- ✅ 多国 region 调整为欧洲（格鲁吉亚/白俄罗斯/土耳其等）
+
+### v0.0.10
 
 - ✅ 官方签证费用数据（11 国多币种，含生效日期与来源）
 - ✅ 日本签证费更新为官方数据（单次 ¥715 / 两次 ¥1430 / 多次 ¥1430）
@@ -154,7 +162,7 @@ visago/
 - ✅ 申请进度追踪
 - ✅ 签证对比查询
 
-### v0.0.10 (计划中)
+### v0.0.11 (计划中)
 
 - 🔜 接入更多国家签证数据
 - 🔜 AI 智能问答浮窗
