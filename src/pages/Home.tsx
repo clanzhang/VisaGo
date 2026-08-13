@@ -5,10 +5,13 @@ import { StatsSection } from '@/components/home/StatsSection'
 import { DestinationGrid } from '@/components/home/DestinationGrid'
 import { ReminderBanner } from '@/components/common/ReminderBanner'
 import { useHomeAIData } from '@/hooks/useAIData'
+import { useRealStats } from '@/hooks/useRealStats'
 import { useAppStore } from '@/stores/appStore'
 
 export default function Home() {
   const { data, loading, refreshing, refresh } = useHomeAIData()
+  // 统计模块从真实申请记录计算（费用 + 进度），AI 数据仅用于 destinations 和 hero
+  const realStats = useRealStats()
   const { toast } = useAppStore()
 
   return (
@@ -59,7 +62,7 @@ export default function Home() {
 
       <HeroCards hero={data.hero} />
       <StatsSection
-        stats={{ feeTotal: data.feeTotal, feeCategories: data.feeCategories, progress: data.progress }}
+        stats={{ feeTotal: realStats.feeTotal, feeCategories: realStats.feeCategories, progress: realStats.progress }}
       />
       <DestinationGrid destinations={data.destinations} />
     </div>
