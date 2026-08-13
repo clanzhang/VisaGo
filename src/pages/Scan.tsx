@@ -386,6 +386,21 @@ export default function Scan() {
     const merged: Record<string, string> = {}
     // Kimi 返回的字段键与 FIELD_SPECS 一致（name/passport_number 等英文键）
     const fieldKeys = FIELD_SPECS.map((f) => f.key)
+    // 字段名归一化：Kimi 可能返回的别名 → 前端期望的 key
+    const FIELD_ALIASES: Record<string, string> = {
+      home_address: 'address',
+      full_name: 'name',
+      phone_number: 'phone',
+      passport_no: 'passport_number',
+      id_card: 'id_number',
+      date_of_birth: 'birth_date',
+      province: 'home_province',
+      employer: 'company',
+      job_title: 'position',
+      monthly_salary: 'salary',
+      work_unit: 'company',
+      address: 'address',
+    }
     let trip: TripData | null = null
     for (const item of items) {
       if (item.status !== 'done') continue
@@ -396,10 +411,17 @@ export default function Scan() {
         trip = rawTrip as TripData
         console.log('[Scan] 识别到行程数据:', trip)
       }
+      // 先按别名归一化，再按 FIELD_SPECS 取 key
+      const normalized: Record<string, unknown> = { ...fields }
+      for (const [alias, key] of Object.entries(FIELD_ALIASES)) {
+        if (alias !== key && normalized[alias] !== undefined && normalized[key] === undefined) {
+          normalized[key] = normalized[alias]
+        }
+      }
       for (const k of fieldKeys) {
         // 已填过则跳过（后续文件不覆盖）
         if (merged[k]) continue
-        const v = fields[k]
+        const v = normalized[k]
         if (v === null || v === undefined) continue
         const clean = String(v).trim()
         if (clean && clean !== 'null' && clean !== '暂无' && !merged[k]) {

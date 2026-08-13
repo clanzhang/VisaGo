@@ -22,7 +22,7 @@ const RECOGNIZE_PROMPT: &str = r#"你是一个签证材料识别专家。以下�
   "birth_date": "出生日期（YYYY-MM-DD）",
   "phone": "手机号",
   "home_province": "户籍省份",
-  "home_address": "家庭住址",
+  "address": "家庭住址",
   "occupation": "职业（employed/student/retired/freelance）",
   "company": "公司名称",
   "position": "职位",
@@ -49,7 +49,7 @@ const RECOGNIZE_PROMPT: &str = r#"你是一个签证材料识别专家。以下�
 1. 能提取的字段填真实值，行程信息从文件文本中逐字提取，不要编造
 2. 文本中没有的字段填 null
 3. 不要编造数据
-4. 只输出 JSON，不要其他内容"#;
+4. 只输出纯 JSON，不要包裹在 markdown 代码块（```json）中，不要加任何解释文字或前后缀"#;
 
 /// 识别单个文件（文件名 + 文件文本内容 + 可选图片 base64 调 Kimi）
 pub async fn recognize_file(
@@ -59,13 +59,19 @@ pub async fn recognize_file(
     content_b64: Option<String>,
 ) -> Result<RecognizedDoc, String> {
     let mut msg = format!("文件名称：{name}\n文件路径：{path}\n");
+    println!("文件路径: {}", path);
 
     // 优先传文本内容（PDF/DOCX 提取的真实文本）
     if let Some(text) = &file_text {
         let text = text.trim();
         if !text.is_empty() {
+            println!("提取文本长度: {}", text.len());
+            // 安全截取前 200 字符（避免多字节 UTF-8 边界 panic）
+            let preview: String = text.chars().take(200).collect();
+            println!("提取文本前200字: {}", preview);
             msg.push_str(&format!("文件文本内容：\n{text}\n"));
         } else {
+            println!("提取文本长度: 0（扫描件/图片型文件）");
             msg.push_str("文件文本内容：<空>（可能是扫描件/图片型文件）\n");
         }
     }
@@ -89,26 +95,32 @@ pub async fn recognize_file(
             },
         ],
         kimi::ChatOptions {
+            model: None,
             temperature: Some(0.1),
             max_tokens: Some(4000),
+            response_format: Some(serde_json::json!({ "type": "json_object" })),
             ..Default::default()
         },
     )
     .await?;
 
-    println!("[recognize] Kimi 原始响应(前300): {}", raw.chars().take(300).collect::<String>());
+    println!("Kimi 返回: {}", raw);
 
-    // 提取 JSON
-    let json: serde_json::Value = serde_json::from_str(&raw).unwrap_or_else(|_| {
-        // 容忍 markdown 包裹
-        let start = raw.find('{');
-        let end = raw.rfind('}');
-        if let (Some(s), Some(e)) = (start, end) {
-            raw[s..=e].parse().unwrap_or(serde_json::Value::Null)
-        } else {
-            serde_json::Value::Null
-        }
-    });
+    // 提取 JSON：先尝试整体解析，失败则 strip markdown 代码块再解析
+    let json: serde_json::Value = {
+        // 去除 ```json / ``` 代码块标记（若 Kimi 误包）
+        let cleaned = raw.replace("```json", "").replace("```", "").trim().to_string();
+        serde_json::from_str(&cleaned).unwrap_or_else(|_| {
+            // 再兜底：截取第一个 { 到最后一个 }
+            let start = raw.find('{');
+            let end = raw.rfind('}');
+            if let (Some(s), Some(e)) = (start, end) {
+                raw[s..=e].parse().unwrap_or(serde_json::Value::Null)
+            } else {
+                serde_json::Value::Null
+            }
+        })
+    };
 
     if json.is_null() {
         return Err("Kimi 无法解析该文件".to_string());
