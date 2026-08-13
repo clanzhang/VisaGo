@@ -11,7 +11,7 @@ export interface Country {
   flag: string
   difficulty: 'easy' | 'medium' | 'hard'
   /** 签证类型：互免签证 / 单方面免签 / 落地签 / 电子签 / 需签证 */
-  visaType: '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证'
+  visaType: '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证' | '需通行证'
   region: string // 亚洲/欧洲/北美/大洋洲
   visaTypes: VisaType[]
   overview: Localized

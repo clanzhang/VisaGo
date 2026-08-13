@@ -2,7 +2,7 @@
 // visaType: 互免签证 / 单方面免签 / 落地签 / 电子签 / 需签证
 // difficulty: easy(容易) / medium(中等) / hard(困难)（用于卡片徽章）
 
-export type VisaTypeLabel = '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证'
+export type VisaTypeLabel = '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证' | '需通行证'
 export type DifficultyLabel = 'easy' | 'medium' | 'hard'
 
 export interface CountryMeta {
@@ -131,10 +131,10 @@ export const COUNTRY_LIST: CountryMeta[] = [
   { id: 'south-africa', zh: '南非', en: 'South Africa', flag: '🇿🇦', visaType: '电子签', difficulty: 'medium', region: '非洲', desc: '需递交纸质材料到签证中心，审批约10个工作日' },
 
   // ═════════════ 五、港澳台（2） ═════════════
-  { id: 'hong-kong', zh: '香港', en: 'Hong Kong', flag: '🇭🇰', visaType: '需签证', difficulty: 'easy', region: '亚洲', desc: '港澳通行证 + 签注，部分城市可自助签注' },
-  { id: 'taiwan', zh: '台湾', en: 'Taiwan', flag: '🇨🇳', visaType: '需签证', difficulty: 'easy', region: '亚洲', desc: '大陆居民需办入台证 + 大通证，目前个人游部分开放' },
+  { id: 'hong-kong', zh: '香港', en: 'Hong Kong', flag: '🇭🇰', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '港澳通行证 + 签注，部分城市可自助签注' },
+  { id: 'taiwan', zh: '台湾', en: 'Taiwan', flag: '🏝️', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '大陆居民需办入台证 + 大通证，目前个人游部分开放' },
 ]
 
 /** 分组顺序（按签证类型四大组） */
-export const VISA_TYPE_ORDER = ['互免签证', '单方面免签', '落地签', '电子签'] as const
+export const VISA_TYPE_ORDER = ['互免签证', '单方面免签', '落地签', '电子签', '需签证', '需通行证'] as const
 export const REGION_ORDER = ['亚洲', '欧洲', '美洲', '大洋洲', '非洲']

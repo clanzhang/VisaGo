@@ -94,16 +94,14 @@ export default function Assistant() {
   const visaType = country?.visaTypes.find((v) => v.id === selectedVisaTypeId) ?? null
   const extra = visaType ? getVisaExtra(country!.id, visaType.id) : undefined
 
-  // 签证类型筛选 tab：全部 / 互免签证 / 单方面免签 / 落地签 / 电子签 / 需签证 / 港澳台
-  const REGION_TABS = ['', '互免签证', '单方面免签', '落地签', '电子签', '需签证', '港澳台'] as const
+  // 签证类型筛选 tab：全部 / 互免签证 / 单方面免签 / 落地签 / 电子签 / 需签证 / 需通行证
+  const REGION_TABS = ['', '互免签证', '单方面免签', '落地签', '电子签', '需签证', '需通行证'] as const
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase()
     return countries.filter((c) => {
-      // 先按 tab 筛签证类型（港澳台单独处理）
-      if (regionTab === '港澳台') {
-        if (c.id !== 'hong-kong' && c.id !== 'taiwan') return false
-      } else if (regionTab && c.visaType !== regionTab) {
+      // 先按 tab 筛签证类型
+      if (regionTab && c.visaType !== regionTab) {
         return false
       }
       // 再按 search 过滤名称
