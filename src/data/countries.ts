@@ -50,8 +50,16 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
     duration: '最长 30 天',
     validity: '3 个月',
     entries: isVisaFree ? 'multiple' : 'single',
-    fee: { amount: isHKorTW ? 0 : isVisaFree ? 0 : 300, currency: 'CNY' },
-    serviceFee: { amount: isHKorTW ? 0 : isVisaFree ? 0 : 200, currency: 'CNY' },
+    fee: isHKorTW
+      ? meta.id === 'hong-kong'
+        ? { amount: 60, currency: 'CNY' }
+        : { amount: 30, currency: 'CNY' }
+      : { amount: isVisaFree ? 0 : 300, currency: 'CNY' },
+    serviceFee: isHKorTW
+      ? meta.id === 'hong-kong'
+        ? { amount: 20, currency: 'CNY' }
+        : { amount: 60, currency: 'CNY' }
+      : { amount: isVisaFree ? 0 : 200, currency: 'CNY' },
     processingDays: isHKorTW
       ? meta.id === 'hong-kong'
         ? { min: 1, max: 7 }
