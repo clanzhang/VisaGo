@@ -129,6 +129,10 @@ export const COUNTRY_LIST: CountryMeta[] = [
   { id: 'new-zealand', zh: '新西兰', en: 'New Zealand', flag: '🇳🇿', visaType: '电子签', difficulty: 'medium', region: '大洋洲', desc: '在线申请，材料要求中等，审批约20个工作日' },
   // ---- 非洲（1） ----
   { id: 'south-africa', zh: '南非', en: 'South Africa', flag: '🇿🇦', visaType: '电子签', difficulty: 'medium', region: '非洲', desc: '需递交纸质材料到签证中心，审批约10个工作日' },
+
+  // ═════════════ 五、港澳台（2） ═════════════
+  { id: 'hong-kong', zh: '香港', en: 'Hong Kong', flag: '🇭🇰', visaType: '需签证', difficulty: 'easy', region: '亚洲', desc: '港澳通行证 + 签注，部分城市可自助签注' },
+  { id: 'taiwan', zh: '台湾', en: 'Taiwan', flag: '🇨🇳', visaType: '需签证', difficulty: 'easy', region: '亚洲', desc: '大陆居民需办入台证 + 大通证，目前个人游部分开放' },
 ]
 
 /** 分组顺序（按签证类型四大组） */

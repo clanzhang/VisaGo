@@ -27,6 +27,8 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
   const canApplyOnline = meta.visaType === '电子签' || meta.visaType === '落地签'
   const needInterview = meta.difficulty === 'hard'
   const isVisaFree = meta.visaType === '互免签证' || meta.visaType === '单方面免签'
+  // 港澳台：通行证/入台证，费用 0（工本费另算），办理天数不同
+  const isHKorTW = meta.id === 'hong-kong' || meta.id === 'taiwan'
   // 国家专属材料清单（新西兰/申根），其余用默认模板
   const requirements =
     meta.id === 'new-zealand'
@@ -48,9 +50,13 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
     duration: '最长 30 天',
     validity: '3 个月',
     entries: isVisaFree ? 'multiple' : 'single',
-    fee: { amount: isVisaFree ? 0 : 300, currency: 'CNY' },
-    serviceFee: { amount: isVisaFree ? 0 : 200, currency: 'CNY' },
-    processingDays: { min: isVisaFree ? 0 : 5, max: isVisaFree ? 0 : 10 },
+    fee: { amount: isHKorTW ? 0 : isVisaFree ? 0 : 300, currency: 'CNY' },
+    serviceFee: { amount: isHKorTW ? 0 : isVisaFree ? 0 : 200, currency: 'CNY' },
+    processingDays: isHKorTW
+      ? meta.id === 'hong-kong'
+        ? { min: 1, max: 7 }
+        : { min: 5, max: 10 }
+      : { min: isVisaFree ? 0 : 5, max: isVisaFree ? 0 : 10 },
     needInterview,
     canApplyOnline,
     acceptPersonal: true,

@@ -31,5 +31,7 @@ export const destinations = [
   { id: 'schengen', name: '申根', flag: '🇪🇺', days: '20天', desc: '法瑞意·欧洲多国深度游', fee: '€90 起', difficulty: '难' as const, image: '/images/schengen.svg' },
   { id: 'usa', name: '美国', flag: '🇺🇸', days: '15天', desc: '美西自驾·纽约都市之旅', fee: '$185 起', difficulty: '难' as const, image: '/images/usa.svg' },
   { id: 'uk', name: '英国', flag: '🇬🇧', days: '12天', desc: '伦敦·爱丁堡英伦风情', fee: '£135 起', difficulty: '中' as const, image: '/images/uk.svg' },
+  { id: 'hong-kong', name: '香港', flag: '🇭🇰', days: '3-7天', desc: '港澳通行证·购物美食迪士尼', fee: '¥0 起', difficulty: '易' as const, image: '/images/hong-kong.svg' },
+  { id: 'taiwan', name: '台湾', flag: '🇨🇳', days: '5-10天', desc: '入台证·阿里山日月潭垦丁', fee: '¥0 起', difficulty: '易' as const, image: '/images/taiwan.svg' },
 ]
 
