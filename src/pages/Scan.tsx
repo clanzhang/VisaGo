@@ -479,7 +479,11 @@ export default function Scan() {
 
       console.log('[Scan] handleGenerate tripData=', tripData)
       const prompt = `根据以下用户信息，生成${docName}。要求：正式、符合签证申请规范、中英文各一版。\n\n用户信息：\n${info}\n\n申请：${country} ${visaType}${tripSection}`
-      const content = await kimiChat(prompt)
+      // 调试日志：打印生成参数与 prompt 长度
+      console.log('[Scan] 生成参数:', { country, visaType, docType, userProfile: profile, tripData })
+      console.log('[Scan] 生成 prompt 长度:', prompt.length, '字符')
+      // 生成材料（尤其含行程明细）用 32k 模型，避免 8k token 超限
+      const content = await kimiChat(prompt, 'moonshot-v1-32k')
       console.log('[Scan] 生成完成，长度:', content.length)
       setGenerated(content)
     } catch (e) {

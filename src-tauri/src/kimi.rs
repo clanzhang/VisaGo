@@ -92,19 +92,29 @@ pub async fn chat(messages: Vec<ChatMessage>, options: ChatOptions) -> Result<St
         .json(&req)
         .send()
         .await
-        .map_err(|e| format!("Kimi 请求失败: {e}"))?;
+        .map_err(|e| {
+            println!("=== Kimi 请求网络错误: {e} ===");
+            format!("Kimi 请求失败: {e}")
+        })?;
 
     let status = res.status();
     if !status.is_success() {
         let body = res.text().await.unwrap_or_default();
+        println!("=== Kimi 返回错误 {status}: {body} ===");
         return Err(format!("Kimi 返回错误 {status}: {body}"));
     }
 
-    let data: ChatResponse = res.json().await.map_err(|e| format!("Kimi 响应解析失败: {e}"))?;
+    let data: ChatResponse = res.json().await.map_err(|e| {
+        println!("=== Kimi 响应解析失败: {e} ===");
+        format!("Kimi 响应解析失败: {e}")
+    })?;
     data.choices
         .first()
         .map(|c| c.message.content.clone())
-        .ok_or_else(|| "Kimi 返回内容为空".to_string())
+        .ok_or_else(|| {
+            println!("=== Kimi 返回内容为空 ===");
+            "Kimi 返回内容为空".to_string()
+        })
 }
 
 /// 调用 Kimi 视觉模型（moonshot-v1-8k-vision-preview）识别图片

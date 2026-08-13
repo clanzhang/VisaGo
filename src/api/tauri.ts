@@ -186,8 +186,8 @@ export function loadProfile(): Promise<UserProfile | null> {
 
 // ===== Kimi =====
 
-export function kimiChat(prompt: string): Promise<string> {
-  return invoke<string>('kimi_chat', { prompt })
+export function kimiChat(prompt: string, model?: string): Promise<string> {
+  return invoke<string>('kimi_chat', { prompt, model: model ?? null })
 }
 
 // ===== PDF =====

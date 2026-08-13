@@ -53,6 +53,10 @@ pub(crate) async fn ai_chat(
     messages: Vec<ChatMessageDto>,
     options: Option<ChatOptionsDto>,
 ) -> Result<AiChatResponse, String> {
+    println!("=== ai_chat 收到 messages 数: {} ===", messages.len());
+    for (i, m) in messages.iter().enumerate() {
+        println!("=== ai_chat message[{}] role={}, content前200字: {} ===", i, m.role, m.content.chars().take(200).collect::<String>());
+    }
     let msgs = messages
         .into_iter()
         .map(|m| kimi::ChatMessage {
@@ -61,7 +65,8 @@ pub(crate) async fn ai_chat(
         })
         .collect::<Vec<_>>();
     let opts = options.unwrap_or_default();
-    let content = kimi::chat(
+    println!("=== ai_chat model: {:?}, max_tokens: {:?} ===", opts.model, opts.max_tokens);
+    let result = kimi::chat(
         msgs,
         kimi::ChatOptions {
             model: opts.model,
@@ -70,25 +75,43 @@ pub(crate) async fn ai_chat(
             response_format: opts.response_format,
         },
     )
-    .await?;
-    Ok(AiChatResponse { content })
+    .await;
+    match &result {
+        Ok(content) => println!("=== ai_chat Kimi 返回 (前1000字): {} ===", content.chars().take(1000).collect::<String>()),
+        Err(e) => println!("=== ai_chat Kimi 错误: {} ===", e),
+    }
+    Ok(AiChatResponse { content: result? })
 }
 
-/// IPC: kimi_chat — 简单版 Kimi 对话（单 prompt）
+/// IPC: kimi_chat — 简单版 Kimi 对话（单 prompt，可指定模型）
 #[tauri::command]
-pub(crate) async fn kimi_chat(prompt: String) -> Result<String, String> {
-    kimi::chat(
-        vec![kimi::ChatMessage {
-            role: "user".to_string(),
-            content: prompt,
-        }],
+pub(crate) async fn kimi_chat(prompt: String, model: Option<String>) -> Result<String, String> {
+    println!("=== 生成请求 prompt 长度: {} 字符 ===", prompt.chars().count());
+    println!("=== 生成请求 model: {:?} ===", model);
+    println!("=== 生成请求 prompt 前500字: {} ===", prompt.chars().take(500).collect::<String>());
+    let messages = vec![kimi::ChatMessage {
+        role: "user".to_string(),
+        content: prompt,
+    }];
+    let result = kimi::chat(
+        messages,
         kimi::ChatOptions {
+            model,
             temperature: Some(0.3),
-            max_tokens: Some(4000),
+            max_tokens: Some(6000),
             ..Default::default()
         },
     )
-    .await
+    .await;
+    match &result {
+        Ok(resp) => {
+            println!("=== Kimi 返回 (前1000字): {} ===", resp.chars().take(1000).collect::<String>());
+        }
+        Err(e) => {
+            println!("=== Kimi 错误: {} ===", e);
+        }
+    }
+    result
 }
 
 // ===== 文件扫描与识别 =====
