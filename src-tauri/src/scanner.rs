@@ -69,7 +69,12 @@ pub fn read_text_content(path: &Path) -> String {
 pub fn extract_pdf_text(path: &str) -> Result<String, String> {
     println!("[extract] 开始提取 PDF 文本: {path}");
     let data = std::fs::read(path).map_err(|e| format!("读取 PDF 失败: {e}"))?;
-    let text = pdf_extract::extract_text_from_mem(&data).map_err(|e| {
+    extract_pdf_text_from_bytes(&data)
+}
+
+/// 从 PDF 字节提取文本（供文本型 PDF 识别与测试验证）
+pub fn extract_pdf_text_from_bytes(data: &[u8]) -> Result<String, String> {
+    let text = pdf_extract::extract_text_from_mem(data).map_err(|e| {
         println!("[extract] PDF 文本提取失败: {e}");
         format!("PDF 文本提取失败: {e}")
     })?;
