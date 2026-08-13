@@ -25,10 +25,10 @@ export const COUNTRY_LIST: CountryMeta[] = [
   { id: 'maldives', zh: '马尔代夫', en: 'Maldives', flag: '🇲🇻', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2023起互免，落地免费，停留30天' },
   { id: 'kazakhstan', zh: '哈萨克斯坦', en: 'Kazakhstan', flag: '🇰🇿', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2023起互免，每次停留不超过30天' },
   { id: 'uzbekistan', zh: '乌兹别克斯坦', en: 'Uzbekistan', flag: '🇺🇿', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024起互免，每次停留不超过30天' },
-  { id: 'georgia', zh: '格鲁吉亚', en: 'Georgia', flag: '🇬🇪', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024起互免，每次停留不超过30天' },
-  { id: 'azerbaijan', zh: '阿塞拜疆', en: 'Azerbaijan', flag: '🇦🇿', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2025起互免，每次停留不超过30天' },
-  { id: 'armenia', zh: '亚美尼亚', en: 'Armenia', flag: '🇦🇲', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '互免签证，180天内累计不超过90天' },
-  { id: 'belarus', zh: '白俄罗斯', en: 'Belarus', flag: '🇧🇾', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '互免签证，每次停留不超过30天' },
+  { id: 'georgia', zh: '格鲁吉亚', en: 'Georgia', flag: '🇬🇪', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '2024起互免，每次停留不超过30天' },
+  { id: 'azerbaijan', zh: '阿塞拜疆', en: 'Azerbaijan', flag: '🇦🇿', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '2025起互免，每次停留不超过30天' },
+  { id: 'armenia', zh: '亚美尼亚', en: 'Armenia', flag: '🇦🇲', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '互免签证，180天内累计不超过90天' },
+  { id: 'belarus', zh: '白俄罗斯', en: 'Belarus', flag: '🇧🇾', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '互免签证，每次停留不超过30天' },
   { id: 'thailand', zh: '泰国', en: 'Thailand', flag: '🇹🇭', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024.3起永久互免，每次停留不超过30天' },
   { id: 'singapore', zh: '新加坡', en: 'Singapore', flag: '🇸🇬', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024.2起互免，每次停留不超过30天' },
   { id: 'malaysia', zh: '马来西亚', en: 'Malaysia', flag: '🇲🇾', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2025起互免，每次停留不超过30天' },
@@ -54,7 +54,7 @@ export const COUNTRY_LIST: CountryMeta[] = [
 
   // ═════════════ 二、单方面免签（18） ═════════════
   // ---- 亚洲（5） ----
-  { id: 'turkey', zh: '土耳其', en: 'Turkey', flag: '🇹🇷', visaType: '单方面免签', difficulty: 'easy', region: '亚洲', desc: '2026.1起单方面免签，180天内累计不超过90天' },
+  { id: 'turkey', zh: '土耳其', en: 'Turkey', flag: '🇹🇷', visaType: '单方面免签', difficulty: 'easy', region: '欧洲', desc: '2026.1起单方面免签，180天内累计不超过90天' },
   { id: 'korea-jeju', zh: '韩国（济州岛）', en: 'South Korea (Jeju)', flag: '🇰🇷', visaType: '单方面免签', difficulty: 'easy', region: '亚洲', desc: '济州岛免签30天，mainland仍需签证' },
   { id: 'iran', zh: '伊朗', en: 'Iran', flag: '🇮🇷', visaType: '单方面免签', difficulty: 'easy', region: '亚洲', desc: '2019起单方面免签，停留21天' },
   { id: 'pakistan', zh: '巴基斯坦', en: 'Pakistan', flag: '🇵🇰', visaType: '单方面免签', difficulty: 'easy', region: '亚洲', desc: '2024新增单方面免签，停留30天' },
