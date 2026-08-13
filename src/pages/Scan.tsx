@@ -57,6 +57,7 @@ const FIELD_SPECS = [
   { key: 'phone', label: '手机号', required: false },
   { key: 'address', label: '家庭住址', required: false },
   { key: 'home_province', label: '户籍省份', required: true },
+  { key: 'passport_issued_in', label: '护照签发地', required: false },
   { key: 'occupation', label: '职业', required: true },
   { key: 'company', label: '工作单位', required: false },
   { key: 'position', label: '职位', required: false },
@@ -174,7 +175,33 @@ export default function Scan() {
       // 更新卡片字段（snake_case，与 Rust UserProfile 一致）
       const target = cardsNow.find((c) => c.id === id)
       if (!target) return
-      const fields: Record<string, unknown> = { ...profile }
+      // 规范化字段：确保 key 统一为英文 snake_case（中文 key / 别名 → 英文）
+      const fields: Record<string, unknown> = {}
+      const normMap: Record<string, string> = {
+        '姓名': 'name', '护照号': 'passport_number', '身份证号': 'id_number',
+        '国籍': 'nationality', '出生日期': 'birth_date', '性别': 'gender',
+        '手机号': 'phone', '家庭住址': 'address', '户籍省份': 'home_province',
+        '户籍': 'home_province', '护照签发地': 'passport_issued_in', '签发地': 'passport_issued_in',
+        '职业': 'occupation', '工作单位': 'company', '公司': 'company',
+        '职位': 'position', '月薪': 'salary', '薪资': 'salary',
+      }
+      for (const [k, v] of Object.entries(profile)) {
+        const canon = normMap[k] ?? k
+        if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== 'null') {
+          fields[canon] = v
+        }
+      }
+      // occupation 中文 → 英文枚举值（在职/学生/退休/自由职业）
+      if (fields['occupation']) {
+        const occMap: Record<string, string> = {
+          '在职': 'employed', '在职人员': 'employed', 'employed': 'employed',
+          '学生': 'student', 'student': 'student',
+          '退休': 'retired', '退休人员': 'retired', 'retired': 'retired',
+          '自由职业': 'freelance', '自由职业者': 'freelance', 'freelance': 'freelance',
+        }
+        const rawOcc = String(fields['occupation']).trim()
+        fields['occupation'] = occMap[rawOcc] ?? rawOcc
+      }
       // 姓名兜底
       if (!fields['name'] && cardName) fields['name'] = cardName
       await saveProfileCard({ ...target, fields })
@@ -400,6 +427,29 @@ export default function Scan() {
       monthly_salary: 'salary',
       work_unit: 'company',
       address: 'address',
+      // 中文 key 兜底（Kimi 可能返回中文）
+      姓名: 'name',
+      护照号: 'passport_number',
+      身份证号: 'id_number',
+      国籍: 'nationality',
+      出生日期: 'birth_date',
+      性别: 'gender',
+      手机号: 'phone',
+      家庭住址: 'address',
+      户籍省份: 'home_province',
+      户籍: 'home_province',
+      护照签发地: 'passport_issued_in',
+      签发地: 'passport_issued_in',
+      职业: 'occupation',
+      工作单位: 'company',
+      公司: 'company',
+      职位: 'position',
+      月薪: 'salary',
+      薪资: 'salary',
+      // passport_issued_in 别名
+      passport_issue_place: 'passport_issued_in',
+      issue_place: 'passport_issued_in',
+      issued_in: 'passport_issued_in',
     }
     let trip: TripData | null = null
     for (const item of items) {
