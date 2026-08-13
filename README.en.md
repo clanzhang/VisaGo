@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.9-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.10-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,16 @@ visago/
 
 ## 📦 Changelog
 
-### v0.0.9 (Current)
+### v0.0.10 (Current)
+
+- ✅ Official visa fee data (11 countries, multi-currency, effective dates & sources)
+- ✅ Japan visa fee updated to official rates (single ¥715 / double ¥1430 / multi ¥1430)
+- ✅ Encyclopedia NZ/Schengen materials upgrade (translation tags, required/optional groups, PDF export, collapse)
+- ✅ Vision-based material recognition (scanned PDF → image → Kimi Vision)
+- ✅ PDF export via printpdf (CJK fonts + font subsetting, fixes blank output)
+- ✅ Window size adjusted (1100×720, min 900×600)
+
+### v0.0.9
 
 - ✅ Multi-profile cards: each scan saves as a named profile card; switch / create / delete
 - ✅ Assistant auto-loads the active profile card to prefill application info
@@ -145,7 +154,7 @@ visago/
 - ✅ Application progress tracking
 - ✅ Visa comparison
 
-### v0.0.9 (Planned)
+### v0.0.10 (Planned)
 
 - 🔜 More countries visa data
 - 🔜 AI chat assistant widget

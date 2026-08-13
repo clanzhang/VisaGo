@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.9-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.0.10-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,16 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.0.9 (当前版本)
+### v0.0.10 (当前版本)
+
+- ✅ 官方签证费用数据（11 国多币种，含生效日期与来源）
+- ✅ 日本签证费更新为官方数据（单次 ¥715 / 两次 ¥1430 / 多次 ¥1430）
+- ✅ 签证百科新西兰/申根材料升级（翻译标注、必交/选交分组、导出 PDF、折叠）
+- ✅ 材料扫描视觉识别（扫描件 PDF 转图片 + Kimi Vision）
+- ✅ PDF 导出改用 printpdf（中文字体 + 字体子集化，修复空白）
+- ✅ 窗口尺寸调整（1100×720，min 900×600）
+
+### v0.0.9
 
 - ✅ 多资料卡管理：每次扫描保存为一张资料卡（可命名），支持切换/新建/删除
 - ✅ 申请助手自动读取活跃资料卡，一键填入申请信息
@@ -145,7 +154,7 @@ visago/
 - ✅ 申请进度追踪
 - ✅ 签证对比查询
 
-### v0.0.9 (计划中)
+### v0.0.10 (计划中)
 
 - 🔜 接入更多国家签证数据
 - 🔜 AI 智能问答浮窗

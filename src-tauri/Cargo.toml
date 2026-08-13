@@ -1,6 +1,6 @@
 [package]
 name = "visago"
-version = "0.0.9"
+version = "0.0.10"
 description = "VisaGo 签证助手 — 一站式签证申请、进度追踪与资料生成工具"
 authors = ["VisaGo"]
 edition = "2021"
