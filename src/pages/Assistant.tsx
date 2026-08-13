@@ -94,8 +94,8 @@ export default function Assistant() {
   const visaType = country?.visaTypes.find((v) => v.id === selectedVisaTypeId) ?? null
   const extra = visaType ? getVisaExtra(country!.id, visaType.id) : undefined
 
-  // 签证类型筛选 tab：全部 / 互免签证 / 单方面免签 / 落地签 / 电子签 / 需签证 / 需通行证
-  const REGION_TABS = ['', '互免签证', '单方面免签', '落地签', '电子签', '需签证', '需通行证'] as const
+  // 签证类型筛选 tab：全部 / 互免签证 / 单方面免签 / 落地签 / 电子签 / 需通行证
+  const REGION_TABS = ['', '互免签证', '单方面免签', '落地签', '电子签', '需通行证'] as const
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase()

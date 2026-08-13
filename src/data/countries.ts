@@ -114,7 +114,6 @@ export const VISA_TYPE_STYLE: Record<Country['visaType'], { label: string; cls: 
   单方面免签: { label: '单方面免签', cls: 'bg-green-500/10 text-green-600' },
   落地签: { label: '落地签', cls: 'bg-[#1460A4]/10 text-[#1460A4]' },
   电子签: { label: '电子签', cls: 'bg-[#7B2FBE]/10 text-[#7B2FBE]' },
-  需签证: { label: '需签证', cls: 'bg-ink/5 text-ink/60' },
   需通行证: { label: '需通行证', cls: 'bg-orange-500/10 text-orange-600' },
 }
 

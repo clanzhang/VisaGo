@@ -1,8 +1,8 @@
 // data/country-list.ts — 88 国签证百科元数据（按签证类型分组）
-// visaType: 互免签证 / 单方面免签 / 落地签 / 电子签 / 需签证
+// visaType: 互免签证 / 单方面免签 / 落地签 / 电子签 / 需通行证
 // difficulty: easy(容易) / medium(中等) / hard(困难)（用于卡片徽章）
 
-export type VisaTypeLabel = '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证' | '需通行证'
+export type VisaTypeLabel = '互免签证' | '单方面免签' | '落地签' | '电子签' | '需通行证'
 export type DifficultyLabel = 'easy' | 'medium' | 'hard'
 
 export interface CountryMeta {
@@ -136,5 +136,5 @@ export const COUNTRY_LIST: CountryMeta[] = [
 ]
 
 /** 分组顺序（按签证类型四大组） */
-export const VISA_TYPE_ORDER = ['互免签证', '单方面免签', '落地签', '电子签', '需签证', '需通行证'] as const
+export const VISA_TYPE_ORDER = ['互免签证', '单方面免签', '落地签', '电子签', '需通行证'] as const
 export const REGION_ORDER = ['亚洲', '欧洲', '美洲', '大洋洲', '非洲']
