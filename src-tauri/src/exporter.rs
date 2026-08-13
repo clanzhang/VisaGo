@@ -153,6 +153,11 @@ fn make_pdf(text: &str) -> Vec<u8> {
 pub fn export_pdf(html: String, filename: String) -> Result<String, String> {
     let text = strip_html_and_markdown(&html);
     println!("[export] 提取纯文本 {} 字符", text.chars().count());
+    // 空文本保护：无内容时不导出空白页 PDF
+    if text.trim().is_empty() {
+        println!("[export] 无内容可导出（提取文本为空）");
+        return Err("没有可导出的内容".to_string());
+    }
     let pdf = make_pdf(&text);
     if pdf.is_empty() {
         return Err("PDF 生成失败".to_string());
@@ -262,5 +267,56 @@ mod tests {
         // 60 行内容生成的文件应明显大于单页测试（多页），但不要过度依赖对象计数
         let single = make_pdf("只有一行");
         assert!(pdf.len() > single.len(), "多页 PDF 应大于单页");
+    }
+
+    /// 统计 PDF 中的页面对象数量（排除 /Type/Pages 父节点）
+    fn count_pages(pdf: &[u8]) -> usize {
+        let bytes = String::from_utf8_lossy(pdf);
+        // 匹配 "/Type/Page" 但排除 "/Type/Pages"（父节点）
+        let mut count = 0;
+        let mut idx = 0;
+        let b = bytes.as_bytes();
+        while let Some(rel) = b[idx..].windows(10).position(|w| w == b"/Type/Page") {
+            let abs = idx + rel;
+            // 检查 /Type/Page 后面是否紧跟 "s"（即 /Type/Pages）
+            let is_pages = b.get(abs + 10) == Some(&b's');
+            if !is_pages {
+                count += 1;
+            }
+            idx = abs + 10;
+        }
+        count
+    }
+
+    #[test]
+    fn test_no_blank_final_page() {
+        // 少量行（远少于一页容量）→ 应只有 1 页，无空白尾页
+        let lines: Vec<String> = (0..5).map(|i| format!("第 {i} 行内容")).collect();
+        let pdf = make_pdf(&lines.join("\n"));
+        assert!(!pdf.is_empty());
+        let pages = count_pages(&pdf);
+        assert_eq!(pages, 1, "少量行应只有 1 页，实际 {} 页", pages);
+    }
+
+    #[test]
+    fn test_exact_fill_page_no_blank() {
+        // 恰好填满一页（约 48 行：A4 842pt - 上下边距 120pt = 722pt / 16pt 行高 ≈ 45 行）
+        // 45 行应刚好 1 页，46 行应 2 页；检查不产生多余空白页
+        let mut lines = Vec::new();
+        for i in 0..45 {
+            lines.push(format!("第 {i} 行，用于测试精确填充页面"));
+        }
+        let pdf45 = make_pdf(&lines.join("\n"));
+        let pages45 = count_pages(&pdf45);
+        // 45 行应 1 页（45*16=720pt，页面可用 722pt，刚好放下）
+        assert!(pages45 >= 1, "45 行应至少有 1 页");
+        assert!(pages45 <= 1, "45 行不应超过 1 页，实际 {} 页", pages45);
+
+        // 46 行应翻到第 2 页，但不应有第 3 页
+        let mut lines46 = lines.clone();
+        lines46.push("第 45 行，触发翻页".to_string());
+        let pdf46 = make_pdf(&lines46.join("\n"));
+        let pages46 = count_pages(&pdf46);
+        assert_eq!(pages46, 2, "46 行应恰好 2 页，实际 {} 页", pages46);
     }
 }
