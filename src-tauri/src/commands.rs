@@ -305,6 +305,13 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
         file_text.as_ref().map(|t| t.chars().count()).unwrap_or(0),
         content_b64.is_some());
 
+    // 针对多信息文件（户口本/银行流水）打印识别提示日志
+    if name.contains("户口本") || name.contains("户籍") {
+        println!("[recognize] 识别提示: 该文件是户口本，提取与户主关系为'子'的申请人信息");
+    } else if name.contains("银行流水") || name.contains("流水") {
+        println!("[recognize] 识别提示: 该文件是银行流水，客户名为申请人本人");
+    }
+
     let recognized = match recognizer::recognize_file(&path, &name, file_text, content_b64).await {
         Ok(r) => {
             println!("[recognize] Kimi 识别成功: category={}, fields={}", r.category, r.fields);

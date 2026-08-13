@@ -12,6 +12,8 @@ pub struct RecognizedDoc {
 
 /// 完整字段提取 Prompt：要求 Kimi 读取文件完整文本，输出标准字段 JSON
 const RECOGNIZE_PROMPT: &str = r#"你是一个签证材料识别专家。以下是用户文件的完整文本内容。
+如果文件是户口本，优先提取与户主关系为'子'或'女'的申请人信息，不要提取户主或配偶的信息。
+如果文件包含多人信息（如户口本），识别申请人本人的资料，忽略其他家庭成员。
 请从中提取所有可用的个人信息，输出严格 JSON 格式：
 {
   "name": "姓名",
@@ -49,7 +51,19 @@ const RECOGNIZE_PROMPT: &str = r#"你是一个签证材料识别专家。以下�
 1. 能提取的字段填真实值，行程信息从文件文本中逐字提取，不要编造
 2. 文本中没有的字段填 null
 3. 不要编造数据
-4. 只输出纯 JSON，不要包裹在 markdown 代码块（```json）中，不要加任何解释文字或前后缀"#;
+4. 只输出纯 JSON，不要包裹在 markdown 代码块（```json）中，不要加任何解释文字或前后缀
+5. 多人的文件中（如户口本），以申请人为准，不要混淆"#;
+
+/// 根据文件名返回针对性识别提示（户口本/银行流水等多信息文件）
+fn file_type_hint(name: &str) -> String {
+    if name.contains("户口本") || name.contains("户籍") {
+        return "该文件是户口本，包含多人信息。请提取与户主关系为'子'的申请人信息，不要提取户主或配偶的信息。".to_string();
+    }
+    if name.contains("银行流水") || name.contains("流水") {
+        return "该文件是银行流水，客户名为申请人本人。".to_string();
+    }
+    String::new()
+}
 
 /// 识别单个文件（文件名 + 文件文本内容 + 可选图片 base64 调 Kimi）
 pub async fn recognize_file(
@@ -63,8 +77,10 @@ pub async fn recognize_file(
         if b64.len() >= 3_000_000 {
             println!("=== 图片 base64 过大 ({}), 跳过识图，回退文件名识别 ===", b64.len());
             // 过大则用文件名提示走文本模型
+            let hint = file_type_hint(name);
+            let hint_text = if hint.is_empty() { String::new() } else { format!("【识别提示】{hint}\n") };
             let msg = format!(
-                "文件名称：{name}\n文件路径：{path}\n（图片过大无法识别，请根据文件名「{name}」判断文件类型，尽力提取字段；无法确定则 category 填\"其他\"，fields 全部填 null）"
+                "文件名称：{name}\n文件路径：{path}\n{hint_text}（图片过大无法识别，请根据文件名「{name}」判断文件类型，尽力提取字段；无法确定则 category 填\"其他\"，fields 全部填 null）"
             );
             kimi::chat(
                 vec![
@@ -89,8 +105,10 @@ pub async fn recognize_file(
         } else {
             // 正常：视觉模型 + 图片
             println!("=== 使用视觉模型识别图片 (base64 长度 {}) ===", b64.len());
+            let hint = file_type_hint(name);
+            let hint_text = if hint.is_empty() { String::new() } else { format!("【识别提示】{hint}\n") };
             let text = format!(
-                "文件名称：{name}\n文件路径：{path}\n{}\n请识别图片中的签证材料内容，提取字段。",
+                "文件名称：{name}\n文件路径：{path}\n{hint_text}{}\n请识别图片中的签证材料内容，提取字段。",
                 file_text.as_deref().unwrap_or("")
             );
             kimi::chat_vision(RECOGNIZE_PROMPT, &text, b64).await?
@@ -98,6 +116,11 @@ pub async fn recognize_file(
     } else {
         // 文本类文件（PDF 有文本层 / DOCX）：走文本模型
         let mut msg = format!("文件名称：{name}\n文件路径：{path}\n");
+        // 针对多信息文件（户口本/银行流水）加识别提示
+        let hint = file_type_hint(name);
+        if !hint.is_empty() {
+            msg.push_str(&format!("【识别提示】{hint}\n"));
+        }
         println!("=== 文件路径: {} ===", path);
 
         if let Some(text) = &file_text {
