@@ -207,11 +207,20 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
                     file_text = Some(text);
                 }
                 Ok(_) => {
-                    // 扫描件 PDF（无文本层）：回退为"仅文件名"，让 Kimi 基于文件名+常识尽力识别
-                    println!("[recognize] PDF 无文本层（扫描件），回退为文件名识别");
-                    file_text = Some(format!(
-                        "（这是一个扫描件/图片型 PDF，无法直接提取文本。请根据文件名「{name}」和你的常识判断该文件类型，并尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
-                    ));
+                    // 扫描件 PDF（无文本层）：用 sips 渲染为 PNG 图片传给 Kimi 识图
+                    println!("[recognize] PDF 无文本层（扫描件），尝试 sips 渲染为图片");
+                    match crate::scanner::render_pdf_to_png(&path) {
+                        Ok(b64) => {
+                            println!("[recognize] sips 渲染 PDF 成功，图片 base64 长度 {}", b64.len());
+                            content_b64 = Some(b64);
+                        }
+                        Err(e) => {
+                            println!("[recognize] sips 渲染 PDF 失败: {e}，回退为文件名识别");
+                            file_text = Some(format!(
+                                "（这是一个扫描件/图片型 PDF，无法直接提取文本。请根据文件名「{name}」和你的常识判断该文件类型，并尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
+                            ));
+                        }
+                    }
                 }
                 Err(e) => {
                     println!("[recognize] PDF 文本提取失败: {e}（将尝试仅用文件名识别）");

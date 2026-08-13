@@ -4,7 +4,9 @@ use std::time::Duration;
 
 const BASE_URL: &str = "https://api.moonshot.cn/v1/chat/completions";
 const MODEL: &str = "moonshot-v1-8k";
-const TIMEOUT: Duration = Duration::from_secs(30);
+/// 视觉模型：支持图片理解（用于识别扫描件 PDF / 图片类材料）
+const VISION_MODEL: &str = "moonshot-v1-8k-vision-preview";
+const TIMEOUT: Duration = Duration::from_secs(60);
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
@@ -103,4 +105,63 @@ pub async fn chat(messages: Vec<ChatMessage>, options: ChatOptions) -> Result<St
         .first()
         .map(|c| c.message.content.clone())
         .ok_or_else(|| "Kimi 返回内容为空".to_string())
+}
+
+/// 调用 Kimi 视觉模型（moonshot-v1-8k-vision-preview）识别图片
+/// system 为系统提示词，text 为附加文本（如文件名），image_b64 为图片 base64
+pub async fn chat_vision(
+    system: &str,
+    text: &str,
+    image_b64: &str,
+) -> Result<String, String> {
+    let key = api_key()?;
+    let client = reqwest::Client::builder()
+        .timeout(TIMEOUT)
+        .build()
+        .map_err(|e| format!("HTTP 客户端初始化失败: {e}"))?;
+
+    // 多模态消息：content 为数组，含 text 与 image_url
+    let image_data_url = format!("data:image/png;base64,{image_b64}");
+    let messages = serde_json::json!([
+        {
+            "role": "system",
+            "content": system
+        },
+        {
+            "role": "user",
+            "content": [
+                { "type": "text", "text": text },
+                { "type": "image_url", "image_url": { "url": image_data_url } }
+            ]
+        }
+    ]);
+
+    let req = serde_json::json!({
+        "model": VISION_MODEL,
+        "messages": messages,
+        "temperature": 0.1,
+        "max_tokens": 4000,
+        "response_format": { "type": "json_object" }
+    });
+
+    let res = client
+        .post(BASE_URL)
+        .header("Authorization", format!("Bearer {key}"))
+        .header("Content-Type", "application/json")
+        .json(&req)
+        .send()
+        .await
+        .map_err(|e| format!("Kimi 视觉请求失败: {e}"))?;
+
+    let status = res.status();
+    if !status.is_success() {
+        let body = res.text().await.unwrap_or_default();
+        return Err(format!("Kimi 视觉返回错误 {status}: {body}"));
+    }
+
+    let data: ChatResponse = res.json().await.map_err(|e| format!("Kimi 视觉响应解析失败: {e}"))?;
+    data.choices
+        .first()
+        .map(|c| c.message.content.clone())
+        .ok_or_else(|| "Kimi 视觉返回内容为空".to_string())
 }

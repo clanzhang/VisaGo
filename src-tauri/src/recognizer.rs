@@ -58,53 +58,83 @@ pub async fn recognize_file(
     file_text: Option<String>,
     content_b64: Option<String>,
 ) -> Result<RecognizedDoc, String> {
-    let mut msg = format!("文件名称：{name}\n文件路径：{path}\n");
-    println!("文件路径: {}", path);
-
-    // 优先传文本内容（PDF/DOCX 提取的真实文本）
-    if let Some(text) = &file_text {
-        let text = text.trim();
-        if !text.is_empty() {
-            println!("提取文本长度: {}", text.len());
-            // 安全截取前 200 字符（避免多字节 UTF-8 边界 panic）
-            let preview: String = text.chars().take(200).collect();
-            println!("提取文本前200字: {}", preview);
-            msg.push_str(&format!("文件文本内容：\n{text}\n"));
+    let raw = if let Some(b64) = &content_b64 {
+        // 图片类 / 扫描件 PDF 渲染图：走视觉模型识图
+        if b64.len() >= 3_000_000 {
+            println!("=== 图片 base64 过大 ({}), 跳过识图，回退文件名识别 ===", b64.len());
+            // 过大则用文件名提示走文本模型
+            let msg = format!(
+                "文件名称：{name}\n文件路径：{path}\n（图片过大无法识别，请根据文件名「{name}」判断文件类型，尽力提取字段；无法确定则 category 填\"其他\"，fields 全部填 null）"
+            );
+            kimi::chat(
+                vec![
+                    kimi::ChatMessage {
+                        role: "system".to_string(),
+                        content: RECOGNIZE_PROMPT.to_string(),
+                    },
+                    kimi::ChatMessage {
+                        role: "user".to_string(),
+                        content: msg,
+                    },
+                ],
+                kimi::ChatOptions {
+                    model: None,
+                    temperature: Some(0.1),
+                    max_tokens: Some(4000),
+                    response_format: Some(serde_json::json!({ "type": "json_object" })),
+                    ..Default::default()
+                },
+            )
+            .await?
         } else {
-            println!("提取文本长度: 0（扫描件/图片型文件）");
-            msg.push_str("文件文本内容：<空>（可能是扫描件/图片型文件）\n");
+            // 正常：视觉模型 + 图片
+            println!("=== 使用视觉模型识别图片 (base64 长度 {}) ===", b64.len());
+            let text = format!(
+                "文件名称：{name}\n文件路径：{path}\n{}\n请识别图片中的签证材料内容，提取字段。",
+                file_text.as_deref().unwrap_or("")
+            );
+            kimi::chat_vision(RECOGNIZE_PROMPT, &text, b64).await?
         }
-    }
+    } else {
+        // 文本类文件（PDF 有文本层 / DOCX）：走文本模型
+        let mut msg = format!("文件名称：{name}\n文件路径：{path}\n");
+        println!("=== 文件路径: {} ===", path);
 
-    // 图片类：追加 base64（Kimi 支持图片理解）
-    if let Some(b64) = content_b64 {
-        if b64.len() < 3_000_000 {
-            msg.push_str(&format!("文件图片(base64)：{b64}\n"));
+        if let Some(text) = &file_text {
+            let text = text.trim();
+            if !text.is_empty() {
+                println!("=== 提取文本长度: {} ===", text.len());
+                println!("=== 文本内容: {} ===", text);
+                msg.push_str(&format!("文件文本内容：\n{text}\n"));
+            } else {
+                println!("=== 提取文本长度: 0（扫描件/图片型文件）===");
+                msg.push_str("文件文本内容：<空>（可能是扫描件/图片型文件）\n");
+            }
         }
-    }
 
-    let raw = kimi::chat(
-        vec![
-            kimi::ChatMessage {
-                role: "system".to_string(),
-                content: RECOGNIZE_PROMPT.to_string(),
+        kimi::chat(
+            vec![
+                kimi::ChatMessage {
+                    role: "system".to_string(),
+                    content: RECOGNIZE_PROMPT.to_string(),
+                },
+                kimi::ChatMessage {
+                    role: "user".to_string(),
+                    content: msg,
+                },
+            ],
+            kimi::ChatOptions {
+                model: None,
+                temperature: Some(0.1),
+                max_tokens: Some(4000),
+                response_format: Some(serde_json::json!({ "type": "json_object" })),
+                ..Default::default()
             },
-            kimi::ChatMessage {
-                role: "user".to_string(),
-                content: msg,
-            },
-        ],
-        kimi::ChatOptions {
-            model: None,
-            temperature: Some(0.1),
-            max_tokens: Some(4000),
-            response_format: Some(serde_json::json!({ "type": "json_object" })),
-            ..Default::default()
-        },
-    )
-    .await?;
+        )
+        .await?
+    };
 
-    println!("Kimi 返回: {}", raw);
+    println!("=== Kimi 返回: {} ===", raw);
 
     // 提取 JSON：先尝试整体解析，失败则 strip markdown 代码块再解析
     let json: serde_json::Value = {

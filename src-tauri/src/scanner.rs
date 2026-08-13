@@ -82,6 +82,32 @@ pub fn extract_pdf_text(path: &str) -> Result<String, String> {
     Ok(trimmed)
 }
 
+/// 扫描件 PDF（无文本层）：用 macOS sips 渲染首页为 PNG，返回 base64
+/// 供 Kimi 识图。sips 为 macOS 自带工具，无需额外系统依赖。
+pub fn render_pdf_to_png(path: &str) -> Result<String, String> {
+    use std::process::Command;
+    // 输出到临时文件
+    let out = std::env::temp_dir().join(format!("visago_render_{}.png", std::process::id()));
+    let out_str = out.to_string_lossy().to_string();
+
+    let status = Command::new("sips")
+        .args(["-s", "format", "png", path, "--out", &out_str])
+        .output()
+        .map_err(|e| format!("调用 sips 失败: {e}（sips 仅 macOS 可用）"))?;
+
+    if !status.status.success() {
+        let stderr = String::from_utf8_lossy(&status.stderr).to_string();
+        return Err(format!("sips 渲染失败: {}", stderr.trim()));
+    }
+
+    let bytes = std::fs::read(&out_str).map_err(|e| format!("读取渲染结果失败: {e}"))?;
+    // 清理临时文件
+    let _ = std::fs::remove_file(&out_str);
+
+    use base64::Engine;
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
 /// 从 DOCX 提取文本（docx 是 zip，解压 word/document.xml 并剥离 XML 标签）
 pub fn extract_docx_text(path: &str) -> Result<String, String> {
     println!("[extract] 开始提取 DOCX 文本: {path}");

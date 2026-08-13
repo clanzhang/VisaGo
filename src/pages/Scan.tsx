@@ -405,6 +405,9 @@ export default function Scan() {
     for (const item of items) {
       if (item.status !== 'done') continue
       const fields = (item.fields ?? {}) as Record<string, unknown>
+      // 调试：打印 Kimi 返回的字段 keys，对比前端期望
+      console.log('[Scan] 文件识别返回 keys:', item.name, Object.keys(fields))
+      console.log('[Scan] 前端期望 keys:', fieldKeys)
       // 提取行程数据（识别为行程单的文件）
       const rawTrip = fields['trip']
       if (rawTrip && typeof rawTrip === 'object' && !Array.isArray(rawTrip)) {
