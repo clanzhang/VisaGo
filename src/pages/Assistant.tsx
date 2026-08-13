@@ -48,6 +48,8 @@ export default function Assistant() {
   const { addApplication } = useTrackerStore()
   const [search, setSearch] = useState('')
   const [added, setAdded] = useState(false)
+  // 地区筛选 tab（'' = 全部）
+  const [regionTab, setRegionTab] = useState('')
   // 活跃资料卡（从材料扫描保存，自动读取）
   const [activeCard, setActiveCard] = useState<UserProfile | null>(null)
   const [activeCardName, setActiveCardName] = useState('')
@@ -92,10 +94,25 @@ export default function Assistant() {
   const visaType = country?.visaTypes.find((v) => v.id === selectedVisaTypeId) ?? null
   const extra = visaType ? getVisaExtra(country!.id, visaType.id) : undefined
 
-  const filtered = useMemo(
-    () => countries.filter((c) => c.name.zh.includes(search) || c.name.en.toLowerCase().includes(search.toLowerCase())),
-    [search],
-  )
+  // 地区筛选 tab：全部 / 亚洲 / 欧洲 / 美洲 / 大洋洲 / 非洲 / 港澳台
+  const REGION_TABS = ['', '亚洲', '欧洲', '美洲', '大洋洲', '非洲', '港澳台'] as const
+
+  const filtered = useMemo(() => {
+    const kw = search.trim().toLowerCase()
+    return countries.filter((c) => {
+      // 先按 tab 筛 region（港澳台单独处理）
+      if (regionTab === '港澳台') {
+        if (c.id !== 'hong-kong' && c.id !== 'taiwan') return false
+      } else if (regionTab && c.region !== regionTab) {
+        return false
+      }
+      // 再按 search 过滤名称
+      if (kw) {
+        return c.name.zh.includes(kw) || c.name.en.toLowerCase().includes(kw)
+      }
+      return true
+    })
+  }, [search, regionTab])
 
   const totalFees = useMemo(() => {
     if (!visaType) return 0
@@ -150,8 +167,24 @@ export default function Assistant() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('assistant.searchPlaceholder')}
-            className="mb-5 w-full max-w-sm rounded-full border border-ink/8 bg-[#F9F9F6] px-5 py-2.5 text-sm outline-none placeholder:text-ink/35 focus:border-primary/40"
+            className="mb-4 w-full max-w-sm rounded-full border border-ink/8 bg-[#F9F9F6] px-5 py-2.5 text-sm outline-none placeholder:text-ink/35 focus:border-primary/40"
           />
+          {/* 地区筛选 tab */}
+          <div className="mb-5 flex flex-wrap gap-2">
+            {REGION_TABS.map((r) => (
+              <button
+                key={r || 'all'}
+                onClick={() => setRegionTab(r)}
+                className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-150 ${
+                  regionTab === r
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-ink/10 text-ink/55 hover:border-ink/25 hover:text-ink'
+                }`}
+              >
+                {r || '全部'}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((c) => {
               const active = c.id === selectedCountryId

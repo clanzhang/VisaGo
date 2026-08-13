@@ -82,13 +82,15 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
 }
 
 function buildCountry(meta: CountryMeta): Country {
+  // 港澳台单独分组
+  const region = meta.id === 'hong-kong' || meta.id === 'taiwan' ? '港澳台' : meta.region
   return {
     id: meta.id,
     name: { zh: meta.zh, en: meta.en },
     flag: meta.flag,
     difficulty: meta.difficulty,
     visaType: meta.visaType,
-    region: meta.region,
+    region,
     overview: { zh: meta.desc, en: meta.desc },
     visaFree: (meta.visaType === '互免签证' || meta.visaType === '单方面免签')
       ? { zh: meta.desc, en: meta.desc }
