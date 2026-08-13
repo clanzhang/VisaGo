@@ -106,8 +106,24 @@ export async function pickFiles(
   return Array.isArray(selected) ? selected : [selected]
 }
 
-export function recognizeFile(path: string, name: string): Promise<RecognizeResult> {
-  return invoke<RecognizeResult>('recognize_file', { path, name })
+export async function recognizeFile(path: string, name: string): Promise<RecognizeResult> {
+  // 429 限流重试：失败含 429 时等 2 秒重试，最多 3 次
+  let attempt = 0
+  while (true) {
+    try {
+      return await invoke<RecognizeResult>('recognize_file', { path, name })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      const isRateLimit = msg.includes('429') || msg.toLowerCase().includes('rate_limit') || msg.toLowerCase().includes('rate limit')
+      if (isRateLimit && attempt < 3) {
+        attempt += 1
+        console.warn(`[recognizeFile] 429 限流 (尝试 ${attempt}/3)，等待 2 秒后重试`)
+        await new Promise((r) => setTimeout(r, 2000))
+        continue
+      }
+      throw e
+    }
+  }
 }
 
 // ===== 资料卡（多用户资料管理）=====

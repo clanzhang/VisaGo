@@ -312,14 +312,25 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
         println!("[recognize] 识别提示: 该文件是银行流水，客户名为申请人本人");
     }
 
-    let recognized = match recognizer::recognize_file(&path, &name, file_text, content_b64).await {
-        Ok(r) => {
-            println!("[recognize] Kimi 识别成功: category={}, fields={}", r.category, r.fields);
-            r
-        }
-        Err(e) => {
-            println!("[recognize] Kimi 识别失败: {e}");
-            return Err(e);
+    // 429 限流重试：识别失败若含 429/rate_limit，等 3 秒重试，最多 2 次
+    let mut attempt = 0;
+    let recognized = loop {
+        match recognizer::recognize_file(&path, &name, file_text.clone(), content_b64.clone()).await {
+            Ok(r) => {
+                println!("[recognize] Kimi 识别成功: category={}, fields={}", r.category, r.fields);
+                break r;
+            }
+            Err(e) => {
+                let is_rate_limit = e.contains("429") || e.to_lowercase().contains("rate_limit") || e.to_lowercase().contains("rate limit");
+                if is_rate_limit && attempt < 2 {
+                    attempt += 1;
+                    println!("[recognize] 429 限流 (尝试 {attempt}/2)，等待 3 秒后重试...");
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    continue;
+                }
+                println!("[recognize] Kimi 识别失败: {e}");
+                return Err(e);
+            }
         }
     };
 

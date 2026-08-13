@@ -387,22 +387,30 @@ export default function Scan() {
     }
   }
 
-  // 识别全部（串行）
+  // 识别全部（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
   async function handleRecognizeAll() {
     setRecognizingAll(true)
     const pending = items.filter((x) => x.status === 'pending' || x.status === 'error')
-    for (const item of pending) {
-      await handleRecognize(item)
+    for (let i = 0; i < pending.length; i++) {
+      await handleRecognize(pending[i])
+      // 非最后一个文件：间隔 5 秒，避免触发 429 限流
+      if (i < pending.length - 1) {
+        await new Promise((r) => setTimeout(r, 5000))
+      }
     }
     setRecognizingAll(false)
     toast('识别完成', 'success')
   }
 
-  // 追加后自动识别一组新文件（串行）
+  // 追加后自动识别一组新文件（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
   async function handleRecognizeAllFresh(fresh: RecognizedItem[]) {
     setRecognizingAll(true)
-    for (const item of fresh) {
-      await handleRecognize(item)
+    for (let i = 0; i < fresh.length; i++) {
+      await handleRecognize(fresh[i])
+      // 非最后一个文件：间隔 5 秒，避免触发 429 限流
+      if (i < fresh.length - 1) {
+        await new Promise((r) => setTimeout(r, 5000))
+      }
     }
     setRecognizingAll(false)
     toast('追加文件识别完成', 'success')
