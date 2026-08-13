@@ -3,6 +3,7 @@
 
 import type { Country, Localized, VisaType, Requirement, FAQ } from '../types'
 import { COUNTRY_LIST, type CountryMeta } from './country-list'
+import { NEW_ZEALAND_REQUIREMENTS, SCHENGEN_REQUIREMENTS } from './encyclopedia-materials'
 
 export const PROVINCES = [
   '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江',
@@ -26,6 +27,20 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
   const canApplyOnline = meta.visaType === '电子签' || meta.visaType === '落地签'
   const needInterview = meta.difficulty === 'hard'
   const isVisaFree = meta.visaType === '互免签证' || meta.visaType === '单方面免签'
+  // 国家专属材料清单（新西兰/申根），其余用默认模板
+  const requirements =
+    meta.id === 'new-zealand'
+      ? NEW_ZEALAND_REQUIREMENTS
+      : meta.id === 'schengen'
+        ? SCHENGEN_REQUIREMENTS
+        : ([
+            { id: 'passport', name: { zh: '有效护照', en: 'Valid passport' }, category: 'basic', required: true, format: 'original', translationRequired: false },
+            { id: 'photo', name: { zh: '证件照 2 张', en: '2 photos' }, category: 'basic', required: true, format: 'original', translationRequired: false },
+            { id: 'application', name: { zh: '签证申请表', en: 'Application form' }, category: 'basic', required: true, format: 'original', translationRequired: false },
+            { id: 'employment', name: { zh: '在职证明', en: 'Employment cert' }, category: 'identity', required: true, format: 'copy', translationRequired: false },
+            { id: 'bank', name: { zh: '银行流水', en: 'Bank statement' }, category: 'financial', required: true, format: 'copy', translationRequired: false },
+            { id: 'itinerary', name: { zh: '行程安排', en: 'Itinerary' }, category: 'travel', required: true, format: 'copy', translationRequired: false },
+          ] as Requirement[])
   return {
     id: `${meta.id}-tourist`,
     name: { zh: name, en: `${meta.en} Tourist Visa` },
@@ -45,14 +60,7 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
     consularDistricts: [
       { name: { zh: `${meta.zh}驻华使领馆`, en: `${meta.en} Embassy` }, provinces: ['北京', '上海', '广东'] },
     ],
-    requirements: [
-      { id: 'passport', name: { zh: '有效护照', en: 'Valid passport' }, category: 'basic', required: true, format: 'original', translationRequired: false },
-      { id: 'photo', name: { zh: '证件照 2 张', en: '2 photos' }, category: 'basic', required: true, format: 'original', translationRequired: false },
-      { id: 'application', name: { zh: '签证申请表', en: 'Application form' }, category: 'basic', required: true, format: 'original', translationRequired: false },
-      { id: 'employment', name: { zh: '在职证明', en: 'Employment cert' }, category: 'identity', required: true, format: 'copy', translationRequired: false },
-      { id: 'bank', name: { zh: '银行流水', en: 'Bank statement' }, category: 'financial', required: true, format: 'copy', translationRequired: false },
-      { id: 'itinerary', name: { zh: '行程安排', en: 'Itinerary' }, category: 'travel', required: true, format: 'copy', translationRequired: false },
-    ] as Requirement[],
+    requirements,
     faq: [
       { question: { zh: `去${meta.zh}需要什么材料？`, en: `What's needed for ${meta.en}?` }, answer: { zh: '护照、照片、申请表、在职证明、流水、行程。', en: 'Passport, photo, form, employment, bank, itinerary.' } },
     ] as FAQ[],

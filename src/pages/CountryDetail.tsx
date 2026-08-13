@@ -3,13 +3,20 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
-import { FeeCalculator, AIAssistant } from '@/components/visa'
+import { FeeCalculator, AIAssistant, RequirementList } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
 import { PROVINCES } from '@/data/countries'
 import { useCountryAIData } from '@/hooks/useAIData'
 import type { AiCountryData } from '@/types/ai'
 
 const IDENTITY_KEYS = ['employed', 'student', 'retired', 'freelance'] as const
+
+/** 新西兰翻译提示条（全站唯一的醒目提示） */
+const NZ_TRANSLATION_BANNER = {
+  text: '新西兰签证要求所有非英文材料必须提供翻译件',
+  bg: '#FFF3E0',
+  border: '#F5A623',
+}
 
 export default function CountryDetail() {
   const { id } = useParams<{ id: string }>()
@@ -279,24 +286,57 @@ export default function CountryDetail() {
         </div>
 
         {tab === 'materials' && (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-6 py-12 text-center">
-            <span className="text-4xl">📋</span>
-            <h4 className="text-base font-bold text-ink">查看详细材料</h4>
-            <p className="max-w-md text-sm text-ink/50">
-              材料清单、自动检测、一键生成与递交均在「申请签证」页面完成，避免信息分散。
-            </p>
-            <VButton
-              size="lg"
-              className="mt-2"
-              onClick={() =>
-                navigate('/assistant', {
-                  state: { countryId: country.id, visaTypeId: visaType.id },
-                })
-              }
-            >
-              去申请签证 →
-            </VButton>
-          </div>
+          country.id === 'new-zealand' || country.id === 'schengen' ? (
+            <div>
+              <RequirementList
+                countryName={country.name.zh}
+                requirements={visaType.requirements}
+                translationBanner={
+                  country.id === 'new-zealand'
+                    ? NZ_TRANSLATION_BANNER
+                    : null
+                }
+              />
+              {/* 引导到申请页 */}
+              <div className="mt-6 flex items-center justify-between rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-4">
+                <div>
+                  <div className="text-sm font-bold text-ink">去申请签证</div>
+                  <div className="mt-0.5 text-xs text-ink/50">
+                    材料自动检测、一键生成与递交在「申请签证」页面完成
+                  </div>
+                </div>
+                <VButton
+                  size="sm"
+                  onClick={() =>
+                    navigate('/assistant', {
+                      state: { countryId: country.id, visaTypeId: visaType.id },
+                    })
+                  }
+                >
+                  去申请签证 →
+                </VButton>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-6 py-12 text-center">
+              <span className="text-4xl">📋</span>
+              <h4 className="text-base font-bold text-ink">查看详细材料</h4>
+              <p className="max-w-md text-sm text-ink/50">
+                材料清单、自动检测、一键生成与递交均在「申请签证」页面完成，避免信息分散。
+              </p>
+              <VButton
+                size="lg"
+                className="mt-2"
+                onClick={() =>
+                  navigate('/assistant', {
+                    state: { countryId: country.id, visaTypeId: visaType.id },
+                  })
+                }
+              >
+                去申请签证 →
+              </VButton>
+            </div>
+          )
         )}
 
         {tab === 'fee' && (
