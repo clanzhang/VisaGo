@@ -100,8 +100,9 @@ fn make_pdf(text: &str) -> Vec<u8> {
     );
 
     // 加载中文字体（优先），失败回退 Helvetica
+    // 用 subsetting 只嵌入用到的字符，避免全量嵌入 23MB 字体导致文件巨大/布局异常
     let font: IndirectFontRef = match load_chinese_font_bytes() {
-        Some(bytes) => match doc.add_external_font(std::io::Cursor::new(bytes)) {
+        Some(bytes) => match doc.add_external_font_with_subsetting(std::io::Cursor::new(bytes), true) {
             Ok(f) => f,
             Err(_) => doc.add_builtin_font(BuiltinFont::Helvetica).unwrap(),
         },
@@ -202,11 +203,35 @@ mod tests {
     }
 
     #[test]
+    fn test_strip_no_big_gaps() {
+        // 模拟前端包装：Kimi 生成的文本含 markdown 标记 + 大量空行
+        let html = "<html><body><pre>## 行程单\n\n**Day 1**\n\n\n- 东京\n\n\n\n- 大阪\n\n**Day 2**\n\n\n- 京都\n</pre></body></html>";
+        let text = strip_html_and_markdown(html);
+        let lines: Vec<&str> = text.lines().collect();
+        // 不应有连续空行（大段空白）
+        let mut consecutive_empty = 0;
+        for l in &lines {
+            if l.trim().is_empty() {
+                consecutive_empty += 1;
+            } else {
+                consecutive_empty = 0;
+            }
+            assert!(consecutive_empty < 2, "不应出现连续空行（大段空白）");
+        }
+        // 应保留内容
+        assert!(lines.iter().any(|l| l.contains("行程单")));
+        assert!(lines.iter().any(|l| l.contains("东京")));
+    }
+
+    #[test]
     fn test_make_pdf_not_empty() {
         let text = "在职证明\n\n兹证明张三（身份证号：110105198001011234）自2020年1月起在我公司任职。\n\n特此证明。";
         let pdf = make_pdf(text);
         assert!(!pdf.is_empty(), "PDF 不应为空");
+        println!("[test] 生成的 PDF 大小: {} bytes ({:.1} KB)", pdf.len(), pdf.len() as f64 / 1024.0);
         assert!(pdf.len() > 500, "PDF 大小应合理: {}", pdf.len());
+        // subsetting 后文件应远小于全量嵌入（Arial Unicode 23MB）；短文本应 < 200KB
+        assert!(pdf.len() < 200 * 1024, "PDF 应使用字体子集化，大小异常: {} bytes", pdf.len());
         // 检查 PDF 头
         assert!(pdf.starts_with(b"%PDF"), "PDF 应有正确头");
         // printpdf 内部处理 xref/EOF，检查包含 EOF 标记
