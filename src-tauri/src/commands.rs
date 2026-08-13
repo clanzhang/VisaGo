@@ -202,13 +202,14 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
     match ext.as_str() {
         "pdf" => {
             match scanner::extract_pdf_text(&path) {
-                Ok(text) if !text.trim().is_empty() => {
-                    println!("[recognize] PDF 文本提取成功: {} 字符", text.chars().count());
+                // 文本充足（≥50 字符）→ 文本识别
+                Ok(text) if text.trim().chars().count() >= 50 => {
+                    println!("[recognize] PDF 文本提取成功: {} 字符，走文本识别", text.chars().count());
                     file_text = Some(text);
                 }
-                Ok(_) => {
-                    // 扫描件 PDF（无文本层）：用 sips 渲染为 PNG 图片传给 Kimi 识图
-                    println!("[recognize] PDF 无文本层（扫描件），尝试 sips 渲染为图片");
+                // 文本为空或过短（<50）→ 扫描件，sips 渲染为图片走视觉识别
+                Ok(text) => {
+                    println!("[recognize] PDF 文本不足 ({} 字符)，判断为扫描件，sips 渲染为图片走视觉识别", text.trim().chars().count());
                     match crate::scanner::render_pdf_to_png(&path) {
                         Ok(b64) => {
                             println!("[recognize] sips 渲染 PDF 成功，图片 base64 长度 {}", b64.len());
@@ -223,21 +224,40 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
                     }
                 }
                 Err(e) => {
-                    println!("[recognize] PDF 文本提取失败: {e}（将尝试仅用文件名识别）");
-                    file_text = Some(format!(
-                        "（PDF 提取失败。请根据文件名「{name}」和你的常识判断该文件类型，尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
-                    ));
+                    println!("[recognize] PDF 文本提取失败: {e}，尝试 sips 渲染为图片");
+                    match crate::scanner::render_pdf_to_png(&path) {
+                        Ok(b64) => {
+                            println!("[recognize] sips 渲染 PDF 成功，图片 base64 长度 {}", b64.len());
+                            content_b64 = Some(b64);
+                        }
+                        Err(e2) => {
+                            println!("[recognize] sips 渲染 PDF 失败: {e2}，回退为文件名识别");
+                            file_text = Some(format!(
+                                "（PDF 提取失败。请根据文件名「{name}」和你的常识判断该文件类型，尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
+                            ));
+                        }
+                    }
                 }
             }
         }
         "docx" | "doc" => {
             match scanner::extract_docx_text(&path) {
-                Ok(text) => {
-                    println!("[recognize] DOCX 文本提取成功: {} 字符", text.chars().count());
+                Ok(text) if text.trim().chars().count() >= 50 => {
+                    println!("[recognize] DOCX 文本提取成功: {} 字符，走文本识别", text.chars().count());
                     file_text = Some(text);
                 }
-                Err(e) => {
-                    println!("[recognize] DOCX 文本提取失败: {e}");
+                // DOCX 文本为空或过短 → 尝试渲染为图片走视觉识别
+                _ => {
+                    println!("[recognize] DOCX 文本不足，尝试 sips 渲染为图片走视觉识别");
+                    match crate::scanner::render_pdf_to_png(&path) {
+                        Ok(b64) => {
+                            println!("[recognize] DOCX sips 渲染成功，图片 base64 长度 {}", b64.len());
+                            content_b64 = Some(b64);
+                        }
+                        Err(e) => {
+                            println!("[recognize] DOCX 无文本且无法渲染: {e}");
+                        }
+                    }
                 }
             }
         }
