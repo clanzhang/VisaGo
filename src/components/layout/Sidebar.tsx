@@ -1,4 +1,5 @@
 // components/layout/Sidebar.tsx — 左侧导航栏（240px，深黑背景）
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useVisaStore } from '@/stores/visaStore'
@@ -14,37 +15,42 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
+  const [hovered, setHovered] = useState(false)
 
   return (
-    <aside className="flex h-full w-[240px] shrink-0 flex-col bg-sidebar text-white">
+    <aside
+      className={`flex h-full shrink-0 flex-col bg-sidebar text-white transition-all duration-300 ease-in-out ${hovered ? 'w-[260px]' : 'w-[64px]'}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 pt-7 pb-8">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E0F7FA]">
+      <div className={`flex items-center pt-7 pb-8 ${hovered ? 'gap-3 px-6' : 'justify-center px-0'}`}>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E0F7FA]">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1460A4" strokeWidth="1.8">
             <path d="M3 7h12a3 3 0 013 3v8a3 3 0 01-3 3H3a1 1 0 01-1-1V8a1 1 0 011-1z" fill="#E0F7FA" stroke="#1460A4" />
             <path d="M3 7a1 1 0 011-1h4l3 3h4l3-3h2a1 1 0 011 1v3H3V7z" fill="#39A2B8" stroke="#1460A4" />
             <circle cx="10" cy="13" r="2.2" fill="#1460A4" />
           </svg>
         </div>
-        <div className="leading-tight">
-          <div className="font-display text-[17px] font-bold tracking-tight">VisaGo</div>
-          <div className="text-[11px] text-white/50">{t('app.tagline')}</div>
+        <div className={`leading-tight transition-opacity duration-200 ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+          <div className="whitespace-nowrap font-display text-[17px] font-bold tracking-tight">VisaGo</div>
+          <div className="whitespace-nowrap text-[11px] text-white/50">{t('app.tagline')}</div>
         </div>
       </div>
 
       {/* 用户信息 */}
-      <div className="mx-4 mb-6 flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
+      <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-300 ${hovered ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
           用户
         </div>
-        <div className="leading-tight">
-          <div className="text-[13px] font-medium">旅行者</div>
-          <div className="text-[11px] text-white/50">VIP 会员</div>
+        <div className={`leading-tight transition-opacity duration-200 ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+          <div className="whitespace-nowrap text-[13px] font-medium">旅行者</div>
+          <div className="whitespace-nowrap text-[11px] text-white/50">VIP 会员</div>
         </div>
       </div>
 
       {/* 导航 */}
-      <nav className="flex-1 space-y-1 px-4">
+      <nav className={`flex-1 space-y-1 ${hovered ? 'px-4' : 'px-[23px]'}`}>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -58,7 +64,9 @@ export function Sidebar() {
               if (item.to === '/') reset()
             }}
             className={({ isActive }) =>
-              `group relative flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-colors duration-150 ${
+              `group relative flex items-center rounded-lg py-2.5 text-sm transition-all duration-300 ${
+                hovered ? 'gap-3 px-3.5' : 'justify-center px-0'
+              } ${
                 isActive
                   ? 'bg-white/10 font-medium text-white'
                   : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -71,6 +79,7 @@ export function Sidebar() {
                   className={`absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[#1460A4] transition-opacity ${isActive ? 'opacity-100' : 'opacity-0'}`}
                 />
                 <svg
+                  className="shrink-0"
                   width="18"
                   height="18"
                   viewBox="0 0 24 24"
@@ -82,7 +91,7 @@ export function Sidebar() {
                 >
                   <path d={item.icon} />
                 </svg>
-                <span>{item.label ?? t(`nav.${item.key}`)}</span>
+                <span className={`whitespace-nowrap transition-opacity duration-200 ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>{item.label ?? t(`nav.${item.key}`)}</span>
               </>
             )}
           </NavLink>
@@ -90,7 +99,7 @@ export function Sidebar() {
       </nav>
 
       {/* 底部 */}
-      <div className="space-y-3 px-4 pb-5">
+      <div className={`overflow-hidden transition-all duration-300 ${hovered ? 'px-4 pb-5 opacity-100' : 'h-0 pb-0 opacity-0'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1">
             {(['zh-CN', 'en-US'] as const).map((l) => (
