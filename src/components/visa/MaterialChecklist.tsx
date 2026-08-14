@@ -12,6 +12,8 @@ import type { UserProfile } from '@/lib/user-profile'
 interface Props {
   countryName?: string
   tripDates?: { start: string; end: string }
+  /** 所有材料是否全部就绪（全部 ready / auto-generate）的变化回调 */
+  onAllReady?: (ready: boolean) => void
 }
 
 /** 把 Rust 资料卡扁平 snake_case 字段 → checkMaterials 期望的嵌套 UserProfile */
@@ -43,7 +45,7 @@ function fieldsToProfile(fields: Record<string, unknown>): UserProfile {
   }
 }
 
-export function MaterialChecklist({ countryName = '目标国家', tripDates }: Props) {
+export function MaterialChecklist({ countryName = '目标国家', tripDates, onAllReady }: Props) {
   const [items, setItems] = useState<MaterialItem[]>([])
   const [photoResult, setPhotoResult] = useState<PhotoCheckResult | null>(null)
   const [bankResult, setBankResult] = useState<BankCheckResult | null>(null)
@@ -129,6 +131,18 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
   }, [])
 
   const percent = useMemo(() => materialProgress(items), [items])
+
+  // 是否所有材料都完成（ready / auto-generate）
+  const allDone = useMemo(
+    () => items.length > 0 && items.every((i) => i.status === 'ready' || i.status === 'auto-generate'),
+    [items],
+  )
+
+  // 通知父组件：全部就绪状态变化
+  useEffect(() => {
+    onAllReady?.(allDone)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDone])
 
   const updateItem = (id: string, patch: Partial<MaterialItem>) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)))

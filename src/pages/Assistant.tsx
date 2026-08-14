@@ -48,6 +48,8 @@ export default function Assistant() {
   const { addApplication } = useTrackerStore()
   const [search, setSearch] = useState('')
   const [added, setAdded] = useState(false)
+  // 材料是否全部就绪（由 MaterialChecklist 上报）
+  const [materialsReady, setMaterialsReady] = useState(false)
   // 地区筛选 tab（'' = 全部）
   const [regionTab, setRegionTab] = useState('')
   // 活跃资料卡（从材料扫描保存，自动读取）
@@ -457,6 +459,7 @@ export default function Assistant() {
                     start: new Date().toISOString().slice(0, 10),
                     end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
                   }}
+                  onAllReady={(ready) => setMaterialsReady(ready)}
                 />
               </div>
             </div>
@@ -564,10 +567,10 @@ export default function Assistant() {
                 size="lg"
                 className="w-full"
                 onClick={startTracking}
-                disabled={added}
+                disabled={added || !materialsReady}
               >
-                {added ? '✓ ' : '+ '}
-                {t('assistant.trackApplication')}
+                {added ? '✓ ' : ''}
+                {!materialsReady ? '请先完成材料上传' : `+ ${t('assistant.trackApplication')}`}
               </VButton>
             </div>
           </div>
