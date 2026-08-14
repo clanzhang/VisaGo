@@ -2,21 +2,49 @@
 // 页面加载自动完成可自动化的 6 项，用户只需处理证件照 + 银行流水
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { VButton } from '@/components/common'
-import { loadUserProfile } from '@/lib/user-profile'
 import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/material-check'
 import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
 import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
-import { checkBankStatement, BANK_EXPORT_STEPS, type BankCheckResult } from '@/lib/bank-check'
-import { exportPdf } from '@/api/tauri'
+import { checkBankStatement, type BankCheckResult } from '@/lib/bank-check'
+import { exportPdf, isTauri, listProfiles, getActiveProfileId } from '@/api/tauri'
+import type { UserProfile } from '@/lib/user-profile'
 
 interface Props {
   countryName?: string
   tripDates?: { start: string; end: string }
 }
 
+/** 把 Rust 资料卡扁平 snake_case 字段 → checkMaterials 期望的嵌套 UserProfile */
+function fieldsToProfile(fields: Record<string, unknown>): UserProfile {
+  const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+  return {
+    id: {
+      name: str(fields['name']),
+      idNumber: str(fields['id_number']),
+      address: str(fields['home_address'] ?? fields['address']),
+    },
+    passport: {
+      pinyinName: str(fields['passport_pinyin'] ?? fields['name']),
+      passportNumber: str(fields['passport_number']),
+      issueDate: str(fields['passport_issue_date']),
+      expiryDate: str(fields['passport_expiry_date']),
+    },
+    family: str(fields['family_members']) ? [{ name: str(fields['name']), relation: str(fields['family_relation'] ?? '本人') }] : [],
+    employment: {
+      company: str(fields['company']),
+      position: str(fields['position']),
+      salary: str(fields['salary']),
+      startDate: str(fields['employment_start_date']),
+      companyAddress: str(fields['company_address']),
+      companyPhone: str(fields['company_phone']),
+    },
+    phone: str(fields['phone']),
+    homeAddress: str(fields['home_address'] ?? fields['address']),
+  }
+}
+
 export function MaterialChecklist({ countryName = '目标国家', tripDates }: Props) {
   const [items, setItems] = useState<MaterialItem[]>([])
-  const [showBankGuide, setShowBankGuide] = useState(false)
   const [photoResult, setPhotoResult] = useState<PhotoCheckResult | null>(null)
   const [bankResult, setBankResult] = useState<BankCheckResult | null>(null)
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
@@ -28,13 +56,29 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
     end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
   }
 
+  /** 读取用户资料：Tauri 从活跃 Rust 资料卡读取，返回 checkMaterials 需要的结构 */
+  async function loadProfile(): Promise<UserProfile | null> {
+    if (isTauri()) {
+      try {
+        const id = await getActiveProfileId()
+        const cards = await listProfiles()
+        const card = cards.find((c) => c.id === id)
+        if (card?.fields) return fieldsToProfile(card.fields as Record<string, unknown>)
+      } catch (e) {
+        console.warn('[MaterialChecklist] 读取 Rust 资料卡失败:', e)
+      }
+      return null
+    }
+    return null
+  }
+
   // 页面加载自动跑一遍检测 + 生成
   useEffect(() => {
-    const profile = loadUserProfile()
-    setItems(checkMaterials(profile))
-    // 自动生成行程（Kimi）——静默执行，失败不阻塞
-    if (!profile) return
-    const run = async () => {
+    ;(async () => {
+      const profile = await loadProfile()
+      setItems(checkMaterials(profile))
+      if (!profile) return
+      // 自动生成行程（Kimi）——静默执行，失败不阻塞
       try {
         setGenerating(true)
         await generateItinerary(countryName, dates)
@@ -43,8 +87,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
       } finally {
         setGenerating(false)
       }
-    }
-    void run()
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -56,7 +99,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
 
   // 一键生成：申请表 + 在职证明 + 行程
   async function handleGenerateAll() {
-    const profile = loadUserProfile()
+    const profile = await loadProfile()
     if (!profile) return
     setGenerating(true)
     try {
@@ -103,7 +146,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
     reader.onload = async () => {
       const dataUrl = reader.result as string
       const base64 = dataUrl.split(',')[1]
-      const profile = loadUserProfile()
+      const profile = await loadProfile()
       const result = await checkBankStatement(base64, {
         applicantName: profile?.passport?.pinyinName || profile?.id?.name,
       })
@@ -137,14 +180,11 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
         <VButton size="sm" onClick={() => fileRef.current?.click()}>上传</VButton>
       )
     }
-    // need-user：上传 / 银行流水弹指引
+    // need-user：上传 / 银行流水直接打开文件选择器
     return (
       <VButton
         size="sm"
-        onClick={() => {
-          if (item.id === 'bank') setShowBankGuide(true)
-          else fileRef.current?.click()
-        }}
+        onClick={() => fileRef.current?.click()}
       >
         上传
       </VButton>
@@ -255,27 +295,6 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
           {bankResult.issues.length > 0 && (
             <div className="mt-1 text-xs text-amber-700">{bankResult.issues[0]}</div>
           )}
-        </div>
-      )}
-
-      {/* 银行导出指引弹窗 */}
-      {showBankGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowBankGuide(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-ink">🏦 银行流水导出指引</h3>
-            <ol className="mt-4 space-y-2.5">
-              {BANK_EXPORT_STEPS.map((step, i) => (
-                <li key={i} className="flex gap-2.5 text-sm text-ink/70">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E0F7FA] text-[11px] font-semibold text-[#1460A4]">{i + 1}</span>
-                  {step}
-                </li>
-              ))}
-            </ol>
-            <div className="mt-5 flex justify-end gap-2">
-              <VButton variant="secondary" size="sm" onClick={() => setShowBankGuide(false)}>取消</VButton>
-              <VButton size="sm" onClick={() => { setShowBankGuide(false); fileRef.current?.click(); }}>去上传</VButton>
-            </div>
-          </div>
         </div>
       )}
     </div>
