@@ -203,12 +203,43 @@ export default function Scan() {
       // 姓名兜底
       if (!fields['name'] && cardName) fields['name'] = cardName
       await saveProfileCard({ ...target, fields })
+      // 同步写 localStorage（key: visago:user-profile），供 MaterialChecklist 等读取
+      localStorage.setItem('visago:user-profile', JSON.stringify(buildProfileForStorage(fields)))
       // 同步更新列表
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, fields, updated_at: new Date().toISOString() } : c)))
       toast('已保存到资料卡', 'success')
     } catch (e) {
       console.error('[Scan] 保存资料卡失败:', e)
       toast(e instanceof Error ? e.message : '保存失败', 'error')
+    }
+  }
+
+  /** 把规范化后的资料字段（snake_case）转成 MaterialChecklist 需要的嵌套结构 */
+  function buildProfileForStorage(fields: Record<string, unknown>) {
+    const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+    return {
+      id: {
+        name: str(fields['name']),
+        idNumber: str(fields['id_number']),
+      },
+      passport: {
+        passportNumber: str(fields['passport_number']),
+        pinyinName: str(fields['name']),
+        issuedIn: str(fields['passport_issued_in']),
+      },
+      employment: {
+        company: str(fields['company']),
+        position: str(fields['position']),
+        salary: str(fields['salary']),
+      },
+      family: fields['home_province'] ? [{ name: str(fields['name']) }] : [],
+      address: str(fields['address']),
+      homeProvince: str(fields['home_province']),
+      nationality: str(fields['nationality']),
+      birthDate: str(fields['birth_date']),
+      gender: str(fields['gender']),
+      phone: str(fields['phone']),
+      occupation: str(fields['occupation']),
     }
   }
 
