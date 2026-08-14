@@ -152,7 +152,7 @@ export default function Encyclopedia() {
               const selected = compareIds.includes(c.id)
               return (
                 <div key={c.id} className="group relative">
-                  <CountryCard country={c} index={i} />
+                  <CountryCard country={c} index={i} hideVisaType={filter !== 'all'} />
                   {compareMode && (
                     <label
                       onClick={(e) => e.stopPropagation()}

@@ -7,9 +7,11 @@ import type { Country } from '@/types'
 interface Props {
   country: Country
   index?: number
+  /** 隐藏签证类型标签（当顶部已按签证类型筛选/分组时，避免重复） */
+  hideVisaType?: boolean
 }
 
-export function CountryCard({ country, index = 0 }: Props) {
+export function CountryCard({ country, index = 0, hideVisaType = false }: Props) {
   const navigate = useNavigate()
   const vt = VISA_TYPE_STYLE[country.visaType]
 
@@ -19,10 +21,12 @@ export function CountryCard({ country, index = 0 }: Props) {
       style={{ animationDelay: `${index * 60}ms` }}
       onClick={() => navigate(`/encyclopedia/${country.id}`)}
     >
-      {/* 签证类型标签（左上角） */}
-      <span className={`absolute left-4 top-4 rounded-full px-2.5 py-0.5 text-xs font-medium ${vt.cls}`}>
-        {vt.label}
-      </span>
+      {/* 签证类型标签（左上角）；选中具体分类时隐藏，避免与顶部筛选重复 */}
+      {!hideVisaType && (
+        <span className={`absolute left-4 top-4 rounded-full px-2.5 py-0.5 text-xs font-medium ${vt.cls}`}>
+          {vt.label}
+        </span>
+      )}
 
       <div className="flex items-start gap-3">
         <span className="text-4xl">{country.flag}</span>
