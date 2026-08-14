@@ -96,38 +96,45 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
     return null
   }
 
-  // 页面加载自动跑一遍检测 + 生成
-  useEffect(() => {
-    ;(async () => {
-      const profile = await loadProfile()
-      const list = checkMaterials(profile)
+  // 重新检测：读资料卡 + 查已扫描文件 → 刷新材料状态（挂载与 profile-updated 事件共用）
+  const refreshMaterials = async () => {
+    const profile = await loadProfile()
+    const list = checkMaterials(profile)
 
-      // 查 Rust 已扫描文件记录：识别过「银行流水」→ 标 ready
-      if (isTauri()) {
-        try {
-          const scanned = await getScannedFiles()
-          const hasBank = scanned?.files.some(
-            (f) => f.recognized && f.doc_category === '银行流水',
-          )
-          if (hasBank) {
-            const idx = list.findIndex((i) => i.id === 'bank')
-            if (idx >= 0) {
-              list[idx] = {
-                ...list[idx],
-                status: 'ready',
-                progress: 100,
-                label: '已归档',
-                labelCls: 'bg-success/10 text-success',
-              }
+    // 查 Rust 已扫描文件记录：识别过「银行流水」→ 标 ready
+    if (isTauri()) {
+      try {
+        const scanned = await getScannedFiles()
+        const hasBank = scanned?.files.some(
+          (f) => f.recognized && f.doc_category === '银行流水',
+        )
+        if (hasBank) {
+          const idx = list.findIndex((i) => i.id === 'bank')
+          if (idx >= 0) {
+            list[idx] = {
+              ...list[idx],
+              status: 'ready',
+              progress: 100,
+              label: '已归档',
+              labelCls: 'bg-success/10 text-success',
             }
           }
-        } catch (e) {
-          console.warn('[MaterialChecklist] 读取已扫描文件失败:', e)
         }
+      } catch (e) {
+        console.warn('[MaterialChecklist] 读取已扫描文件失败:', e)
       }
+    }
 
-      setItems(list)
-      if (!profile) return
+    setItems(list)
+    return profile
+  }
+
+  // 页面加载自动跑一遍检测 + 生成；监听资料卡更新事件自动刷新
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      const profile = await refreshMaterials()
+      if (cancelled || !profile) return
       // 自动生成行程（Kimi）——静默执行，失败不阻塞
       try {
         setGenerating(true)
@@ -137,7 +144,18 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       } finally {
         setGenerating(false)
       }
-    })()
+    }
+    void run()
+    // 资料卡保存后（Scan 页 dispatch）重新检测
+    const onProfileUpdated = () => {
+      console.log('[MaterialChecklist] 收到资料卡更新事件，重新检测')
+      void refreshMaterials()
+    }
+    window.addEventListener('visago:profile-updated', onProfileUpdated)
+    return () => {
+      cancelled = true
+      window.removeEventListener('visago:profile-updated', onProfileUpdated)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

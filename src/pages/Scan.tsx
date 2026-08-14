@@ -130,6 +130,8 @@ export default function Scan() {
       await saveProfileCard({ ...target, fields })
       // 同步写 localStorage（key: visago:user-profile），供 MaterialChecklist 等读取
       localStorage.setItem('visago:user-profile', JSON.stringify(buildProfileForStorage(fields)))
+      // 通知 MaterialChecklist 等组件：资料卡已更新，重新检测材料状态
+      window.dispatchEvent(new CustomEvent('visago:profile-updated', { detail: { id } }))
       // 同步更新列表
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, fields, updated_at: new Date().toISOString() } : c)))
       toast('已保存到资料卡', 'success')
