@@ -1,7 +1,8 @@
 // lib/material-check.ts — 材料状态检测
-// 根据用户资料库 + 目标国家配置，返回每项材料的状态
+// 根据用户资料库 + 目标国家配置 + 已扫描文件记录，返回每项材料的状态
 
 import type { UserProfile } from './user-profile'
+import type { ScannedFileRecord } from '@/api/tauri'
 
 export type MaterialStatus = 'ready' | 'auto-generate' | 'need-photo' | 'need-user'
 
@@ -49,27 +50,32 @@ function itemOf(
 
 /**
  * 计算 8 项材料状态。
- * - 身份证/户口本/护照：资料库有 OCR 数据 → ready
+ * - 身份证/户口本/护照：资料库有 OCR 数据 OR 已扫描文件里有对应文件 → ready
  * - 申请表/在职证明/行程：auto-generate（可自动生成）
- * - 证件照：need-photo
- * - 银行流水：need-user
+ * - 证件照：已保存过证件照（localStorage key: visago:photo）→ ready，否则 need-photo
+ * - 银行流水：已识别过银行流水文件（scannedFiles）→ ready，否则 need-user
+ *
+ * @param profile 资料库（可能为 null）
+ * @param scannedFiles 已扫描文件记录（get_scanned_files 返回的 files），用于判断是否已扫描过对应材料
  */
-export function checkMaterials(profile: UserProfile | null): MaterialItem[] {
+export function checkMaterials(
+  profile: UserProfile | null,
+  scannedFiles?: ScannedFileRecord[] | null,
+): MaterialItem[] {
   const p = profile
   const hasId = !!p?.id?.idNumber
   const hasPassport = !!p?.passport?.passportNumber
-  // 户口本：兼容多种字段名（family / familyMembers / household）
-  console.log('[material-check] profile family 相关字段:', {
-    family: p?.family,
-    familyMembers: (p as Record<string, unknown> | null)?.familyMembers,
-    household: (p as Record<string, unknown> | null)?.household,
-    familyKeys: p ? Object.keys(p) : null,
-  })
+  // 户口本：兼容多种字段名（family / familyMembers / household）+ 已扫描户口本文件
   const hasFamily =
     !!p?.family?.length ||
     !!((p as Record<string, unknown> | null)?.familyMembers as unknown[] | undefined)?.length ||
-    !!((p as Record<string, unknown> | null)?.household as unknown[] | undefined)?.length
+    !!((p as Record<string, unknown> | null)?.household as unknown[] | undefined)?.length ||
+    (scannedFiles ?? []).some((f) => f.recognized && f.doc_category === '户口本')
   const hasEmployment = !!p?.employment?.company
+  // 证件照：localStorage 中已保存过证件照文件路径 → ready
+  const hasPhoto = !!localStorage.getItem('visago:photo')
+  // 银行流水：已识别过银行流水文件 → ready
+  const hasBank = (scannedFiles ?? []).some((f) => f.recognized && f.doc_category === '银行流水')
 
   return [
     hasId
@@ -86,8 +92,12 @@ export function checkMaterials(profile: UserProfile | null): MaterialItem[] {
       ? itemOf('employment', '在职证明', 'auto-generate', 100, '已从在职信息+行程日期套模板生成')
       : itemOf('employment', '在职证明', 'auto-generate', 60, '在职信息不全，已按模板生成，可补全后重新生成'),
     itemOf('itinerary', '行程安排', 'auto-generate', 100, '已由 Kimi 根据目的地+日期生成'),
-    itemOf('photo', '白底证件照（35×45mm）', 'need-photo', 0, '上传一张独立白底证件照，非身份证照片，系统自动检测合规性'),
-    itemOf('bank', '银行流水', 'need-user', 0, '按指引从银行 APP 导出后上传，自动检查'),
+    hasPhoto
+      ? itemOf('photo', '白底证件照（35×45mm）', 'ready', 100, '已归档，可预览')
+      : itemOf('photo', '白底证件照（35×45mm）', 'need-photo', 0, '上传一张独立白底证件照，非身份证照片，系统自动检测合规性'),
+    hasBank
+      ? itemOf('bank', '银行流水', 'ready', 100, '已识别银行流水文件，可预览')
+      : itemOf('bank', '银行流水', 'need-user', 0, '按指引从银行 APP 导出后上传，自动检查'),
   ]
 }
 

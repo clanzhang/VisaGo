@@ -6,7 +6,7 @@ import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/mater
 import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
 import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
 import { checkBankStatement, type BankCheckResult } from '@/lib/bank-check'
-import { exportPdf, isTauri, listProfiles, getActiveProfileId, getScannedFiles, recognizeFile } from '@/api/tauri'
+import { exportPdf, isTauri, listProfiles, getActiveProfileId, getScannedFiles, recognizeFile, type ScannedFileRecord } from '@/api/tauri'
 import type { UserProfile } from '@/lib/user-profile'
 
 interface Props {
@@ -99,32 +99,17 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
   // 重新检测：读资料卡 + 查已扫描文件 → 刷新材料状态（挂载与 profile-updated 事件共用）
   const refreshMaterials = async () => {
     const profile = await loadProfile()
-    const list = checkMaterials(profile)
-
-    // 查 Rust 已扫描文件记录：识别过「银行流水」→ 标 ready
+    // 先取已扫描文件记录（识别过的户口本/银行流水/身份证等），传给 checkMaterials 统一判断
+    let scannedFiles: ScannedFileRecord[] = []
     if (isTauri()) {
       try {
         const scanned = await getScannedFiles()
-        const hasBank = scanned?.files.some(
-          (f) => f.recognized && f.doc_category === '银行流水',
-        )
-        if (hasBank) {
-          const idx = list.findIndex((i) => i.id === 'bank')
-          if (idx >= 0) {
-            list[idx] = {
-              ...list[idx],
-              status: 'ready',
-              progress: 100,
-              label: '已归档',
-              labelCls: 'bg-success/10 text-success',
-            }
-          }
-        }
+        scannedFiles = scanned?.files ?? []
       } catch (e) {
         console.warn('[MaterialChecklist] 读取已扫描文件失败:', e)
       }
     }
-
+    const list = checkMaterials(profile, scannedFiles)
     setItems(list)
     return profile
   }
@@ -212,6 +197,10 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       const result = await checkPassportPhoto(base64)
       setPhotoResult(result)
       if (result.passed) {
+        // 持久化证件照：写入 localStorage，刷新页面后仍显示"已归档"不要求重新上传
+        const filePath = (file as unknown as { path?: string }).path ?? file.name
+        localStorage.setItem('visago:photo', filePath)
+        console.log('[MaterialChecklist] 证件照已保存:', filePath)
         updateItem('photo', { status: 'ready', progress: 100, label: '已归档', labelCls: 'bg-success/10 text-success' })
       } else {
         updateItem('photo', { status: 'need-photo', progress: 30, label: '不合规', labelCls: 'bg-red-500/10 text-red-600' })
