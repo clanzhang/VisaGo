@@ -704,9 +704,6 @@ export default function Scan() {
             选择包含签证材料的文件夹，或直接选择单个/多个材料文件（PDF / JPG / PNG / DOCX）
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <VButton size="lg" onClick={handlePickFolder} disabled={scanning}>
-              {scanning ? '打开选择器…' : '📁 选文件夹扫描'}
-            </VButton>
             <VButton size="lg" variant="secondary" onClick={handlePickFiles} disabled={scanning}>
               {scanning ? '打开选择器…' : '📄 选文件扫描'}
             </VButton>
