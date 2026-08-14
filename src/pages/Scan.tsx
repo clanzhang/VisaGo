@@ -90,6 +90,8 @@ export default function Scan() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
   const [showNameDialog, setShowNameDialog] = useState(false)
   const [newCardName, setNewCardName] = useState('')
+  // 详情弹窗：当前查看的资料卡
+  const [detailCard, setDetailCard] = useState<ProfileCard | null>(null)
 
   // 加载资料卡列表与活跃卡
   useEffect(() => {
@@ -122,28 +124,6 @@ export default function Scan() {
       toast(`已创建「${card.name}」`, 'success')
     } catch (e) {
       toast(e instanceof Error ? e.message : '创建失败', 'error')
-    }
-  }
-
-  // 切换活跃资料卡
-  async function handleSwitchCard(id: string) {
-    setActiveCardId(id)
-    try {
-      await setActiveProfileId(id)
-      // 检查该资料卡缺失的必填字段，提示用户
-      const card = cards.find((c) => c.id === id)
-      const fields = (card?.fields ?? {}) as Record<string, unknown>
-      const missing = FIELD_SPECS.filter(
-        (f) => f.required && !String(fields[f.key] ?? '').trim(),
-      ).map((f) => f.label)
-      if (missing.length > 0) {
-        toast(`该资料卡还缺少：${missing.join('、')}`, 'warning')
-      } else {
-        toast('✅ 资料完整，已切换到该资料卡', 'success')
-      }
-    } catch (e) {
-      console.warn('[Scan] 切换活跃卡失败:', e)
-      toast('切换资料卡失败', 'error')
     }
   }
 
@@ -622,7 +602,7 @@ export default function Scan() {
               return (
                 <div
                   key={card.id}
-                  onClick={() => handleSwitchCard(card.id)}
+                  onClick={() => setDetailCard(card)}
                   className={`group relative w-44 shrink-0 cursor-pointer rounded-xl border p-3 transition-all duration-150 ${
                     isActive
                       ? 'border-[#1460A4] bg-[#E0F7FA]/60 shadow-sm'
@@ -678,6 +658,68 @@ export default function Scan() {
             <div className="mt-4 flex justify-end gap-2">
               <VButton variant="secondary" size="sm" onClick={() => setShowNameDialog(false)}>取消</VButton>
               <VButton size="sm" onClick={handleCreateProfile} disabled={!newCardName.trim()}>创建</VButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 资料卡详情弹窗 */}
+      {detailCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetailCard(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-ink">资料卡详情 — {detailCard.name || '未命名'}</h3>
+
+            {/* 已填写字段 */}
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold text-success/80">已填写字段</div>
+              {FIELD_SPECS.filter((f) => String(detailCard.fields?.[f.key] ?? '').trim()).length > 0 ? (
+                <div className="space-y-1.5">
+                  {FIELD_SPECS.filter((f) => String(detailCard.fields?.[f.key] ?? '').trim()).map((f) => (
+                    <div key={f.key} className="flex items-center gap-2 text-sm text-success">
+                      <span>✓</span>
+                      <span className="text-ink/70">{f.label}：</span>
+                      <span className="truncate text-ink">{String(detailCard.fields?.[f.key])}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-ink/40">暂无已填写字段</div>
+              )}
+            </div>
+
+            {/* 未填写字段 */}
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold text-red-500/80">未填写字段</div>
+              {FIELD_SPECS.filter((f) => !String(detailCard.fields?.[f.key] ?? '').trim()).length > 0 ? (
+                <div className="space-y-1.5">
+                  {FIELD_SPECS.filter((f) => !String(detailCard.fields?.[f.key] ?? '').trim()).map((f) => (
+                    <div key={f.key} className="flex items-center gap-2 text-sm text-red-600">
+                      <span>✗</span>
+                      <span>{f.label} — 未填写</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-success">✅ 资料完整</div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <VButton variant="secondary" size="sm" onClick={() => setDetailCard(null)}>关闭</VButton>
+              <VButton
+                size="sm"
+                onClick={() => {
+                  const id = detailCard.id
+                  setDetailCard(null)
+                  // 切到该资料卡，跳到第一步让用户补充扫描
+                  setActiveCardId(id)
+                  void setActiveProfileId(id)
+                  setStep(1)
+                  toast('请在第一步补充上传缺失材料', 'info')
+                }}
+              >
+                去上传
+              </VButton>
             </div>
           </div>
         </div>
