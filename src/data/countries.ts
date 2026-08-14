@@ -22,12 +22,54 @@ export const OCCUPATIONS = [
 
 // ===== 从元数据生成统一结构 =====
 
+/** 基于中国公民实际签证费用（人民币）。未列出的国家用 fallback（免签 0 / 其他 300+200） */
+const VISA_FEES: Record<string, { fee: number; serviceFee: number }> = {
+  // 互免签证（通常免费）
+  uae: { fee: 0, serviceFee: 0 },
+  thailand: { fee: 0, serviceFee: 0 },
+  singapore: { fee: 0, serviceFee: 0 },
+  malaysia: { fee: 0, serviceFee: 0 },
+  qatar: { fee: 0, serviceFee: 0 },
+  serbia: { fee: 0, serviceFee: 0 },
+  belarus: { fee: 0, serviceFee: 0 },
+  maldives: { fee: 0, serviceFee: 0 },
+  mauritius: { fee: 0, serviceFee: 0 },
+  seychelles: { fee: 0, serviceFee: 0 },
+
+  // 落地签（按实际费用）
+  indonesia: { fee: 230, serviceFee: 100 },
+  cambodia: { fee: 210, serviceFee: 100 },
+  laos: { fee: 200, serviceFee: 100 },
+  nepal: { fee: 250, serviceFee: 100 },
+  egypt: { fee: 175, serviceFee: 100 },
+  jordan: { fee: 280, serviceFee: 100 },
+  bahrain: { fee: 200, serviceFee: 100 },
+
+  // 电子签 / 需签证
+  japan: { fee: 250, serviceFee: 150 },
+  korea: { fee: 350, serviceFee: 150 },
+  india: { fee: 600, serviceFee: 200 },
+  'sri-lanka': { fee: 200, serviceFee: 100 },
+  schengen: { fee: 600, serviceFee: 250 },
+  uk: { fee: 900, serviceFee: 300 },
+  ireland: { fee: 500, serviceFee: 200 },
+  usa: { fee: 1100, serviceFee: 400 },
+  canada: { fee: 900, serviceFee: 350 },
+  australia: { fee: 1000, serviceFee: 350 },
+  'new-zealand': { fee: 900, serviceFee: 300 },
+  'south-africa': { fee: 400, serviceFee: 200 },
+
+  // 港澳台
+  'hong-kong': { fee: 80, serviceFee: 20 },
+  taiwan: { fee: 90, serviceFee: 60 },
+}
+
 function buildBasicVisaType(meta: CountryMeta): VisaType {
   const name = `${meta.zh}旅游签证`
   const canApplyOnline = meta.visaType === '电子签' || meta.visaType === '落地签'
   const needInterview = meta.difficulty === 'hard'
   const isVisaFree = meta.visaType === '互免签证' || meta.visaType === '单方面免签'
-  // 港澳台：通行证/入台证，费用 0（工本费另算），办理天数不同
+  // 港澳台：通行证/入台证，办理天数不同
   const isHKorTW = meta.id === 'hong-kong' || meta.id === 'taiwan'
   // 国家专属材料清单（新西兰/申根），其余用默认模板
   const requirements =
@@ -43,6 +85,8 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
             { id: 'bank', name: { zh: '银行流水', en: 'Bank statement' }, category: 'financial', required: true, format: 'copy', translationRequired: false },
             { id: 'itinerary', name: { zh: '行程安排', en: 'Itinerary' }, category: 'travel', required: true, format: 'copy', translationRequired: false },
           ] as Requirement[])
+  // 费用映射：优先查表，未列出则免签 0 / 其他 300+200
+  const feeData = VISA_FEES[meta.id] || { fee: isVisaFree ? 0 : 300, serviceFee: isVisaFree ? 0 : 200 }
   return {
     id: `${meta.id}-tourist`,
     name: { zh: name, en: `${meta.en} Tourist Visa` },
@@ -50,21 +94,16 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
     duration: '最长 30 天',
     validity: '3 个月',
     entries: isVisaFree ? 'multiple' : 'single',
-    fee: isHKorTW
-      ? meta.id === 'hong-kong'
-        ? { amount: 60, currency: 'CNY' }
-        : { amount: 30, currency: 'CNY' }
-      : { amount: isVisaFree ? 0 : 300, currency: 'CNY' },
-    serviceFee: isHKorTW
-      ? meta.id === 'hong-kong'
-        ? { amount: 20, currency: 'CNY' }
-        : { amount: 60, currency: 'CNY' }
-      : { amount: isVisaFree ? 0 : 200, currency: 'CNY' },
+    fee: { amount: feeData.fee, currency: 'CNY' },
+    serviceFee: { amount: feeData.serviceFee, currency: 'CNY' },
     processingDays: isHKorTW
       ? meta.id === 'hong-kong'
         ? { min: 1, max: 7 }
         : { min: 5, max: 10 }
-      : { min: isVisaFree ? 0 : 5, max: isVisaFree ? 0 : 10 },
+      : {
+          min: isVisaFree ? 0 : meta.visaType === '落地签' ? 1 : 5,
+          max: isVisaFree ? 0 : meta.visaType === '落地签' ? 3 : 15,
+        },
     needInterview,
     canApplyOnline,
     acceptPersonal: true,
