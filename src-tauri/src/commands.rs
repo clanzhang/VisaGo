@@ -357,6 +357,18 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
     })
 }
 
+/// IPC: get_scanned_files — 读取已扫描文件记录（含识别状态与文档分类）
+#[tauri::command]
+pub(crate) fn get_scanned_files(app: tauri::AppHandle) -> Result<Option<store::ScannedFiles>, String> {
+    let r = store::load_scanned(&app);
+    match &r {
+        Ok(Some(s)) => println!("[IPC] get_scanned_files: {} 个文件", s.files.len()),
+        Ok(None) => println!("[IPC] get_scanned_files: 暂无扫描记录"),
+        Err(e) => println!("[IPC] get_scanned_files 失败: {e}"),
+    }
+    r
+}
+
 // ===== 用户资料 =====
 
 /// IPC: list_profiles — 列出全部资料卡

@@ -64,6 +64,29 @@ export function scanFiles(paths: string[]): Promise<ScanResult> {
   return invoke<ScanResult>('scan_files', { paths })
 }
 
+// ===== 已扫描文件记录（Rust scanned_files.json）=====
+
+export interface ScannedFileRecord {
+  path: string
+  name: string
+  file_type: string
+  size: number
+  recognized: boolean
+  doc_category: string // 身份证/护照/银行流水/在职证明/户口本/房产证/其他
+  fields: Record<string, unknown>
+  error: string | null
+}
+
+export interface ScannedFilesResult {
+  folder: string
+  scanned_at: string
+  files: ScannedFileRecord[]
+}
+
+export function getScannedFiles(): Promise<ScannedFilesResult | null> {
+  return invoke<ScannedFilesResult | null>('get_scanned_files')
+}
+
 // ===== 系统对话框（plugin-dialog）=====
 
 /**

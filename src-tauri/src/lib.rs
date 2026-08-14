@@ -8,8 +8,8 @@ mod store;
 
 use commands::{
     ai_chat, check_reminders, create_profile, delete_application, delete_profile,
-    export_pdf, get_active_profile_id, get_visa_data, kimi_chat, list_profiles,
-    load_profile, load_settings, push_notification, recognize_file,
+    export_pdf, get_active_profile_id, get_scanned_files, get_visa_data, kimi_chat,
+    list_profiles, load_profile, load_settings, push_notification, recognize_file,
     refresh_visa_data, request_notification_permission, save_application,
     save_profile, save_profile_card, save_settings, scan_files, scan_folder,
     send_notification, set_active_profile_id,
@@ -70,6 +70,7 @@ pub fn run() {
             request_notification_permission,
             save_application,
             delete_application,
+            get_scanned_files,
             get_visa_data,
             refresh_visa_data,
             export_pdf,

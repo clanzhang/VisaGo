@@ -6,7 +6,7 @@ import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/mater
 import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
 import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
 import { checkBankStatement, type BankCheckResult } from '@/lib/bank-check'
-import { exportPdf, isTauri, listProfiles, getActiveProfileId } from '@/api/tauri'
+import { exportPdf, isTauri, listProfiles, getActiveProfileId, getScannedFiles } from '@/api/tauri'
 import type { UserProfile } from '@/lib/user-profile'
 
 interface Props {
@@ -76,7 +76,33 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
   useEffect(() => {
     ;(async () => {
       const profile = await loadProfile()
-      setItems(checkMaterials(profile))
+      const list = checkMaterials(profile)
+
+      // 查 Rust 已扫描文件记录：识别过「银行流水」→ 标 ready
+      if (isTauri()) {
+        try {
+          const scanned = await getScannedFiles()
+          const hasBank = scanned?.files.some(
+            (f) => f.recognized && f.doc_category === '银行流水',
+          )
+          if (hasBank) {
+            const idx = list.findIndex((i) => i.id === 'bank')
+            if (idx >= 0) {
+              list[idx] = {
+                ...list[idx],
+                status: 'ready',
+                progress: 100,
+                label: '已归档',
+                labelCls: 'bg-success/10 text-success',
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[MaterialChecklist] 读取已扫描文件失败:', e)
+        }
+      }
+
+      setItems(list)
       if (!profile) return
       // 自动生成行程（Kimi）——静默执行，失败不阻塞
       try {
