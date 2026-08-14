@@ -19,7 +19,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col bg-sidebar text-white transition-all duration-300 ease-in-out ${hovered ? 'w-[260px]' : 'w-[64px]'}`}
+      className={`flex h-full shrink-0 flex-col bg-sidebar text-white transition-all duration-[390ms] ease-in-out ${hovered ? 'w-[260px]' : 'w-[64px]'}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -32,18 +32,18 @@ export function Sidebar() {
             <circle cx="10" cy="13" r="2.2" fill="#1460A4" />
           </svg>
         </div>
-        <div className={`leading-tight transition-opacity duration-200 ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+        <div className={`leading-tight transition-opacity duration-[260ms] ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
           <div className="whitespace-nowrap font-display text-[17px] font-bold tracking-tight">VisaGo</div>
           <div className="whitespace-nowrap text-[11px] text-white/50">{t('app.tagline')}</div>
         </div>
       </div>
 
       {/* 用户信息 */}
-      <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-300 ${hovered ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
+      <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-[390ms] ${hovered ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
           用户
         </div>
-        <div className={`leading-tight transition-opacity duration-200 ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+        <div className={`leading-tight transition-opacity duration-[260ms] ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
           <div className="whitespace-nowrap text-[13px] font-medium">旅行者</div>
           <div className="whitespace-nowrap text-[11px] text-white/50">VIP 会员</div>
         </div>
@@ -64,7 +64,7 @@ export function Sidebar() {
               if (item.to === '/') reset()
             }}
             className={({ isActive }) =>
-              `group relative flex items-center rounded-lg py-2.5 text-sm transition-all duration-300 ${
+              `group relative flex items-center rounded-lg py-2.5 text-sm transition-all duration-[390ms] ${
                 hovered ? 'gap-3 px-3.5' : 'justify-center px-0'
               } ${
                 isActive
@@ -91,7 +91,7 @@ export function Sidebar() {
                 >
                   <path d={item.icon} />
                 </svg>
-                <span className={`whitespace-nowrap transition-opacity duration-200 ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>{item.label ?? t(`nav.${item.key}`)}</span>
+                <span className={`whitespace-nowrap transition-opacity duration-[260ms] ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>{item.label ?? t(`nav.${item.key}`)}</span>
               </>
             )}
           </NavLink>
@@ -99,7 +99,7 @@ export function Sidebar() {
       </nav>
 
       {/* 底部 */}
-      <div className={`overflow-hidden transition-all duration-300 ${hovered ? 'px-4 pb-5 opacity-100' : 'h-0 pb-0 opacity-0'}`}>
+      <div className={`overflow-hidden transition-all duration-[390ms] ${hovered ? 'px-4 pb-5 opacity-100' : 'h-0 pb-0 opacity-0'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1">
             {(['zh-CN', 'en-US'] as const).map((l) => (
