@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { VButton, VBadge, ProfileCardManager, StepIndicator } from '@/components/common'
-import { ScanEmptyState } from '@/components/visa'
+import { ScanEmptyState, ScannedFileList, type ScannedFileItem } from '@/components/visa'
 import { useAppStore } from '@/stores/appStore'
 import {
   scanFiles,
@@ -22,17 +22,6 @@ import {
 } from '@/api/tauri'
 
 type Step = 1 | 2 | 3
-
-interface RecognizedItem {
-  path: string
-  name: string
-  fileType: string
-  category: string
-  fields: Record<string, unknown>
-  summary: string
-  status: 'pending' | 'recognizing' | 'done' | 'error'
-  error?: string
-}
 
 // 从文件提取的行程数据（识别行程单时填充）
 interface TripData {
@@ -66,7 +55,7 @@ export default function Scan() {
   const { toast } = useAppStore()
   const [step, setStep] = useState<Step>(1)
   const [folder, setFolder] = useState('')
-  const [items, setItems] = useState<RecognizedItem[]>([])
+  const [items, setItems] = useState<ScannedFileItem[]>([])
   const [scanning, setScanning] = useState(false)
   const [recognizingAll, setRecognizingAll] = useState(false)
 
@@ -196,7 +185,7 @@ export default function Scan() {
   }
 
   // 用 ref 跟踪 items，供追加合并与导航重置使用
-  const itemsRef = useRef<RecognizedItem[]>([])
+  const itemsRef = useRef<ScannedFileItem[]>([])
   useEffect(() => {
     itemsRef.current = items
   }, [items])
@@ -309,7 +298,7 @@ export default function Scan() {
   }
 
   // 识别单个文件
-  async function handleRecognize(item: RecognizedItem) {
+  async function handleRecognize(item: ScannedFileItem) {
     setItems((prev) =>
       prev.map((x) => (x.path === item.path ? { ...x, status: 'recognizing' } : x)),
     )
@@ -358,7 +347,7 @@ export default function Scan() {
   }
 
   // 追加后自动识别一组新文件（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
-  async function handleRecognizeAllFresh(fresh: RecognizedItem[]) {
+  async function handleRecognizeAllFresh(fresh: ScannedFileItem[]) {
     setRecognizingAll(true)
     for (let i = 0; i < fresh.length; i++) {
       await handleRecognize(fresh[i])
@@ -572,63 +561,17 @@ export default function Scan() {
 
       {/* ===== 第二步：文件列表 + 核对表单 ===== */}
       {step === 2 && (
-        <div className="flex flex-col gap-6">
-          <div className="rounded-2xl bg-white p-6 shadow-card">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-ink">已扫描文件</h2>
-                <p className="text-xs text-ink/45">
-                  共 {items.length} 个文件{items.length > 0 && ` · ${folder}`}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <VButton size="sm" variant="secondary" onClick={handleAddMore} disabled={scanning}>
-                  {scanning ? '选择器中…' : '+ 添加文件'}
-                </VButton>
-                <VButton size="sm" onClick={handleRecognizeAll} disabled={recognizingAll}>
-                  {recognizingAll ? '识别中…' : `识别全部 (${recognizedCount}/${items.length})`}
-                </VButton>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {items.map((item) => (
-                <div key={item.path} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
-                  <span className="text-lg">📄</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-ink">{item.name}</div>
-                    <div className="text-xs text-ink/40">
-                      {item.fileType.toUpperCase()} · {item.category || '未识别'}
-                    </div>
-                  </div>
-                  {item.status === 'pending' && (
-                    <VButton size="sm" variant="secondary" onClick={() => handleRecognize(item)}>
-                      识别
-                    </VButton>
-                  )}
-                  {item.status === 'recognizing' && (
-                    <span className="flex items-center gap-1.5 text-xs text-ink/50">
-                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
-                      识别中
-                    </span>
-                  )}
-                  {item.status === 'done' && (
-                    <VBadge tone="success">✓ {item.category}</VBadge>
-                  )}
-                  {item.status === 'error' && (
-                    <VBadge tone="danger">{item.error}</VBadge>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <VButton onClick={handleNextToConfirm} disabled={recognizedCount === 0}>
-                下一步：核对信息 →
-              </VButton>
-            </div>
-          </div>
-        </div>
+        <ScannedFileList
+          items={items}
+          folder={folder}
+          scanning={scanning}
+          recognizingAll={recognizingAll}
+          recognizedCount={recognizedCount}
+          onAddMore={handleAddMore}
+          onRecognizeAll={handleRecognizeAll}
+          onRecognize={handleRecognize}
+          onNext={handleNextToConfirm}
+        />
       )}
 
       {/* ===== 第三步：出结果（核对表单 + 生成） ===== */}
