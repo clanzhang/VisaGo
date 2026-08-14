@@ -15,42 +15,53 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
-  const [hovered, setHovered] = useState(false)
+  const [expanded, setExpanded] = useState(true)
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col bg-sidebar text-white transition-all duration-[390ms] ease-in-out ${hovered ? 'w-[260px]' : 'w-[64px]'}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={`flex h-full shrink-0 flex-col bg-sidebar text-white transition-all duration-[390ms] ease-in-out ${expanded ? 'w-[260px]' : 'w-[64px]'}`}
     >
-      {/* Logo */}
-      <div className={`flex items-center pt-7 pb-8 ${hovered ? 'gap-3 px-6' : 'justify-center px-0'}`}>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E0F7FA]">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1460A4" strokeWidth="1.8">
-            <path d="M3 7h12a3 3 0 013 3v8a3 3 0 01-3 3H3a1 1 0 01-1-1V8a1 1 0 011-1z" fill="#E0F7FA" stroke="#1460A4" />
-            <path d="M3 7a1 1 0 011-1h4l3 3h4l3-3h2a1 1 0 011 1v3H3V7z" fill="#39A2B8" stroke="#1460A4" />
-            <circle cx="10" cy="13" r="2.2" fill="#1460A4" />
+      {/* Logo + 收起按钮 */}
+      <div className={`flex items-center pt-7 pb-8 ${expanded ? 'gap-3 px-4' : 'flex-col gap-2 px-0'}`}>
+        <div className={`flex items-center ${expanded ? 'gap-3' : 'justify-center'}`}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E0F7FA]">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1460A4" strokeWidth="1.8">
+              <path d="M3 7h12a3 3 0 013 3v8a3 3 0 01-3 3H3a1 1 0 01-1-1V8a1 1 0 011-1z" fill="#E0F7FA" stroke="#1460A4" />
+              <path d="M3 7a1 1 0 011-1h4l3 3h4l3-3h2a1 1 0 011 1v3H3V7z" fill="#39A2B8" stroke="#1460A4" />
+              <circle cx="10" cy="13" r="2.2" fill="#1460A4" />
+            </svg>
+          </div>
+          <div className={`leading-tight transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+            <div className="whitespace-nowrap font-display text-[17px] font-bold tracking-tight">VisaGo</div>
+            <div className="whitespace-nowrap text-[11px] text-white/50">{t('app.tagline')}</div>
+          </div>
+        </div>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          title={expanded ? '收起侧边栏' : '展开侧边栏'}
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors duration-150 hover:bg-white/10 hover:text-white ${
+            expanded ? 'ml-auto' : ''
+          }`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {expanded ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 18l6-6-6-6" />}
           </svg>
-        </div>
-        <div className={`leading-tight transition-opacity duration-[260ms] ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
-          <div className="whitespace-nowrap font-display text-[17px] font-bold tracking-tight">VisaGo</div>
-          <div className="whitespace-nowrap text-[11px] text-white/50">{t('app.tagline')}</div>
-        </div>
+        </button>
       </div>
 
       {/* 用户信息 */}
-      <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-[390ms] ${hovered ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
+      <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-[390ms] ${expanded ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
           用户
         </div>
-        <div className={`leading-tight transition-opacity duration-[260ms] ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+        <div className={`leading-tight transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
           <div className="whitespace-nowrap text-[13px] font-medium">旅行者</div>
           <div className="whitespace-nowrap text-[11px] text-white/50">VIP 会员</div>
         </div>
       </div>
 
       {/* 导航 */}
-      <nav className={`flex-1 space-y-1 ${hovered ? 'px-4' : 'px-0'}`}>
+      <nav className={`flex-1 space-y-1 ${expanded ? 'px-4' : 'px-0'}`}>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -66,7 +77,7 @@ export function Sidebar() {
             }}
             className={({ isActive }) =>
               `group relative flex w-full items-center rounded-lg py-2.5 text-sm transition-all duration-[390ms] ${
-                hovered ? 'gap-3 px-3.5' : 'justify-center px-0'
+                expanded ? 'gap-3 px-3.5' : 'justify-center px-0'
               } ${
                 isActive
                   ? 'bg-white/10 font-medium text-white'
@@ -92,7 +103,7 @@ export function Sidebar() {
                 >
                   <path d={item.icon} />
                 </svg>
-                <span className={`whitespace-nowrap transition-opacity duration-[260ms] ${hovered ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>{item.label ?? t(`nav.${item.key}`)}</span>
+                <span className={`whitespace-nowrap transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>{item.label ?? t(`nav.${item.key}`)}</span>
               </>
             )}
           </NavLink>
@@ -100,7 +111,7 @@ export function Sidebar() {
       </nav>
 
       {/* 底部 */}
-      <div className={`overflow-hidden transition-all duration-[390ms] ${hovered ? 'px-4 pb-5 opacity-100' : 'h-0 pb-0 opacity-0'}`}>
+      <div className={`overflow-hidden transition-all duration-[390ms] ${expanded ? 'px-4 pb-5 opacity-100' : 'h-0 pb-0 opacity-0'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1">
             {(['zh-CN', 'en-US'] as const).map((l) => (
