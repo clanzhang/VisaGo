@@ -87,7 +87,8 @@ export function ScannedFileList({
           ))}
         </div>
 
-        <div className="mt-6 flex justify-end">
+        {/* 下一步：sticky 底部，始终可见 */}
+        <div className="sticky bottom-0 -mx-6 mt-6 flex justify-end border-t border-ink/5 bg-white px-6 py-3">
           <VButton onClick={onNext} disabled={recognizedCount === 0}>
             下一步：核对信息 →
           </VButton>

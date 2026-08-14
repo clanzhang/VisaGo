@@ -14,7 +14,8 @@ interface Props {
 export function ReviewForm({ profile, missingFields, onSave, onBack, onFieldChange }: Props) {
   return (
     <div className="rounded-2xl bg-white p-6 shadow-card">
-      <div className="mb-4 flex items-center justify-between">
+      {/* 标题栏：sticky 顶部，保存/返回始终可见 */}
+      <div className="sticky -top-6 -mx-6 z-10 mb-4 flex items-center justify-between border-b border-ink/5 bg-white px-6 py-4">
         <h2 className="text-lg font-bold text-ink">核对自动提取的信息</h2>
         <div className="flex gap-2">
           <VButton variant="secondary" size="sm" onClick={onSave}>
