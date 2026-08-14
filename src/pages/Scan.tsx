@@ -664,47 +664,82 @@ export default function Scan() {
       )}
 
       {/* 资料卡详情弹窗 */}
-      {detailCard && (
+      {detailCard && (() => {
+        const fields = (detailCard.fields ?? {}) as Record<string, unknown>
+        const has = (key: string) => String(fields[key] ?? '').trim()
+        const filled = FIELD_SPECS.filter((f) => has(f.key))
+        const missing = FIELD_SPECS.filter((f) => !has(f.key))
+        // 未填字段 → 补充提示
+        const FIX_HINT: Record<string, string> = {
+          passport_number: '上传护照扫描件自动识别',
+          home_province: '上传户口本自动识别',
+          position: '上传在职证明或手动填写',
+          company: '上传在职证明或手动填写',
+          salary: '上传在职证明或手动填写',
+          phone: '手动输入',
+          name: '上传身份证扫描件自动识别',
+          id_number: '上传身份证扫描件自动识别',
+          nationality: '上传护照扫描件自动识别',
+          birth_date: '上传身份证扫描件自动识别',
+          gender: '上传身份证扫描件自动识别',
+          address: '手动输入',
+          passport_issued_in: '上传护照扫描件自动识别',
+          occupation: '手动选择职业类型',
+        }
+        return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetailCard(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-ink">资料卡详情 — {detailCard.name || '未命名'}</h3>
 
-            {/* 已填写字段 */}
-            <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold text-success/80">已填写字段</div>
-              {FIELD_SPECS.filter((f) => String(detailCard.fields?.[f.key] ?? '').trim()).length > 0 ? (
-                <div className="space-y-1.5">
-                  {FIELD_SPECS.filter((f) => String(detailCard.fields?.[f.key] ?? '').trim()).map((f) => (
-                    <div key={f.key} className="flex items-center gap-2 text-sm text-success">
-                      <span>✓</span>
-                      <span className="text-ink/70">{f.label}：</span>
-                      <span className="truncate text-ink">{String(detailCard.fields?.[f.key])}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-ink/40">暂无已填写字段</div>
-              )}
+            {/* 双栏：已填写 / 未填写 */}
+            <div className="mt-4 grid max-h-[50vh] grid-cols-2 gap-4 overflow-y-auto">
+              {/* 左栏：已填写 */}
+              <div className="rounded-xl border border-success/20 bg-success/5 p-3">
+                <div className="mb-2 text-xs font-semibold text-success">已填写（{filled.length}）</div>
+                {filled.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {filled.map((f) => (
+                      <div key={f.key} className="flex items-start gap-1.5 text-sm">
+                        <span className="text-success">✓</span>
+                        <span className="text-ink/70">{f.label}：</span>
+                        <span className="min-w-0 truncate text-ink">{String(fields[f.key])}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-ink/40">暂无已填写字段</div>
+                )}
+              </div>
+
+              {/* 右栏：未填写 */}
+              <div className="rounded-xl border border-red-200 bg-red-50/60 p-3">
+                <div className="mb-2 text-xs font-semibold text-red-500">未填写（{missing.length}）</div>
+                {missing.length > 0 ? (
+                  <div className="space-y-2">
+                    {missing.map((f) => (
+                      <div key={f.key} className="text-sm">
+                        <div className="flex items-center gap-1.5 text-red-600">
+                          <span>✗</span>
+                          <span className="font-medium">{f.label}</span>
+                        </div>
+                        <div className="mt-0.5 pl-5 text-[11px] text-red-500/70">
+                          💡 {FIX_HINT[f.key] ?? '请补充相关材料'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-success">✅ 资料完整</div>
+                )}
+              </div>
             </div>
 
-            {/* 未填写字段 */}
-            <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold text-red-500/80">未填写字段</div>
-              {FIELD_SPECS.filter((f) => !String(detailCard.fields?.[f.key] ?? '').trim()).length > 0 ? (
-                <div className="space-y-1.5">
-                  {FIELD_SPECS.filter((f) => !String(detailCard.fields?.[f.key] ?? '').trim()).map((f) => (
-                    <div key={f.key} className="flex items-center gap-2 text-sm text-red-600">
-                      <span>✗</span>
-                      <span>{f.label} — 未填写</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-success">✅ 资料完整</div>
-              )}
+            {/* 底部统计 */}
+            <div className="mt-4 rounded-lg bg-[#F9F9F6] px-3 py-2 text-center text-sm text-ink/60">
+              已填写 {filled.length}/{FIELD_SPECS.length} 项，还差 {missing.length} 项
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2">
               <VButton variant="secondary" size="sm" onClick={() => setDetailCard(null)}>关闭</VButton>
               <VButton
                 size="sm"
@@ -718,12 +753,13 @@ export default function Scan() {
                   toast('请在第一步补充上传缺失材料', 'info')
                 }}
               >
-                去上传
+                去补充
               </VButton>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* 步骤指示器 */}
       <div className="flex items-center gap-2">
