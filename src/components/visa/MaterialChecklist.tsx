@@ -6,7 +6,7 @@ import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/mater
 import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
 import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
 import { checkBankStatement, type BankCheckResult } from '@/lib/bank-check'
-import { exportPdf, isTauri, listProfiles, getActiveProfileId, getScannedFiles } from '@/api/tauri'
+import { exportPdf, isTauri, listProfiles, getActiveProfileId, getScannedFiles, recognizeFile } from '@/api/tauri'
 import type { UserProfile } from '@/lib/user-profile'
 
 interface Props {
@@ -49,7 +49,18 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
   const [bankResult, setBankResult] = useState<BankCheckResult | null>(null)
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [currentUploadTarget, setCurrentUploadTarget] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  /** 材料 id → 期望的 Kimi 识别 category（中文），用于上传类型校验 */
+  const TARGET_CATEGORY: Record<string, string> = {
+    id: '身份证',
+    passport: '护照',
+    family: '户口本',
+    employment: '在职证明',
+    itinerary: '行程',
+    application: '申请表',
+  }
 
   const dates = tripDates ?? {
     start: new Date().toISOString().slice(0, 10),
@@ -187,6 +198,34 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
     reader.readAsDataURL(file)
   }
 
+  // 其他材料上传：Kimi 识别文件类型，与目标不符则确认
+  async function handleOtherUpload(file: File, targetId: string) {
+    const filePath = (file as unknown as { path?: string }).path
+    if (!filePath) {
+      updateItem(targetId, { status: 'need-user', progress: 30, label: '待上传', labelCls: 'bg-amber-500/10 text-amber-600' })
+      return
+    }
+    try {
+      const res = await recognizeFile(filePath, file.name)
+      const expected = TARGET_CATEGORY[targetId]
+      const got = res.category || ''
+      // 类型不符 → 弹确认
+      if (expected && got && !got.includes(expected) && !expected.includes(got)) {
+        const ok = window.confirm(`检测到这是「${got}」文件，确定要作为「${expected}」上传吗？`)
+        if (!ok) return
+      }
+      updateItem(targetId, {
+        status: 'ready',
+        progress: 100,
+        label: '已归档',
+        labelCls: 'bg-success/10 text-success',
+      })
+    } catch (e) {
+      console.warn('[MaterialChecklist] 上传识别失败:', e)
+      updateItem(targetId, { status: 'need-user', progress: 30, label: '待上传', labelCls: 'bg-amber-500/10 text-amber-600' })
+    }
+  }
+
   // 操作按钮
   function renderAction(item: MaterialItem) {
     if (item.status === 'ready' || item.status === 'auto-generate') {
@@ -195,22 +234,39 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
           <VButton size="sm" variant="secondary" onClick={() => exportPdf(`<pre>${item.name}</pre>`, item.name).catch(() => {})}>
             预览
           </VButton>
-          <VButton size="sm" variant="secondary" onClick={handleGenerateAll} disabled={generating}>
-            重新生成
-          </VButton>
+          {item.id === 'photo' || item.id === 'bank' || item.id === 'id' || item.id === 'passport' || item.id === 'family' ? (
+            <VButton
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setCurrentUploadTarget(item.id)
+                fileRef.current?.click()
+              }}
+            >
+              重新上传
+            </VButton>
+          ) : (
+            <VButton size="sm" variant="secondary" onClick={handleGenerateAll} disabled={generating}>
+              重新生成
+            </VButton>
+          )}
         </div>
       )
     }
     if (item.status === 'need-photo') {
       return (
-        <VButton size="sm" onClick={() => fileRef.current?.click()}>上传</VButton>
+        <VButton size="sm" onClick={() => { setCurrentUploadTarget('photo'); fileRef.current?.click() }}>上传</VButton>
       )
     }
-    // need-user：上传 / 银行流水直接打开文件选择器
+    // need-user：根据材料类型设置上传目标
     return (
       <VButton
         size="sm"
-        onClick={() => fileRef.current?.click()}
+        onClick={() => {
+          const target = item.id === 'bank' ? 'bank' : item.id
+          setCurrentUploadTarget(target)
+          fileRef.current?.click()
+        }}
       >
         上传
       </VButton>
@@ -276,9 +332,10 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates }: P
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]
-          if (f) {
-            if (items.some((i) => i.status === 'need-photo')) handlePhotoUpload(f)
-            else handleBankUpload(f)
+          if (f && currentUploadTarget) {
+            if (currentUploadTarget === 'photo') handlePhotoUpload(f)
+            else if (currentUploadTarget === 'bank') handleBankUpload(f)
+            else handleOtherUpload(f, currentUploadTarget)
           }
           e.target.value = ''
         }}
