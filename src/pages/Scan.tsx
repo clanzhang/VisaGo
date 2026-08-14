@@ -130,9 +130,20 @@ export default function Scan() {
     setActiveCardId(id)
     try {
       await setActiveProfileId(id)
-      toast('已切换到该资料卡', 'success')
+      // 检查该资料卡缺失的必填字段，提示用户
+      const card = cards.find((c) => c.id === id)
+      const fields = (card?.fields ?? {}) as Record<string, unknown>
+      const missing = FIELD_SPECS.filter(
+        (f) => f.required && !String(fields[f.key] ?? '').trim(),
+      ).map((f) => f.label)
+      if (missing.length > 0) {
+        toast(`该资料卡还缺少：${missing.join('、')}`, 'warning')
+      } else {
+        toast('✅ 资料完整，已切换到该资料卡', 'success')
+      }
     } catch (e) {
       console.warn('[Scan] 切换活跃卡失败:', e)
+      toast('切换资料卡失败', 'error')
     }
   }
 
