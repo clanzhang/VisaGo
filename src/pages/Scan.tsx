@@ -4,9 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { VButton, VBadge } from '@/components/common'
 import { useAppStore } from '@/stores/appStore'
 import {
-  scanFolder,
   scanFiles,
-  pickFolder,
   pickFiles,
   recognizeFile,
   exportPdf,
@@ -241,32 +239,6 @@ export default function Scan() {
   }, [])
 
   // ===== 第一步：扫描 =====
-
-  /** 弹系统文件夹选择器，选文件夹后扫描 */
-  async function handlePickFolder() {
-    if (!tauriEnv) {
-      toast('请使用 Tauri 桌面端进行扫描', 'warning')
-      return
-    }
-    setScanning(true)
-    try {
-      console.log('[Scan] 弹文件夹选择器...')
-      const folder = await pickFolder()
-      if (!folder) {
-        console.log('[Scan] 用户取消了文件夹选择')
-        setScanning(false)
-        return
-      }
-      console.log('[Scan] 用户选择文件夹:', folder)
-      const result: ScanResult = await scanFolder(folder)
-      applyScanResult(result)
-    } catch (e) {
-      console.error('[Scan] 扫描失败:', e)
-      toast(e instanceof Error ? e.message : `扫描失败: ${String(e)}`, 'error')
-    } finally {
-      setScanning(false)
-    }
-  }
 
   /** 弹系统文件选择器，选单个或多个文件后扫描 */
   async function handlePickFiles() {
@@ -718,19 +690,19 @@ export default function Scan() {
       {step === 2 && (
         <div className="flex flex-col gap-6">
           <div className="rounded-2xl bg-white p-6 shadow-card">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-ink">已扫描文件</h2>
                 <p className="text-xs text-ink/45">
                   共 {items.length} 个文件{items.length > 0 && ` · ${folder}`}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <VButton size="sm" variant="secondary" onClick={handleAddMore} disabled={scanning}>
-                  {scanning ? '选择器中…' : '+ 添加更多文件'}
+                  {scanning ? '选择器中…' : '+ 添加文件'}
                 </VButton>
                 <VButton size="sm" onClick={handleRecognizeAll} disabled={recognizingAll}>
-                  {recognizingAll ? '识别中…' : `🤖 识别全部 (${recognizedCount}/${items.length})`}
+                  {recognizingAll ? '识别中…' : `识别全部 (${recognizedCount}/${items.length})`}
                 </VButton>
               </div>
             </div>
