@@ -1,8 +1,10 @@
 // pages/Scan.tsx — 桌面端三步走：扫描资料 → 核对信息 → 生成结果
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { VButton, VBadge, ProfileCardManager, StepIndicator } from '@/components/common'
-import { ScanEmptyState, ScannedFileList, type ScannedFileItem } from '@/components/visa'
+import { VBadge, ProfileCardManager, StepIndicator } from '@/components/common'
+import { ScanEmptyState, ScannedFileList, ReviewForm, ResultGenerator, type ScannedFileItem } from '@/components/visa'
+import { FIELD_SPECS } from '@/data/field-specs'
+import type { TripData } from '@/types'
 import { useAppStore } from '@/stores/appStore'
 import {
   scanFiles,
@@ -22,34 +24,6 @@ import {
 } from '@/api/tauri'
 
 type Step = 1 | 2 | 3
-
-// 从文件提取的行程数据（识别行程单时填充）
-interface TripData {
-  destination?: string
-  start_date?: string
-  end_date?: string
-  days?: number
-  cities?: string[]
-  daily_plan?: { day?: number; date?: string; city?: string; activity?: string; transport?: string; accommodation?: string }[]
-}
-
-// 材料字段规范（用于核对表单 + 缺失检测）
-const FIELD_SPECS = [
-  { key: 'name', label: '姓名', required: true },
-  { key: 'passport_number', label: '护照号', required: true },
-  { key: 'id_number', label: '身份证号', required: true },
-  { key: 'nationality', label: '国籍', required: true },
-  { key: 'birth_date', label: '出生日期', required: true },
-  { key: 'gender', label: '性别', required: false },
-  { key: 'phone', label: '手机号', required: false },
-  { key: 'address', label: '家庭住址', required: false },
-  { key: 'home_province', label: '户籍省份', required: true },
-  { key: 'passport_issued_in', label: '护照签发地', required: false },
-  { key: 'occupation', label: '职业', required: true },
-  { key: 'company', label: '工作单位', required: false },
-  { key: 'position', label: '职位', required: false },
-  { key: 'salary', label: '月薪', required: false },
-]
 
 export default function Scan() {
   const { toast } = useAppStore()
@@ -577,162 +551,28 @@ export default function Scan() {
       {/* ===== 第三步：出结果（核对表单 + 生成） ===== */}
       {step === 3 && (
         <div className="flex flex-col gap-6">
-          <div className="rounded-2xl bg-white p-6 shadow-card">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-ink">核对自动提取的信息</h2>
-              <div className="flex gap-2">
-                <VButton variant="secondary" size="sm" onClick={handleSaveProfile}>
-                  💾 保存
-                </VButton>
-                <VButton size="sm" onClick={() => setStep(2)}>
-                  返回文件列表
-                </VButton>
-              </div>
-            </div>
-
-            {/* 缺失提示 */}
-            {missingFields.length > 0 && (
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <div className="text-sm font-semibold text-amber-700">
-                  文件中未找到 {missingFields.length} 项信息，请核对或补充：
-                </div>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {missingFields.map((f) => (
-                    <span key={f.key} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                      {f.label}（文件中未找到）
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-amber-600/70">
-                  💡 提示：可补充扫描身份证/护照/户口本等材料自动获取，或在下方手动补填
-                </p>
-              </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {FIELD_SPECS.map((f) => {
-                const filled = !!profile[f.key]
-                return (
-                  <div key={f.key} className={`rounded-xl border p-4 ${filled ? 'border-success/30 bg-success/5' : 'border-red-200 bg-red-50/50'}`}>
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <span className={`h-2 w-2 rounded-full ${filled ? 'bg-success' : 'bg-red-400'}`} />
-                      <label className="text-sm font-medium text-ink">
-                        {f.label} {f.required && <span className="text-red-500">*</span>}
-                      </label>
-                      {!filled && (
-                        <span className="ml-auto text-[11px] text-red-500/70">文件中未找到</span>
-                      )}
-                    </div>
-                    <input
-                      value={profile[f.key] ?? ''}
-                      onChange={(e) => setProfile({ ...profile, [f.key]: e.target.value })}
-                      placeholder={filled ? (f.required ? '必填' : '选填') : '文件中未找到，请补充'}
-                      className="w-full rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-primary/40"
-                    />
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          <ReviewForm
+            profile={profile}
+            missingFields={missingFields}
+            onSave={handleSaveProfile}
+            onBack={() => setStep(2)}
+            onFieldChange={(key, value) => setProfile((prev) => ({ ...prev, [key]: value }))}
+          />
 
           {/* 生成材料 */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl bg-white p-6 shadow-card">
-              <h2 className="mb-4 text-lg font-bold text-ink">选择申请目标</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-ink/60">国家</label>
-                  <select
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                  >
-                    {['日本', '韩国', '泰国', '申根', '美国', '英国', '澳大利亚'].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-ink/60">签证类型</label>
-                  <select
-                    value={visaType}
-                    onChange={(e) => setVisaType(e.target.value)}
-                    className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-                  >
-                    {['旅游签证', '商务签证', '探亲签证', '学生签证'].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-ink/60">生成文档类型</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['itinerary', 'employment', 'cover'] as const).map((dt) => (
-                      <button
-                        key={dt}
-                        onClick={() => setDocType(dt)}
-                        className={`rounded-lg border-2 px-2 py-2 text-xs font-medium transition-all ${
-                          docType === dt ? 'border-primary bg-primary/5 text-primary' : 'border-ink/10 text-ink/55'
-                        }`}
-                      >
-                        {dt === 'itinerary' ? '行程单' : dt === 'employment' ? '在职证明' : '解释信'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 行程数据预览（识别到行程文件时显示） */}
-                {docType === 'itinerary' && tripData && (
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
-                      <span>🗺️</span> 已从行程文件提取数据
-                    </div>
-                    <dl className="space-y-1 text-xs text-ink/70">
-                      <div className="flex justify-between"><dt className="text-ink/50">目的地</dt><dd className="font-medium">{tripData.destination || country}</dd></div>
-                      <div className="flex justify-between"><dt className="text-ink/50">出发</dt><dd className="font-medium">{tripData.start_date || '—'}</dd></div>
-                      <div className="flex justify-between"><dt className="text-ink/50">返回</dt><dd className="font-medium">{tripData.end_date || '—'}</dd></div>
-                      <div className="flex justify-between"><dt className="text-ink/50">天数</dt><dd className="font-medium">{tripData.days ?? tripData.daily_plan?.length ?? '—'}</dd></div>
-                      <div className="flex justify-between"><dt className="text-ink/50">城市</dt><dd className="font-medium">{(tripData.cities ?? []).join('、') || '—'}</dd></div>
-                    </dl>
-                    {tripData.daily_plan && tripData.daily_plan.length > 0 && (
-                      <div className="mt-2 border-t border-primary/15 pt-2">
-                        <div className="mb-1 text-[11px] text-ink/50">每日安排</div>
-                        <div className="max-h-28 space-y-0.5 overflow-y-auto text-[11px] text-ink/70">
-                          {tripData.daily_plan.map((d, i) => (
-                            <div key={i}>· 第{d.day ?? i + 1}天 {d.date ? `(${d.date})` : ''} {d.city || ''}：{d.activity || ''}</div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <VButton className="w-full" onClick={handleGenerate} disabled={generating}>
-                  {generating ? '生成中…' : '✨ AI 生成材料'}
-                </VButton>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white p-6 shadow-card">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-ink">生成结果</h2>
-                {generated && (
-                  <VButton variant="secondary" size="sm" onClick={handleExport}>
-                    ⬇️ 导出 PDF
-                  </VButton>
-                )}
-              </div>
-              {generated ? (
-                <pre className="max-h-[480px] overflow-y-auto whitespace-pre-wrap rounded-xl bg-[#F9F9F6] p-4 text-sm leading-relaxed text-ink/75">
-                  {generated}
-                </pre>
-              ) : (
-                <div className="flex h-64 items-center justify-center rounded-xl bg-[#F9F9F6] text-sm text-ink/40">
-                  点击「AI 生成材料」获取文档
-                </div>
-              )}
-            </div>
-          </div>
+          <ResultGenerator
+            country={country}
+            visaType={visaType}
+            docType={docType}
+            tripData={tripData}
+            generated={generated}
+            generating={generating}
+            onCountryChange={setCountry}
+            onVisaTypeChange={setVisaType}
+            onDocTypeChange={setDocType}
+            onGenerate={handleGenerate}
+            onExport={handleExport}
+          />
         </div>
       )}
     </div>

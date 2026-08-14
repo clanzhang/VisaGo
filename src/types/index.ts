@@ -167,3 +167,22 @@ export interface ProgressItem {
   progress: number // 0-100
   isTop?: boolean
 }
+
+// 从行程文件提取的行程数据（识别行程单时填充）
+export interface DailyPlanItem {
+  day?: number
+  date?: string
+  city?: string
+  activity?: string
+  transport?: string
+  accommodation?: string
+}
+
+export interface TripData {
+  destination?: string
+  start_date?: string
+  end_date?: string
+  days?: number
+  cities?: string[]
+  daily_plan?: DailyPlanItem[]
+}
