@@ -1,7 +1,7 @@
 // pages/Scan.tsx — 桌面端三步走：扫描资料 → 核对信息 → 生成结果
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { VButton, VBadge, ProfileCardManager } from '@/components/common'
+import { VButton, VBadge, ProfileCardManager, StepIndicator } from '@/components/common'
 import { useAppStore } from '@/stores/appStore'
 import {
   scanFiles,
@@ -553,24 +553,12 @@ export default function Scan() {
       />
 
       {/* 步骤指示器 */}
-      <div className="flex items-center gap-2">
-        {(['扫描', '核对', '出结果'] as const).map((label, i) => {
-          const n = (i + 1) as Step
-          return (
-            <div key={label} className="flex flex-1 items-center gap-2">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                  n < step ? 'bg-success text-white' : n === step ? 'bg-primary text-white' : 'bg-ink/8 text-ink/40'
-                }`}
-              >
-                {n < step ? '✓' : n}
-              </div>
-              <span className={`text-sm ${n <= step ? 'font-medium text-ink' : 'text-ink/40'}`}>{label}</span>
-              {i < 2 && <div className={`h-0.5 flex-1 ${n < step ? 'bg-success' : 'bg-ink/8'}`} />}
-            </div>
-          )
-        })}
-      </div>
+      <StepIndicator
+        steps={['扫描', '核对', '出结果']}
+        current={step - 1}
+        startAtOne
+        hideLabelOnMobile={false}
+      />
 
       {/* ===== 第一步：扫描 ===== */}
       {step === 1 && (
