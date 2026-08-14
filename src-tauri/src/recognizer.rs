@@ -29,8 +29,12 @@ const RECOGNIZE_PROMPT: &str = r#"你是一个签证材料识别专家。以下�
   "company": "公司名称",
   "position": "职位",
   "salary": "薪资",
-  "passport_issued_in": "护照签发地"
+  "passport_issued_in": "护照签发地",
+  "family": [
+    { "name": "成员姓名", "relation": "与申请人关系（父/母/配偶/子/女）", "idNumber": "身份证号" }
+  ]
 }
+family 数组规则：如果文件是户口本，列出户口本中除申请人外的家庭成员（父/母/配偶/兄弟姐妹等）；如果文件中没有家庭成员信息，family 填 null。
 如果文件是【行程单】，除上述字段外，必须额外提取行程信息：
 {
   "trip": {

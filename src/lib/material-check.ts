@@ -58,7 +58,17 @@ export function checkMaterials(profile: UserProfile | null): MaterialItem[] {
   const p = profile
   const hasId = !!p?.id?.idNumber
   const hasPassport = !!p?.passport?.passportNumber
-  const hasFamily = !!p?.family?.length
+  // 户口本：兼容多种字段名（family / familyMembers / household）
+  console.log('[material-check] profile family 相关字段:', {
+    family: p?.family,
+    familyMembers: (p as Record<string, unknown> | null)?.familyMembers,
+    household: (p as Record<string, unknown> | null)?.household,
+    familyKeys: p ? Object.keys(p) : null,
+  })
+  const hasFamily =
+    !!p?.family?.length ||
+    !!((p as Record<string, unknown> | null)?.familyMembers as unknown[] | undefined)?.length ||
+    !!((p as Record<string, unknown> | null)?.household as unknown[] | undefined)?.length
   const hasEmployment = !!p?.employment?.company
 
   return [

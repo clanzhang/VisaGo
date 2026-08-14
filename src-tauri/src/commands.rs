@@ -317,7 +317,14 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
     let recognized = loop {
         match recognizer::recognize_file(&path, &name, file_text.clone(), content_b64.clone()).await {
             Ok(r) => {
-                println!("[recognize] Kimi 识别成功: category={}, fields={}", r.category, r.fields);
+                // 打印 family 字段（户口本家庭成员）长度，确认数据已写入
+                let family_len = r
+                    .fields
+                    .get("family")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+                println!("[recognize] Kimi 识别成功: category={}, family={} 人, fields={}", r.category, family_len, r.fields);
                 break r;
             }
             Err(e) => {

@@ -117,6 +117,16 @@ export default function Scan() {
       }
       // 姓名兜底
       if (!fields['name'] && cardName) fields['name'] = cardName
+      // 户口本家庭数据：从识别结果（items）中提取 family 数组，统一写入 fields.family
+      // （Kimi 识别户口本时返回 family 数组，handleNextToConfirm 只聚合标量字段会丢失它）
+      const familyArr = items
+        .filter((it) => it.status === 'done')
+        .map((it) => (it.fields ?? {})['family'])
+        .find((f) => Array.isArray(f) && f.length > 0)
+      if (Array.isArray(familyArr) && familyArr.length > 0) {
+        console.log('[Scan] 保存资料卡：写入 family', familyArr.length, '人', familyArr)
+        fields['family'] = familyArr
+      }
       await saveProfileCard({ ...target, fields })
       // 同步写 localStorage（key: visago:user-profile），供 MaterialChecklist 等读取
       localStorage.setItem('visago:user-profile', JSON.stringify(buildProfileForStorage(fields)))
@@ -132,6 +142,17 @@ export default function Scan() {
   /** 把规范化后的资料字段（snake_case）转成 MaterialChecklist 需要的嵌套结构 */
   function buildProfileForStorage(fields: Record<string, unknown>) {
     const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+    // family：优先用 Kimi 返回的 family 数组；没有则回退（有户籍省份时用申请人本人占位）
+    const rawFamily = Array.isArray(fields['family']) ? fields['family'] : null
+    const family = rawFamily
+      ? (rawFamily as { name?: unknown; relation?: unknown; idNumber?: unknown }[]).map((m) => ({
+          name: str(m.name),
+          relation: str(m.relation),
+          idNumber: str(m.idNumber),
+        }))
+      : fields['home_province']
+        ? [{ name: str(fields['name']), relation: '本人' }]
+        : []
     return {
       id: {
         name: str(fields['name']),
@@ -147,7 +168,7 @@ export default function Scan() {
         position: str(fields['position']),
         salary: str(fields['salary']),
       },
-      family: fields['home_province'] ? [{ name: str(fields['name']) }] : [],
+      family,
       address: str(fields['address']),
       homeProvince: str(fields['home_province']),
       nationality: str(fields['nationality']),

@@ -19,6 +19,17 @@ interface Props {
 /** 把 Rust 资料卡扁平 snake_case 字段 → checkMaterials 期望的嵌套 UserProfile */
 function fieldsToProfile(fields: Record<string, unknown>): UserProfile {
   const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+  // family：优先用 Kimi 返回的 family 数组；没有则回退到 family_members / family_relation
+  const rawFamily = Array.isArray(fields['family'])
+    ? fields['family']
+    : str(fields['family_members'])
+      ? [{ name: str(fields['name']), relation: str(fields['family_relation'] ?? '本人') }]
+      : []
+  const family = (rawFamily as { name?: unknown; relation?: unknown; idNumber?: unknown }[]).map((m) => ({
+    name: str(m.name),
+    relation: str(m.relation),
+    idNumber: str(m.idNumber),
+  }))
   return {
     id: {
       name: str(fields['name']),
@@ -31,7 +42,7 @@ function fieldsToProfile(fields: Record<string, unknown>): UserProfile {
       issueDate: str(fields['passport_issue_date']),
       expiryDate: str(fields['passport_expiry_date']),
     },
-    family: str(fields['family_members']) ? [{ name: str(fields['name']), relation: str(fields['family_relation'] ?? '本人') }] : [],
+    family,
     employment: {
       company: str(fields['company']),
       position: str(fields['position']),
