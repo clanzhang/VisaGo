@@ -50,12 +50,13 @@ export function Sidebar() {
       </div>
 
       {/* 导航 */}
-      <nav className={`flex-1 space-y-1 ${hovered ? 'px-4' : 'px-[23px]'}`}>
+      <nav className={`flex-1 space-y-1 ${hovered ? 'px-4' : 'px-0'}`}>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            title={item.label ?? t(`nav.${item.key}`)}
             onClick={() => {
               // 点击「材料扫描」：通知 Scan 页重置到文件列表页（保留已扫描文件）
               if (item.to === '/scan') {
@@ -64,7 +65,7 @@ export function Sidebar() {
               if (item.to === '/') reset()
             }}
             className={({ isActive }) =>
-              `group relative flex items-center rounded-lg py-2.5 text-sm transition-all duration-[390ms] ${
+              `group relative flex w-full items-center rounded-lg py-2.5 text-sm transition-all duration-[390ms] ${
                 hovered ? 'gap-3 px-3.5' : 'justify-center px-0'
               } ${
                 isActive
