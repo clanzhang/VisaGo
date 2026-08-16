@@ -2,7 +2,7 @@
 // 受控组件：父组件持有 cards / activeCardId，通过事件回调同步变更
 import { useState } from 'react'
 import { VButton } from './VButton'
-import { ProfileCardDetailModal } from './ProfileCardDetailModal'
+import { CARD_FIELD_SPECS, ProfileCardDetailModal } from './ProfileCardDetailModal'
 import { useAppStore } from '@/stores/appStore'
 import { createProfile, deleteProfile, setActiveProfileId, type ProfileCard } from '@/api/tauri'
 
@@ -69,65 +69,127 @@ export function ProfileCardManager({
     }
   }
 
+  const completedTotal = cards.reduce((total, card) => {
+    const fields = (card.fields ?? {}) as Record<string, unknown>
+    return total + CARD_FIELD_SPECS.filter((field) => String(fields[field.key] ?? '').trim()).length
+  }, 0)
+
   return (
     <>
       {/* 资料卡列表（多用户资料） */}
-      <div className="rounded-2xl bg-white p-5 shadow-card">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-ink">👤 资料卡</h2>
-            <p className="text-xs text-ink/45">每次扫描保存为一张资料卡，切换即可使用不同人（如自己 / 家人）的资料</p>
+      <div className="overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-card">
+        <div className="flex flex-col gap-4 border-b border-ink/5 bg-[#FBFCFD] px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <span className="h-5 w-5 icon-[mdi-light--credit-card]" />
+              </span>
+              <h2 className="text-base font-bold text-ink">资料卡</h2>
+            </div>
+            <p className="mt-1 text-xs text-ink/45">为自己、家人或同行人保存一份独立资料，扫描时可直接切换使用。</p>
           </div>
-          <VButton size="sm" onClick={() => setShowNameDialog(true)}>
-            ＋ 新建资料卡
-          </VButton>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden rounded-full border border-ink/8 bg-white px-3 py-1.5 text-xs text-ink/55 sm:block">
+              {cards.length} 张卡 · 已填 {completedTotal} 项
+            </div>
+            <VButton size="sm" onClick={() => setShowNameDialog(true)}>
+              <span className="h-4 w-4 icon-[mdi-light--plus]" />
+              新建资料卡
+            </VButton>
+          </div>
         </div>
 
         {cards.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-4 py-5 text-center text-xs text-ink/45">
-            还没有资料卡。扫描识别后保存，或点击右上角「＋ 新建资料卡」。
+          <div className="m-5 rounded-xl border border-dashed border-ink/15 bg-[#F8FAFC] px-4 py-8 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <span className="h-7 w-7 icon-[mdi-light--account]" />
+            </div>
+            <div className="mt-3 text-sm font-semibold text-ink">还没有资料卡</div>
+            <div className="mt-1 text-xs text-ink/45">扫描识别后保存，或点击右上角新建一张资料卡。</div>
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="flex gap-4 overflow-x-auto px-5 py-4">
             {cards.map((card) => {
               const isActive = card.id === activeCardId
+              const fields = (card.fields ?? {}) as Record<string, unknown>
               const name = (card.fields?.['name'] as string) || card.name || '未命名'
-              const passport = String(card.fields?.['passport_number'] ?? card.fields?.['passportNumber'] ?? '')
+              const passport = String(fields['passport_number'] ?? fields['passportNumber'] ?? '')
               const tail = passport.length >= 4 ? passport.slice(-4) : passport
+              const nationality = String(fields['nationality'] ?? '待补充')
+              const phone = String(fields['phone'] ?? '待补充')
+              const filled = CARD_FIELD_SPECS.filter((field) => String(fields[field.key] ?? '').trim()).length
+              const progress = Math.round((filled / CARD_FIELD_SPECS.length) * 100)
+              const updated = card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : '暂无更新时间'
               return (
                 <div
                   key={card.id}
                   onClick={() => setDetailCard(card)}
-                  className={`group relative w-44 shrink-0 cursor-pointer rounded-xl border p-3 transition-all duration-150 ${
+                  className={`group relative w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-lg ${
                     isActive
-                      ? 'border-[#1460A4] bg-[#E0F7FA]/60 shadow-sm'
-                      : 'border-ink/8 bg-white hover:border-[#1460A4]/40 hover:shadow-sm'
+                      ? 'border-primary/45 ring-2 ring-primary/10'
+                      : 'border-ink/8 hover:border-primary/25'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-xs font-semibold text-white">
-                      {(name || '?').slice(0, 1)}
+                  <div className="h-20 bg-[linear-gradient(135deg,#1460A4_0%,#39A2B8_48%,#BEEAF2_100%)]">
+                    <div className="flex justify-end p-3">
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        isActive ? 'bg-white text-primary shadow-sm' : 'bg-white/75 text-ink/55'
+                      }`}>
+                        {isActive ? '当前使用' : `${progress}% 完成`}
+                      </span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-[13px] font-semibold text-ink">{name}</div>
-                      <div className="text-[11px] text-ink/45">{tail ? `护照 ···${tail}` : '未填护照号'}</div>
-                    </div>
-                    {isActive && (
-                      <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[#1460A4]" title="当前活跃" />
-                    )}
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-ink/40">
-                    <span>{card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : ''}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteCard(card)
-                      }}
-                      className="rounded px-1 text-ink/30 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                      title="删除资料卡"
-                    >
-                      ✕
-                    </button>
+                  <div className="px-4 pb-4">
+                    <div className="-mt-8 flex items-end justify-between gap-3">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-white bg-[#E9F8FA] text-xl font-bold text-primary shadow-sm">
+                        {(name || '?').slice(0, 1)}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteCard(card)
+                        }}
+                        className="mb-1 flex h-8 w-8 items-center justify-center rounded-full border border-ink/8 bg-white text-ink/30 opacity-0 shadow-sm transition-opacity hover:border-red-200 hover:text-red-500 group-hover:opacity-100"
+                        title="删除资料卡"
+                        aria-label="删除资料卡"
+                      >
+                        <span className="h-4 w-4 icon-[mdi-light--delete]" />
+                      </button>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="truncate text-lg font-bold leading-tight text-ink">{name}</div>
+                      <div className="mt-1 text-xs text-ink/45">{tail ? `护照尾号 ${tail}` : '护照号待补充'}</div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-xl bg-[#F5F7FA] px-3 py-2">
+                        <div className="text-ink/40">国籍</div>
+                        <div className="truncate font-semibold text-ink">{nationality}</div>
+                      </div>
+                      <div className="rounded-xl bg-[#F5F7FA] px-3 py-2">
+                        <div className="text-ink/40">手机号</div>
+                        <div className="truncate font-semibold text-ink">{phone}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="mb-1.5 flex items-center justify-between text-[11px] text-ink/45">
+                        <span>资料完整度</span>
+                        <span>{filled}/{CARD_FIELD_SPECS.length}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-ink/8">
+                        <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between text-[11px] text-ink/40">
+                      <span className="truncate">{updated}</span>
+                      <span className="flex items-center gap-1 font-medium text-primary">
+                        查看详情
+                        <span className="h-3.5 w-3.5 icon-[mdi-light--arrow-right]" />
+                      </span>
+                    </div>
                   </div>
                 </div>
               )
