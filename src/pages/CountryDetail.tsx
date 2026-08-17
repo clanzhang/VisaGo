@@ -80,16 +80,18 @@ export default function CountryDetail() {
         </div>
       </div>
 
-      {/* 概览 + 免签政策 */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* 概览 + 免签政策（内容相同时合并为一张卡，避免重复） */}
+      <div className={country.overview.zh === country.visaFree.zh ? '' : 'grid gap-6 md:grid-cols-2'}>
         <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
           <h3 className="mb-2 text-sm font-medium text-subtle">{t('encyclopedia.overview')}</h3>
           <p className="text-sm leading-relaxed text-ink/70">{pickL(country.overview)}</p>
         </div>
-        <div className="anim-card rounded-2xl bg-white p-6 shadow-card" style={{ animationDelay: '60ms' }}>
-          <h3 className="mb-2 text-sm font-medium text-subtle">{t('encyclopedia.visaFreePolicy')}</h3>
-          <p className="text-sm leading-relaxed text-ink/70">{pickL(country.visaFree)}</p>
-        </div>
+        {country.overview.zh !== country.visaFree.zh && (
+          <div className="anim-card rounded-2xl bg-white p-6 shadow-card" style={{ animationDelay: '60ms' }}>
+            <h3 className="mb-2 text-sm font-medium text-subtle">{t('encyclopedia.visaFreePolicy')}</h3>
+            <p className="text-sm leading-relaxed text-ink/70">{pickL(country.visaFree)}</p>
+          </div>
+        )}
       </div>
 
       {/* 签证类型选择 */}
