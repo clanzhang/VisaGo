@@ -5,9 +5,11 @@ import { useI18n, regionLabelKey } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
 import { FeeCalculator, AIAssistant, RequirementList } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
-import { PROVINCES } from '@/data/countries'
 import { useCountryAIData } from '@/hooks/useAIData'
+import { ProvincePicker } from '@/components/visa'
+import { KIND_KEYS, DISTRICT_NO_NEED_KEYS, districtNoNeedType, joinProvinces } from '@/utils/districts'
 import type { AiCountryData } from '@/types/ai'
+import type { Country, VisaType } from '@/types'
 
 const IDENTITY_KEYS = ['employed', 'student', 'retired', 'freelance'] as const
 
@@ -26,7 +28,6 @@ export default function CountryDetail() {
 
   const [visaTypeId, setVisaTypeId] = useState(country?.visaTypes[0]?.id ?? '')
   const [tab, setTab] = useState<'materials' | 'fee' | 'districts' | 'faq'>('materials')
-  const [province, setProvince] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
 
   const ai = aiData as AiCountryData | null
@@ -36,11 +37,6 @@ export default function CountryDetail() {
     () => country?.visaTypes.find((v) => v.id === visaTypeId) ?? country?.visaTypes[0],
     [country, visaTypeId],
   )
-
-  const matchedDistrict = useMemo(() => {
-    if (!province) return null
-    return visaType?.consularDistricts.find((d) => d.provinces.includes(province)) ?? null
-  }, [province, visaType])
 
   if (!country || !visaType) {
     return (
@@ -355,37 +351,7 @@ export default function CountryDetail() {
         )}
 
         {tab === 'districts' && (
-          <div>
-            <div className="mb-5">
-              <label className="mb-2 block text-sm font-medium text-ink/60">
-                {t('encyclopedia.provinceSearch')}
-              </label>
-              <select
-                value={province}
-                onChange={(e) => setProvince(e.target.value)}
-                className="w-full max-w-sm rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-              >
-                <option value="">{t('encyclopedia.provincePlaceholder')}</option>
-                {PROVINCES.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              {matchedDistrict && (
-                <div className="mt-3 rounded-xl bg-[#E0F7FA] px-4 py-3 text-sm text-ink">
-                  <span className="font-medium text-primary">{t('encyclopedia.currentDistrict')}：</span>
-                  {pickL(matchedDistrict.name)}
-                </div>
-              )}
-            </div>
-            <div className="space-y-3">
-              {visaType.consularDistricts.map((d, i) => (
-                <div key={i} className="rounded-xl border border-ink/5 p-4">
-                  <div className="text-sm font-semibold text-ink">{pickL(d.name)}</div>
-                  <div className="mt-1 text-xs text-ink/60">{t('encyclopedia.coverCities')}: {d.provinces.join(', ')}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <DistrictSection country={country} visaType={visaType} ai={ai} />
         )}
 
         {tab === 'faq' && (
@@ -439,6 +405,224 @@ export default function CountryDetail() {
 
       {/* AI 助手 */}
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} country={country} />
+    </div>
+  )
+}
+
+// ===== 领区 Tab =====
+
+interface DistrictSectionProps {
+  country: Country
+  visaType: VisaType
+  ai: AiCountryData | null
+}
+
+function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
+  const { t, isZh, pickL } = useI18n()
+  const [province, setProvince] = useState('')
+
+  const staticOffices = visaType.consularDistricts
+  const aiOffices = ai?.consularDistricts ?? []
+  const hasStatic = staticOffices.length > 0
+
+  // 无需在国内递签的类型（按签证类型给不同文案）
+  const noNeedType = districtNoNeedType(country.visaType)
+  const noNeedKey = noNeedType ? DISTRICT_NO_NEED_KEYS[noNeedType] : null
+
+  // AI 兜底：仅对「可能仍需递签」的电子签国家、且静态无数据时启用（免签/落地签/通行证绝不展示伪造领区）
+  const showAiFallback = !hasStatic && !noNeedKey && aiOffices.length > 0
+
+  const matchedStatic = province ? staticOffices.find((d) => d.provinces.includes(province)) : undefined
+  const matchedAi =
+    province && showAiFallback ? aiOffices.find((d) => d.provinces.includes(province)) : undefined
+  const officialSource = staticOffices.find((o) => o.source)?.source
+
+  // ③ 静态无数据：免签/落地签/通行证 → 「无需在国内递签」；电子签 → AI 有则兜底，无则电子签说明；其他 → 暂未收录
+  function renderEmptyNote() {
+    if (noNeedKey) {
+      return (
+        <div className="rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-6 text-center">
+          <span className="mb-2 block text-2xl">✈️</span>
+          <p className="text-sm text-ink/70">{t(noNeedKey)}</p>
+        </div>
+      )
+    }
+    if (showAiFallback) {
+      return (
+        <div className="rounded-xl border border-dashed border-violet-300 bg-violet-50/60 px-5 py-6 text-center">
+          <span className="mb-2 block text-2xl">🤖</span>
+          <p className="text-sm text-ink/70">{t('encyclopedia.districtNotCollected')}</p>
+        </div>
+      )
+    }
+    return (
+      <div className="rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-6 text-center">
+        <span className="mb-2 block text-2xl">🌐</span>
+        <p className="text-sm text-ink/70">{t('encyclopedia.districtNoNeedEvisa')}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* 选择省份（仅在有领区概念时展示） */}
+      {hasStatic || showAiFallback ? (
+        <div className="mb-5">
+          <label className="mb-2 block text-sm font-medium text-ink/60">
+            {t('encyclopedia.provinceSearch')}
+          </label>
+          <ProvincePicker value={province} onChange={setProvince} />
+        </div>
+      ) : null}
+
+      {/* 匹配结果（三态，不再静默） */}      {province && matchedStatic && (
+        <div className="mb-5 rounded-xl bg-[#E0F7FA] px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-primary">{t('encyclopedia.currentDistrict')}</span>
+            {matchedStatic.verifiedAt && (
+              <span className="text-xs text-ink/50">
+                {t('encyclopedia.districtSourceStatic', { date: matchedStatic.verifiedAt })}
+              </span>
+            )}
+          </div>
+          <div className="mt-1 text-sm font-semibold text-ink">{pickL(matchedStatic.name)}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink/60">
+            {matchedStatic.city && (
+              <span className="inline-flex items-center gap-1">
+                <span className="h-3.5 w-3.5 icon-[mdi-light--map-marker]" />
+                {t('encyclopedia.districtCity')}: {matchedStatic.city}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <span className="h-3.5 w-3.5 icon-[mdi-light--office-building]" />
+              {t(KIND_KEYS[matchedStatic.kind ?? 'consulate'])}
+            </span>
+            {visaType.acceptPersonal ? (
+              <span className="inline-flex items-center gap-1 text-success">
+                <span className="h-3.5 w-3.5 icon-[mdi-light--check-circle]" />
+                {t('encyclopedia.acceptPersonalBadge')}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-amber-600">
+                <span className="h-3.5 w-3.5 icon-[mdi-light--alert-circle]" />
+                {t('encyclopedia.notAcceptPersonalBadge')}
+              </span>
+            )}
+          </div>
+          <div className="mt-1.5 text-xs text-ink/60">
+            {t('encyclopedia.coverProvinces')}: {joinProvinces(matchedStatic.provinces, isZh)}
+          </div>
+          {matchedStatic.source && (
+            <a
+              href={matchedStatic.source}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
+            >
+              {t('encyclopedia.districtOfficial')}
+              <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+            </a>
+          )}
+        </div>
+      )}
+
+      {province && !matchedStatic && hasStatic && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          {t('encyclopedia.districtNotFound', { province })}
+          {officialSource && (
+            <a
+              href={officialSource}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-2 inline-flex items-center gap-1 font-medium text-amber-900 underline underline-offset-2"
+            >
+              {t('encyclopedia.districtOfficial')}
+              <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+            </a>
+          )}
+        </div>
+      )}
+
+      {province && !matchedStatic && showAiFallback && matchedAi && (
+        <div className="mb-5 rounded-xl border border-violet-200 bg-violet-50 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-[#7B2FBE]">{t('encyclopedia.currentDistrict')}</span>
+            <span className="rounded-full bg-[#7B2FBE]/10 px-2 py-0.5 text-xs font-medium text-[#7B2FBE]">
+              {t('encyclopedia.districtSourceAi')}
+            </span>
+          </div>
+          <div className="mt-1 text-sm font-semibold text-ink">{matchedAi.name}</div>
+          <div className="mt-1.5 text-xs text-ink/60">
+            {t('encyclopedia.coverProvinces')}: {joinProvinces(matchedAi.provinces, isZh)}
+          </div>
+        </div>
+      )}
+
+      {province && !matchedStatic && showAiFallback && !matchedAi && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          {t('encyclopedia.districtNotFound', { province })}
+        </div>
+      )}
+
+      {/* 领区列表：静态优先；静态缺失且允许时用 AI 兜底；都不存在时不渲染空卡片 */}
+      {hasStatic && (
+        <div className="space-y-3">
+          {staticOffices.map((d, i) => (
+            <div key={i} className="rounded-xl border border-ink/5 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-ink">{pickL(d.name)}</span>
+                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/60">
+                  {t(KIND_KEYS[d.kind ?? 'consulate'])}
+                </span>
+                {d.verifiedAt && (
+                  <span className="text-xs text-ink/50">
+                    {t('encyclopedia.districtSourceStatic', { date: d.verifiedAt })}
+                  </span>
+                )}
+              </div>
+              {d.city && <div className="mt-1 text-xs text-ink/60">{t('encyclopedia.districtCity')}: {d.city}</div>}
+              <div className="mt-1 text-xs text-ink/60">{t('encyclopedia.coverProvinces')}: {joinProvinces(d.provinces, isZh)}</div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                {visaType.acceptPersonal ? (
+                  <span className="text-success">{t('encyclopedia.acceptPersonalBadge')}</span>
+                ) : (
+                  <span className="text-amber-600">{t('encyclopedia.notAcceptPersonalBadge')}</span>
+                )}
+                {d.source && (
+                  <a
+                    href={d.source}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+                  >
+                    {t('encyclopedia.districtOfficial')}
+                    <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!hasStatic && showAiFallback && aiOffices.length > 0 && (
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#7B2FBE]">
+            <span className="h-3.5 w-3.5 icon-[mdi-light--robot]" />
+            {t('encyclopedia.districtSourceAi')}
+          </div>
+          <div className="space-y-3">
+            {aiOffices.map((d, i) => (
+              <div key={i} className="rounded-xl border border-violet-200 bg-violet-50/40 p-4">
+                <div className="text-sm font-semibold text-ink">{d.name}</div>
+                <div className="mt-1 text-xs text-ink/60">{t('encyclopedia.coverProvinces')}: {joinProvinces(d.provinces, isZh)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!hasStatic && !showAiFallback && renderEmptyNote()}
     </div>
   )
 }
