@@ -16,13 +16,14 @@ import type { Country } from '@/types'
 type VisaFilter = 'all' | Country['visaType']
 type SortKey = 'default' | 'fee' | 'days' | 'stay' | 'difficulty'
 
+// chip 与分组标题共用 encyclopedia.visaType* 同一文案来源（避免「互免/互免签证」同义不同名）
 const FILTERS: { key: VisaFilter; labelKey: string }[] = [
   { key: 'all', labelKey: 'encyclopedia.filterAll' },
-  { key: '互免签证', labelKey: 'encyclopedia.filterMutual' },
-  { key: '单方面免签', labelKey: 'encyclopedia.filterUnilateral' },
-  { key: '落地签', labelKey: 'encyclopedia.filterOnArrival' },
-  { key: '电子签', labelKey: 'encyclopedia.filterEvisa' },
-  { key: '需通行证', labelKey: 'encyclopedia.filterVisaRequired' },
+  { key: '互免签证', labelKey: 'encyclopedia.visaTypeMutual' },
+  { key: '单方面免签', labelKey: 'encyclopedia.visaTypeUnilateral' },
+  { key: '落地签', labelKey: 'encyclopedia.visaTypeOnArrival' },
+  { key: '电子签', labelKey: 'encyclopedia.visaTypeEvisa' },
+  { key: '需通行证', labelKey: 'encyclopedia.visaTypePermit' },
 ]
 
 /** URL region key → 数据 region 值（REGION_ORDER 之外补港澳台） */
