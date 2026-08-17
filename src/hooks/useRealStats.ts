@@ -1,6 +1,7 @@
 // hooks/useRealStats.ts — 首页统计模块（从真实申请记录计算）
 import { useMemo } from 'react'
 import { useTrackerStore } from '@/stores/trackerStore'
+import { useI18n } from '@/i18n'
 import { countries } from '@/data/countries'
 import type { FeeCategory, ProgressItem } from '@/types'
 
@@ -33,6 +34,7 @@ function getFeeForApplication(countryId: string, visaTypeId: string): { visaFee:
 /** 从真实申请记录计算统计（费用 + 进度） */
 export function useRealStats(): RealStats {
   const { applications } = useTrackerStore()
+  const { pickL } = useI18n()
 
   return useMemo(() => {
     // ===== 费用统计 =====
@@ -67,7 +69,7 @@ export function useRealStats(): RealStats {
     const progress: ProgressItem[] = Array.from(byCountry.values()).map((entry) => {
       const country = countries.find((c) => c.id === entry.countryId)
       return {
-        country: country?.name.zh ?? entry.countryId,
+        country: (country ? pickL(country.name) : entry.countryId) ?? entry.countryId,
         flag: country?.flag ?? '🌍',
         progress: Math.round(entry.progressSum / entry.count),
         isTop: entry.count === 1,

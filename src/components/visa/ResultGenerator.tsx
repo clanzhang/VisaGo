@@ -21,6 +21,14 @@ interface Props {
 
 const COUNTRIES = ['日本', '韩国', '泰国', '申根', '美国', '英国', '澳大利亚']
 const VISA_TYPES = ['旅游签证', '商务签证', '探亲签证', '学生签证']
+// 生成目标取值保持中文（用于 AI 文档生成），仅 UI 显示本地化
+const COUNTRY_EN: Record<string, string> = {
+  日本: 'Japan', 韩国: 'South Korea', 泰国: 'Thailand', 申根: 'Schengen',
+  美国: 'United States', 英国: 'United Kingdom', 澳大利亚: 'Australia',
+}
+const VISA_TYPE_EN: Record<string, string> = {
+  旅游签证: 'Tourist', 商务签证: 'Business', 探亲签证: 'Family Visit', 学生签证: 'Student',
+}
 const DOC_TYPES = [
   { id: 'itinerary', labelKey: 'scan.docItinerary' },
   { id: 'employment', labelKey: 'scan.docEmployment' },
@@ -41,7 +49,9 @@ export function ResultGenerator({
   onGenerate,
   onExport,
 }: Props) {
-  const { t } = useI18n()
+  const { t, isZh } = useI18n()
+  const countryLabel = (v: string) => (isZh ? v : COUNTRY_EN[v] ?? v)
+  const visaTypeLabel = (v: string) => (isZh ? v : VISA_TYPE_EN[v] ?? v)
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-2xl bg-white p-6 shadow-card">
@@ -55,7 +65,7 @@ export function ResultGenerator({
               className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
             >
               {COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{countryLabel(c)}</option>
               ))}
             </select>
           </div>
@@ -67,7 +77,7 @@ export function ResultGenerator({
               className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
             >
               {VISA_TYPES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{visaTypeLabel(c)}</option>
               ))}
             </select>
           </div>

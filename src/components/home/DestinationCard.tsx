@@ -33,6 +33,9 @@ export function DestinationCard({ item, index }: Props) {
   const name = isZh ? item.name : item.nameEn ?? item.name
   const days = isZh ? item.days : item.daysEn ?? item.days
   const desc = isZh ? item.desc : item.descEn ?? item.desc
+  // 费用「¥715 起」本地化：EN 下去掉中文「起」，用 From 前缀
+  const feeBase = item.fee.replace(/ 起$/, '')
+  const fee = t('home.feeFrom', { fee: feeBase })
   const difficultyLabel = pickL({
     zh: item.difficulty === '易' ? t('encyclopedia.easy') : item.difficulty === '中' ? t('encyclopedia.medium') : t('encyclopedia.hard'),
     en: item.difficulty === '易' ? 'Easy' : item.difficulty === '中' ? 'Medium' : 'Hard',
@@ -72,7 +75,7 @@ export function DestinationCard({ item, index }: Props) {
         <p className="mt-1.5 line-clamp-1 text-[13px] text-ink/60">{desc}</p>
 
         <div className="mt-4 flex items-center justify-between border-t border-ink/5 pt-3.5">
-          <span className="text-sm font-semibold text-primary">{item.fee}</span>
+          <span className="text-sm font-semibold text-primary">{fee}</span>
           <span className="inline-flex items-center gap-1 text-xs font-medium text-[#1460A4] transition-all duration-200 group-hover:gap-2">
             {t('home.viewDetails')}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

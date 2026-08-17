@@ -63,6 +63,7 @@ export default {
     progressTitle: 'Progress',
     stayDays: 'Stay {days}',
     viewDetails: 'View details',
+    feeFrom: 'From {fee}',
     refresh: 'Refresh data',
     refreshDone: 'Data refreshed',
     emptyStatsTitle: 'No visa applications yet',

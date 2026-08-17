@@ -63,6 +63,7 @@ export default {
     progressTitle: '办理进度',
     stayDays: '停留 {days}',
     viewDetails: '查看详情',
+    feeFrom: '{fee} 起',
     refresh: '刷新数据',
     refreshDone: '已刷新数据',
     emptyStatsTitle: '还没有签证申请',
