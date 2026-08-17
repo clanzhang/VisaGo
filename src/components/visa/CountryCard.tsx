@@ -77,10 +77,20 @@ export function CountryCard({ country, index = 0, hideVisaType = false, selectab
 
   return (
     <div
-      className={`anim-card group relative flex h-full cursor-pointer flex-col rounded-2xl bg-white p-5 shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg ${
+      role="button"
+      tabIndex={0}
+      aria-label={selectable ? (selected ? t('encyclopedia.removeFromCompare') : t('encyclopedia.addToCompare')) : `${pickL(country.name)} · ${t('encyclopedia.viewAll')}`}
+      aria-pressed={selectable ? selected : undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleActivate()
+        }
+      }}
+      className={`anim-card group relative flex h-full cursor-pointer flex-col rounded-2xl bg-white p-5 shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
         selected ? 'ring-2 ring-primary/40' : ''
       }`}
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
       onClick={handleActivate}
     >
       {/* 顶部：国旗 + 名称（中/英）+ 类型标签（非类型分组视图时） */}
