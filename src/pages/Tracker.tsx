@@ -247,7 +247,7 @@ export default function Tracker() {
                   </div>
                   <div>
                     <div className="text-xs text-ink/60">{t('tracker.reminder')}</div>
-                    <div className={`mt-0.5 text-sm font-bold ${urgencyCls}`}>{relativeDayLabel(expectedDate)}</div>
+                    <div className={`mt-0.5 text-sm font-bold ${urgencyCls}`}>{relativeDayLabel(expectedDate, t)}</div>
                   </div>
                 </div>
 

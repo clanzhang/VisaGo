@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useVisaStore } from '@/stores/visaStore'
+import { useAppStore } from '@/stores/appStore'
 import { useUserIdentity } from '@/hooks/useUserIdentity'
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ interface Props {
 export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
+  const { openSettings } = useAppStore()
   const { name, cardName } = useUserIdentity()
   const [expanded, setExpanded] = useState(true)
 
@@ -50,8 +52,9 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
         collapseTitle={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
         t={t}
       />
-      <SidebarUser name={name} cardName={cardName} expanded={expanded} t={t} />
+      <SidebarUser name={name} cardName={cardName} expanded={expanded} t={t} onOpenSettings={openSettings} />
       <NavItems expanded={expanded} onNavigate={handleNavClick} t={t} />
+      <SidebarSettings expanded={expanded} t={t} onOpenSettings={openSettings} />
       <SidebarFooter expanded={expanded} lang={lang} setLang={setLang} />
     </aside>
   )
@@ -97,8 +100,9 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
             </svg>
           </button>
         </div>
-        <SidebarUser name={name} cardName={cardName} expanded t={t} />
+        <SidebarUser name={name} cardName={cardName} expanded t={t} onOpenSettings={openSettings} />
         <NavItems expanded onNavigate={handleNavClick} t={t} />
+        <SidebarSettings expanded={expanded} t={t} onOpenSettings={openSettings} />
         <SidebarFooter expanded={expanded} lang={lang} setLang={setLang} />
       </aside>
     </div>
@@ -155,20 +159,30 @@ function SidebarHeader({
   )
 }
 
-/** 用户信息（真实来源，不编造身份） */
+/** 用户信息（真实来源，不编造身份）；点击打开设置 */
 function SidebarUser({
   name,
   cardName,
   expanded,
   t,
+  onOpenSettings,
 }: {
   name: string
   cardName: string
   expanded: boolean
   t: (key: string, params?: Record<string, string | number>) => string
+  onOpenSettings: () => void
 }) {
   return (
-    <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-[390ms] ${expanded ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
+    <button
+      type="button"
+      onClick={onOpenSettings}
+      title={t('sidebar.settingsHint')}
+      aria-label={`${t('sidebar.settingsHint')}: ${name || t('sidebar.anonymous')}`}
+      className={`mb-6 flex cursor-pointer items-center rounded-xl bg-white/5 py-2.5 text-left transition-all duration-[390ms] hover:bg-white/10 ${
+        expanded ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'
+      }`}
+    >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
         {name ? name.slice(0, 1) : (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -182,7 +196,7 @@ function SidebarUser({
           {cardName || (name ? '' : t('sidebar.noProfile'))}
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -241,6 +255,49 @@ function NavItems({
         </NavLink>
       ))}
     </nav>
+  )
+}
+
+/** 底部：设置入口（可见按钮，收起态只显示图标；快捷键 ⌘, 保留在 title 提示） */
+function SidebarSettings({
+  expanded,
+  t,
+  onOpenSettings,
+}: {
+  expanded: boolean
+  t: (key: string, params?: Record<string, string | number>) => string
+  onOpenSettings: () => void
+}) {
+  return (
+    <div className={`mb-2 ${expanded ? 'px-4' : 'px-0'}`}>
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        title={t('sidebar.settingsHint')}
+        aria-label={t('sidebar.settingsHint')}
+        className={`flex w-full items-center rounded-lg py-2.5 text-sm text-white/60 transition-all duration-[390ms] hover:bg-white/5 hover:text-white ${
+          expanded ? 'gap-3 px-3.5' : 'justify-center px-0'
+        }`}
+      >
+        <svg
+          className="shrink-0"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+        </svg>
+        <span className={`whitespace-nowrap transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+          {t('sidebar.settings')}
+        </span>
+      </button>
+    </div>
   )
 }
 

@@ -50,13 +50,21 @@ export function daysFromNow(dateISO: string): number {
   return diffDays(new Date(), new Date(dateISO))
 }
 
-export function relativeDayLabel(dateISO: string): string {
+/**
+ * 相对天数文案（双语，文案来自 i18n：tracker.dayToday/dayIn/dayAgo 等）。
+ * @param dateISO 目标日期
+ * @param t i18n 翻译函数（由调用方注入，utils 层不依赖 i18n）
+ */
+export function relativeDayLabel(
+  dateISO: string,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
   const diff = daysFromNow(dateISO)
-  if (diff === 0) return '今天'
-  if (diff === 1) return '明天'
-  if (diff === -1) return '昨天'
-  if (diff > 1) return `${diff} 天后`
-  return `${Math.abs(diff)} 天前`
+  if (diff === 0) return t('tracker.dayToday')
+  if (diff === 1) return t('tracker.dayTomorrow')
+  if (diff === -1) return t('tracker.dayYesterday')
+  if (diff > 1) return t('tracker.dayIn', { n: diff })
+  return t('tracker.dayAgo', { n: Math.abs(diff) })
 }
 
 export function dateRange(startISO: string, endISO: string): string[] {

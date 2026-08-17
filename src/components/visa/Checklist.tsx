@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function Checklist({ requirements }: Props) {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) => {
@@ -51,7 +51,7 @@ export function Checklist({ requirements }: Props) {
             <span
               className={`flex-1 text-sm ${checked.has(r.id) ? 'text-ink/60 line-through' : 'text-ink'}`}
             >
-              {r.name.zh}
+              {pickL(r.name)}
             </span>
             <span className="shrink-0 text-xs text-ink/60">
               {r.required ? t('encyclopedia.required') : t('encyclopedia.optional')}
