@@ -120,7 +120,9 @@ export function ScannedFileList({
     .map(([ext, n]) => `${n} ${ext}`)
     .join(isZh ? '、' : ', ')
   const pendingCount = items.filter((i) => i.status === 'pending').length
+  const errorCount = items.filter((i) => i.status === 'error').length
   const unrecognized = items.filter((i) => i.status === 'pending' || i.status === 'error').length
+  const allDone = items.length > 0 && pendingCount === 0 && errorCount === 0
 
   const progressPercent =
     recognizeProgress && recognizeProgress.total > 0
@@ -176,8 +178,12 @@ export function ScannedFileList({
                 {t('scan.stopRecognize')}
               </VButton>
             ) : (
-              <VButton size="sm" onClick={onRecognizeAll} disabled={items.length === 0 || pendingCount === 0}>
-                {pendingCount > 0 ? t('scan.recognizeAllRemaining', { n: pendingCount }) : t('scan.recognizeAll', { done: recognizedCount, total: items.length })}
+              <VButton size="sm" onClick={onRecognizeAll} disabled={items.length === 0 || (pendingCount === 0 && errorCount === 0)}>
+                {pendingCount > 0
+                  ? t('scan.recognizeAllRemaining', { n: pendingCount })
+                  : errorCount > 0
+                    ? t('scan.retryFailed', { n: errorCount })
+                    : t('scan.allRecognized')}
               </VButton>
             )}
           </div>
@@ -212,15 +218,40 @@ export function ScannedFileList({
           </div>
         )}
 
+        {/* D18：全部识别完成 → 明确完成反馈并推向下一步 */}
+        {allDone && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-success/30 bg-success/5 px-4 py-2.5 text-xs font-medium text-success" role="status">
+            <span className="h-4 w-4 shrink-0 icon-[mdi-light--check-circle]" aria-hidden="true" />
+            {t('scan.allComplete', { n: items.length })}
+          </div>
+        )}
+
         {/* 文件列表 */}
         <div className="space-y-2">
-          {items.length === 0 && (
+          {items.length === 0 && !scanning && (
             <div className="rounded-xl border border-dashed border-ink/15 bg-[#F8FAFC] px-4 py-10 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <span className="h-7 w-7 icon-[mdi-light--file]" />
               </div>
               <p className="mt-3 text-sm font-semibold text-ink">{t('scan.emptyListTitle')}</p>
               <p className="mt-1 text-xs text-ink/60">{t('scan.emptyListDesc')}</p>
+            </div>
+          )}
+          {items.length === 0 && scanning && (
+            <div className="space-y-2" role="status" aria-live="polite">
+              <p className="flex items-center gap-1.5 pb-1 text-xs text-ink/60">
+                <span className="h-3.5 w-3.5 animate-spin text-primary icon-[mdi-light--refresh]" aria-hidden="true" />
+                {t('scan.scanningFiles')}
+              </p>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
+                  <div className="h-8 w-8 animate-pulse rounded-lg bg-[#E8EEF4]" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-40 animate-pulse rounded bg-[#E8EEF4]" />
+                    <div className="h-3 w-28 animate-pulse rounded bg-[#EEF2F6]" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           {items.map((item, idx) => {

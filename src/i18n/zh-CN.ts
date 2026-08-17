@@ -586,6 +586,10 @@ export default {
     emptyListTitle: '还没有文件',
     emptyListDesc: '点击「添加文件」选择证件扫描件，或回到第一步重新选择。',
     noFields: '未提取到字段',
+    allRecognized: '已全部识别',
+    retryFailed: '重试失败项（{n}）',
+    allComplete: '全部 {n} 个文件已识别完成，可以进入下一步',
+    scanningFiles: '正在扫描所选文件…',
     addedToCard: '已保存到资料卡',
   },
   profile: {

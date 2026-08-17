@@ -2,6 +2,7 @@
 // 受控组件：父组件持有 cards / activeCardId，通过事件回调同步变更
 import { useState } from 'react'
 import { VButton } from './VButton'
+import { VModal } from './VModal'
 import { CARD_FIELD_SPECS, ProfileCardDetailModal } from './ProfileCardDetailModal'
 import { useAppStore } from '@/stores/appStore'
 import { useI18n } from '@/i18n'
@@ -42,6 +43,8 @@ export function ProfileCardManager({
   const open = !collapsed || forceOpen
   const [newCardName, setNewCardName] = useState('')
   const [detailCard, setDetailCard] = useState<ProfileCard | null>(null)
+  // D16：删除确认弹窗（替换 window.confirm）
+  const [deleteTarget, setDeleteTarget] = useState<ProfileCard | null>(null)
   const nameDialogRef = useModalA11y(showNameDialog, () => setShowNameDialog(false))
 
   // 新建资料卡
@@ -63,9 +66,8 @@ export function ProfileCardManager({
     }
   }
 
-  // 删除资料卡
+  // 删除资料卡（确认后执行）
   async function handleDeleteCard(card: ProfileCard) {
-    if (!window.confirm(t('profile.deleteConfirm', { name: card.name }))) return
     try {
       await deleteProfile(card.id)
       onCardsChange(cards.filter((c) => c.id !== card.id))
@@ -167,7 +169,7 @@ export function ProfileCardManager({
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDeleteCard(card)
+                        setDeleteTarget(card)
                       }}
                       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink/60 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                       title={t('profile.deleteCard')}
@@ -238,6 +240,33 @@ export function ProfileCardManager({
           if (detailCard) onSupplement(detailCard)
         }}
       />
+
+      {/* 删除确认（D16：VModal，说清不可恢复后果） */}
+      <VModal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={t('profile.deleteCardTitle')}
+        footer={
+          <>
+            <VButton variant="secondary" onClick={() => setDeleteTarget(null)}>
+              {t('profile.cancel')}
+            </VButton>
+            <VButton
+              variant="danger"
+              onClick={() => {
+                if (deleteTarget) void handleDeleteCard(deleteTarget)
+                setDeleteTarget(null)
+              }}
+            >
+              {t('common.delete')}
+            </VButton>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink/70">
+          {deleteTarget ? t('profile.deleteConfirm', { name: deleteTarget.name }) : ''}
+        </p>
+      </VModal>
     </>
   )
 }

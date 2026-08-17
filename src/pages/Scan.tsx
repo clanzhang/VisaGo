@@ -26,11 +26,29 @@ import {
 
 type Step = 1 | 2 | 3
 
+/** D20：已扫描文件持久化 key（切页/刷新后可恢复，识别结果不丢） */
+const SCAN_ITEMS_KEY = 'visago:scan-items'
+
+/** 从 localStorage 恢复已扫描文件；进行中的项归为 pending（可续跑） */
+function loadStoredItems(): ScannedFileItem[] {
+  try {
+    const raw = localStorage.getItem(SCAN_ITEMS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as ScannedFileItem[]
+    return Array.isArray(parsed)
+      ? parsed.map((x) => (x.status === 'recognizing' ? { ...x, status: 'pending' as const } : x))
+      : []
+  } catch {
+    return []
+  }
+}
+
 export default function Scan() {
   const { t } = useI18n()
   const { toast } = useAppStore()
-  const [step, setStep] = useState<Step>(1)
-  const [items, setItems] = useState<ScannedFileItem[]>([])
+  const storedItems = useMemo(() => loadStoredItems(), [])
+  const [step, setStep] = useState<Step>(storedItems.length > 0 ? 2 : 1)
+  const [items, setItems] = useState<ScannedFileItem[]>(storedItems)
   const [scanning, setScanning] = useState(false)
   const [recognizingAll, setRecognizingAll] = useState(false)
   // 识别进度：第几个/共几个 + 当前文件名 + 阶段（识别中/等待限流）+ 倒计时
@@ -194,10 +212,38 @@ export default function Scan() {
   }
 
   // 用 ref 跟踪 items，供追加合并与导航重置使用
-  const itemsRef = useRef<ScannedFileItem[]>([])
+  const itemsRef = useRef<ScannedFileItem[]>(storedItems)
   useEffect(() => {
     itemsRef.current = items
   }, [items])
+
+  // D20：items 变化时防抖持久化（切页/刷新后可恢复；清空时移除 key）
+  useEffect(() => {
+    if (items.length === 0) {
+      try {
+        localStorage.removeItem(SCAN_ITEMS_KEY)
+      } catch {
+        /* ignore */
+      }
+      return
+    }
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(SCAN_ITEMS_KEY, JSON.stringify(items))
+      } catch {
+        /* quota：忽略，不阻塞流程 */
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [items])
+
+  // 卸载（切页）时停止批量识别，避免后台空跑 Kimi 配额
+  useEffect(
+    () => () => {
+      cancelRef.current = true
+    },
+    [],
+  )
 
   // 侧边栏/导航再次进入「材料扫描」时，重置到文件列表页（保留已扫描文件）
   const location = useLocation()

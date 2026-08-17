@@ -586,6 +586,10 @@ export default {
     emptyListTitle: 'No files yet',
     emptyListDesc: 'Click "Add Files" to pick documents, or go back to step 1.',
     noFields: 'No fields extracted',
+    allRecognized: 'All recognized',
+    retryFailed: 'Retry failed ({n})',
+    allComplete: 'All {n} files recognized — ready for the next step',
+    scanningFiles: 'Scanning selected files…',
     addedToCard: 'Saved to profile card',
   },
   profile: {
