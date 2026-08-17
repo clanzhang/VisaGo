@@ -1,9 +1,9 @@
 // components/visa/MaterialChecklist.tsx — 材料清单（自动推进式）
 // 页面加载自动完成可自动化的 6 项，用户只需处理证件照 + 银行流水
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { VButton } from '@/components/common'
+import { VButton, VModal } from '@/components/common'
 import { useI18n } from '@/i18n'
-import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/material-check'
+import { checkMaterials, type MaterialItem } from '@/lib/material-check'
 import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
 import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
 import { checkBankStatement, type BankCheckResult } from '@/lib/bank-check'
@@ -77,6 +77,17 @@ export function MaterialChecklist({
   const [generatingLabel, setGeneratingLabel] = useState('')
   const [loading, setLoading] = useState(true)
   const [currentUploadTarget, setCurrentUploadTarget] = useState<string>('')
+  // 已扫描文件记录（用于来源标注与预览）
+  const [scannedFiles, setScannedFiles] = useState<ScannedFileRecord[]>([])
+  // 已完成项次级菜单（dots-vertical）
+  const [menuFor, setMenuFor] = useState<string | null>(null)
+  // 预览弹窗
+  const [previewItem, setPreviewItem] = useState<MaterialItem | null>(null)
+  const [previewState, setPreviewState] = useState<{ loading: boolean; content: string; kind: 'photo' | 'text' | 'none' }>({
+    loading: false,
+    content: '',
+    kind: 'none',
+  })
   const fileRef = useRef<HTMLInputElement>(null)
 
   /** 材料 id → 期望的 Kimi 识别 category（中文），用于上传类型校验 */
@@ -125,6 +136,7 @@ export function MaterialChecklist({
       }
     }
     const list = checkMaterials(profile, scannedFiles)
+    setScannedFiles(scannedFiles)
     setItems(list)
     setLoading(false)
     return profile
@@ -159,8 +171,6 @@ export function MaterialChecklist({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const percent = useMemo(() => materialProgress(items), [items])
 
   // 是否所有材料都完成（ready / auto-generate）
   const allDone = useMemo(
@@ -197,20 +207,82 @@ export function MaterialChecklist({
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)))
   }
 
-  /** 本地化材料显示名 / 状态 / 提示（lib 里的中文数据不直接展示） */
+  /** 本地化材料显示名（lib 里的中文数据不直接展示） */
   const itemName = (item: MaterialItem) => t(`scan.materialName_${item.id}`)
-  const itemStatusLabel = (item: MaterialItem) => {
-    if (item.status === 'ready') return t('scan.materialStatus_ready')
-    if (item.status === 'auto-generate') return t('scan.materialStatus_auto')
-    if (item.status === 'need-photo') return t('scan.materialStatus_photo')
-    return t('scan.materialStatus_user')
+
+  /** 8 类材料可区分图标（统一尺寸与容器） */
+  const MATERIAL_ICONS: Record<string, string> = {
+    id: 'account',
+    passport: 'book',
+    family: 'home',
+    application: 'file',
+    employment: 'briefcase',
+    itinerary: 'map-marker',
+    photo: 'camera',
+    bank: 'bank',
   }
+
+  /** 状态语义：完成=success / 待操作=warning / 不合规=danger / 系统生成=cyan；配图标不只靠颜色 */
+  function statusMeta(item: MaterialItem) {
+    const photoFailed = item.id === 'photo' && !!photoResult && !photoResult.passed
+    if (item.status === 'ready') {
+      return { label: t('scan.materialStatus_ready'), cls: 'bg-success/10 text-success', icon: 'check-circle' }
+    }
+    if (item.status === 'auto-generate') {
+      return { label: t('scan.materialStatus_auto'), cls: 'bg-cyan/10 text-cyan', icon: 'file' }
+    }
+    if (item.status === 'need-photo' && photoFailed) {
+      return { label: t('scan.materialStatus_invalid'), cls: 'bg-red-500/10 text-red-600', icon: 'alert-circle' }
+    }
+    if (item.status === 'need-photo') {
+      return { label: t('scan.materialStatus_photo'), cls: 'bg-amber-500/10 text-amber-600', icon: 'camera' }
+    }
+    return { label: t('scan.materialStatus_user'), cls: 'bg-amber-500/10 text-amber-600', icon: 'alert-circle' }
+  }
+
+  /** 副文案：只在提供新信息时出现（来源/规格/依据），同质化描述由 C13 去重 */
   const itemAction = (item: MaterialItem) => {
-    if (item.status === 'ready') return t('scan.materialReused')
     if (item.id === 'employment' && item.status === 'auto-generate' && item.progress < 100) {
       return t('scan.materialHint_employmentPartial')
     }
     return t(`scan.materialHint_${item.id}`)
+  }
+
+  /** 预览：photo 显示真实图片；已扫描项显示文件+识别字段；自动生成项实时生成文本；无内容则说明原因 */
+  async function openPreview(item: MaterialItem) {
+    setPreviewItem(item)
+    setPreviewState({ loading: true, content: '', kind: 'none' })
+    if (item.id === 'photo') {
+      setPreviewState({ loading: false, content: photoDataUrl ?? '', kind: photoDataUrl ? 'photo' : 'none' })
+      return
+    }
+    const expectedCat = item.id === 'bank' ? '银行流水' : TARGET_CATEGORY[item.id]
+    const scanned = expectedCat ? scannedFiles.find((f) => f.doc_category === expectedCat) ?? null : null
+    if (scanned) {
+      const fields = Object.entries(scanned.fields ?? {})
+        .map(([k, v]) => `${k}: ${String(v)}`)
+        .join('\n')
+      setPreviewState({
+        loading: false,
+        content: `${t('scan.previewScannedFile', { name: scanned.name })}${fields ? `\n\n${t('scan.previewFields')}:\n${fields}` : ''}`,
+        kind: 'text',
+      })
+      return
+    }
+    if (item.status === 'auto-generate') {
+      try {
+        const profile = await loadProfile()
+        let content = ''
+        if (item.id === 'application' && profile) content = (await generateApplicationForm(profile, countryName)).content
+        else if (item.id === 'employment' && profile) content = (await generateEmploymentCertificate(profile, dates)).content
+        else if (item.id === 'itinerary') content = (await generateItinerary(countryName, dates)).content
+        setPreviewState({ loading: false, content, kind: content ? 'text' : 'none' })
+      } catch {
+        setPreviewState({ loading: false, content: '', kind: 'none' })
+      }
+      return
+    }
+    setPreviewState({ loading: false, content: '', kind: 'none' })
   }
 
   // 一键生成：申请表 + 在职证明 + 行程（Kimi 队列本身串行，逐项推进便于分阶段反馈）
@@ -310,121 +382,117 @@ export function MaterialChecklist({
     }
   }
 
-  // 操作按钮
-  function renderAction(item: MaterialItem) {
-    if (item.status === 'ready' || item.status === 'auto-generate') {
-      return (
-        <div className="flex shrink-0 items-center gap-2">
-          <VButton size="sm" variant="secondary" onClick={() => exportPdf(`<pre>${item.name}</pre>`, item.name).catch(() => {})}>
-            {t('scan.preview')}
-          </VButton>
-          {item.id === 'photo' || item.id === 'bank' || item.id === 'id' || item.id === 'passport' || item.id === 'family' ? (
-            <VButton
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setCurrentUploadTarget(item.id)
-                fileRef.current?.click()
-              }}
-            >
-              {t('scan.reupload')}
-            </VButton>
-          ) : (
-            <VButton size="sm" variant="secondary" onClick={handleGenerateAll} disabled={generating}>
-              {t('scan.regenerate')}
-            </VButton>
-          )}
-        </div>
-      )
-    }
-    if (item.status === 'need-photo') {
-      return (
-        <VButton size="sm" onClick={() => { setCurrentUploadTarget('photo'); fileRef.current?.click() }}>{t('scan.upload')}</VButton>
-      )
-    }
-    // need-user：根据材料类型设置上传目标
-    return (
-      <VButton
-        size="sm"
-        onClick={() => {
-          const target = item.id === 'bank' ? 'bank' : item.id
-          setCurrentUploadTarget(target)
-          fileRef.current?.click()
-        }}
-      >
-        {t('scan.upload')}
-      </VButton>
-    )
-  }
 
   const autoDoneCount = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length
   const auto = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate')
+  // 自动完成组是否展开：有未完成项时默认折叠，全部完成时始终展开
+  const isAutoOpen = !autoCollapsed || incomplete.length === 0
 
-  /** 单行材料项 */
+  /** 单行材料项：未完成项唯一实心「上传」；已完成项一个轻量「查看」+ 次级菜单 */
   function renderItemRow(item: MaterialItem, highlight: boolean) {
+    const meta = statusMeta(item)
+    const completed = item.status === 'ready' || item.status === 'auto-generate'
+    const needsFileInput = item.id === 'photo' || item.id === 'bank' || item.id === 'id' || item.id === 'passport' || item.id === 'family'
     return (
       <div
         key={item.id}
+        id={`material-${item.id}`}
         className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${
           highlight ? 'border-amber-400 ring-2 ring-amber-300/60' : 'border-ink/5'
         }`}
-        id={`material-${item.id}`}
       >
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F7FA] text-ink/60 ${
-            item.id === 'photo' ? 'icon-[mdi-light--camera]' : item.id === 'bank' ? 'icon-[mdi-light--bank]' : 'icon-[mdi-light--file]'
+            MATERIAL_ICONS[item.id] ? `icon-[mdi-light--${MATERIAL_ICONS[item.id]}]` : 'icon-[mdi-light--file]'
           }`}
+          aria-hidden="true"
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-ink">{itemName(item)}</span>
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              item.status === 'ready' || item.status === 'auto-generate'
-                ? 'bg-success/10 text-success'
-                : 'bg-amber-500/10 text-amber-600'
-            }`}>
-              {itemStatusLabel(item)}
+            <span className="min-w-0 truncate text-sm font-medium text-ink">{itemName(item)}</span>
+            <span className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${meta.cls}`}>
+              <span className={`h-3 w-3 ${meta.icon ? `icon-[mdi-light--${meta.icon}]` : ''}`} aria-hidden="true" />
+              {meta.label}
             </span>
           </div>
-          <div className="mt-1 text-xs text-ink/60">{itemAction(item)}</div>
-          {/* 进度 */}
-          <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-[#F3F4F6]">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${item.status === 'need-photo' || item.status === 'need-user' ? 'bg-amber-400' : 'bg-[#39A2B8]'}`}
-              style={{ width: `${item.progress}%` }}
-            />
-          </div>
+          <div className="mt-1 truncate text-xs text-ink/60">{itemAction(item)}</div>
         </div>
-        {renderAction(item)}
+        {completed ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => openPreview(item)}
+              className="rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/5 hover:text-[#0e4a80]"
+            >
+              {t('scan.preview')}
+            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuFor(menuFor === item.id ? null : item.id)}
+                aria-label={t('scan.moreActions')}
+                aria-expanded={menuFor === item.id}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+              >
+                <span className="h-4 w-4 icon-[mdi-light--dots-vertical]" aria-hidden="true" />
+              </button>
+              {menuFor === item.id && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setMenuFor(null)} />
+                  <div role="menu" className="absolute right-0 top-full z-40 mt-1 w-36 overflow-hidden rounded-lg border border-ink/5 bg-white py-1 shadow-card-lg">
+                    {needsFileInput ? (
+                      <button
+                        role="menuitem"
+                        type="button"
+                        onClick={() => {
+                          setMenuFor(null)
+                          setCurrentUploadTarget(item.id)
+                          fileRef.current?.click()
+                        }}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-ink/5"
+                      >
+                        {t('scan.reupload')}
+                      </button>
+                    ) : (
+                      <button
+                        role="menuitem"
+                        type="button"
+                        onClick={() => {
+                          setMenuFor(null)
+                          handleGenerateAll()
+                        }}
+                        disabled={generating}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-ink/5 disabled:cursor-not-allowed disabled:text-ink/40"
+                      >
+                        {t('scan.regenerate')}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <VButton
+            size="sm"
+            onClick={() => {
+              const target = item.id === 'bank' ? 'bank' : item.id
+              setCurrentUploadTarget(target)
+              fileRef.current?.click()
+            }}
+          >
+            {t('scan.upload')}
+          </VButton>
+        )}
       </div>
     )
   }
 
   return (
     <div>
-      {/* 进度条 */}
-      <div className="mb-5 flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#F3F4F6]">
-          <div
-            className="h-full rounded-full bg-[#39A2B8] transition-all duration-700 ease-out"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        <span className="text-sm font-semibold text-ink/70">{percent}%</span>
-      </div>
-
       {/* 自动推进提示 */}
       <div className="mb-4 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-2.5 text-xs text-ink/70">
         {t('scan.autoProgress', { done: autoDoneCount })}
-      </div>
-
-      {/* 一键生成（长任务：显示分阶段进度文案） */}
-      <div className="mb-5">
-        <VButton onClick={handleGenerateAll} disabled={generating} className="w-full">
-          {generating && generatingLabel ? (
-          <span className="inline-flex items-center gap-2"><span className="h-4 w-4 animate-spin icon-[mdi-light--refresh]" />{generatingLabel}</span>
-        ) : generating ? t('scan.generating') : t('scan.oneClickGenerate')}
-        </VButton>
       </div>
 
       {/* 材料列表（加载中显示骨架，避免空白闪烁；按「需要你处理 / 自动完成」分组） */}
@@ -444,37 +512,45 @@ export function MaterialChecklist({
           </div>
         ) : (
           <div className="space-y-2">
-            {/* 待处理组：始终展开 */}
+            {/* 待处理组：置顶且始终展开（未完成项是绝对焦点） */}
             {incomplete.length > 0 && (
-              <>
-                <p className="pt-1 text-xs font-semibold text-ink/60">
-                  {t('scan.materialsGroupPending')}（{incomplete.length}）
+              <div className="flex items-center gap-2 pt-1">
+                <p className="whitespace-nowrap text-xs font-semibold text-ink/70">
+                  {t('scan.materialsGroupPending', { n: incomplete.length })}
                 </p>
-                {incomplete.map((item, idx) => renderItemRow(item, pendingHighlight && idx === 0))}
-              </>
+                <div className="h-px flex-1 bg-ink/8" />
+              </div>
             )}
+            {incomplete.length > 0 && incomplete.map((item, idx) => renderItemRow(item, pendingHighlight && idx === 0))}
 
-            {/* 自动完成组：有未完成项时默认折叠 */}
+            {/* 自动完成组：显示准确分母，默认折叠 */}
             {auto.length > 0 && (
               <>
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-xs font-semibold text-ink/60">
-                    {t('scan.materialsGroupAuto')}（{auto.length}）
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <p className="whitespace-nowrap text-xs font-semibold text-ink/70">
+                    {t('scan.materialsGroupAuto', { done: auto.length, total: items.length })}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setAutoCollapsed((v) => !v)}
-                    aria-expanded={!autoCollapsed || incomplete.length === 0}
-                    className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
-                  >
-                    {t('scan.materialsGroupToggle')}
-                    <span
-                      className={`h-3.5 w-3.5 transition-transform ${!autoCollapsed || incomplete.length === 0 ? 'rotate-180' : ''} icon-[mdi-light--chevron-down]`}
-                    />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <VButton variant="ghost" size="sm" onClick={handleGenerateAll} disabled={generating}>
+                      {generating && generatingLabel ? generatingLabel : generating ? t('scan.generating') : t('scan.oneClickGenerate')}
+                    </VButton>
+                    <button
+                      type="button"
+                      onClick={() => setAutoCollapsed((v) => !v)}
+                      aria-expanded={isAutoOpen}
+                      aria-controls="material-auto-group-body"
+                      className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+                    >
+                      {isAutoOpen ? t('assistant.collapse') : t('assistant.expand')}
+                      <span className={`h-3.5 w-3.5 transition-transform ${isAutoOpen ? '' : 'rotate-180'} icon-[mdi-light--chevron-down]`} aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
-                {(!autoCollapsed || incomplete.length === 0) &&
-                  auto.map((item) => renderItemRow(item, false))}
+                {isAutoOpen && (
+                  <div id="material-auto-group-body" className="space-y-2">
+                    {auto.map((item) => renderItemRow(item, false))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -537,6 +613,30 @@ export function MaterialChecklist({
           )}
         </div>
       )}
+      {/* 预览弹窗：真实内容（照片/已扫描文件/实时生成文档），无内容时说明原因 */}
+      <VModal
+        open={!!previewItem}
+        onClose={() => setPreviewItem(null)}
+        title={previewItem ? itemName(previewItem) : ''}
+        width="max-w-2xl"
+      >
+        {previewState.loading ? (
+          <div className="flex items-center gap-2 py-8 text-sm text-ink/60">
+            <span className="h-4 w-4 animate-spin icon-[mdi-light--refresh]" aria-hidden="true" />
+            {t('scan.previewGenerating')}
+          </div>
+        ) : previewState.kind === 'photo' && previewState.content ? (
+          <img src={previewState.content} alt={t('scan.preview')} className="mx-auto max-h-[420px] rounded-lg border border-ink/10" />
+        ) : previewState.kind === 'text' ? (
+          <pre className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-xl bg-[#F9F9F6] p-4 text-sm leading-relaxed text-ink/80">
+            {previewState.content}
+          </pre>
+        ) : (
+          <p className="py-8 text-center text-sm text-ink/60">
+            {previewItem?.id === 'photo' ? t('scan.previewPhotoHint') : t('scan.previewNoContent')}
+          </p>
+        )}
+      </VModal>
     </div>
   )
 }
