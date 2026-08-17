@@ -30,12 +30,19 @@ export default function Scan() {
   const { t } = useI18n()
   const { toast } = useAppStore()
   const [step, setStep] = useState<Step>(1)
-  const [folder, setFolder] = useState('')
   const [items, setItems] = useState<ScannedFileItem[]>([])
   const [scanning, setScanning] = useState(false)
   const [recognizingAll, setRecognizingAll] = useState(false)
-  // 识别进度（i/n），用于长任务分阶段反馈
-  const [recognizeProgress, setRecognizeProgress] = useState<{ done: number; total: number } | null>(null)
+  // 识别进度：第几个/共几个 + 当前文件名 + 阶段（识别中/等待限流）+ 倒计时
+  const [recognizeProgress, setRecognizeProgress] = useState<{
+    done: number
+    total: number
+    currentName: string
+    phase: 'recognizing' | 'waiting'
+    secondsLeft: number
+  } | null>(null)
+  // 批量识别取消标记（A3：可中断）
+  const cancelRef = useRef(false)
 
   // 核对表单（从识别结果汇总）
   const [profile, setProfile] = useState<Record<string, string>>({})
@@ -257,7 +264,6 @@ export default function Scan() {
       }))
     const merged = [...base, ...fresh]
     setItems(merged)
-    if (!append) setFolder(result.folder)
 
     if (result.files.length === 0) {
       if (!append) toast(t('scan.noFilesFound'), 'warning')
@@ -299,6 +305,25 @@ export default function Scan() {
     }
   }
 
+  /** 把识别异常分类成人类可读的原因（A5） */
+  function classifyRecognizeError(e: unknown): { kind: string; message: string } {
+    const msg = e instanceof Error ? e.message : String(e)
+    const lower = msg.toLowerCase()
+    if (lower.includes('429') || lower.includes('rate') || lower.includes('限流')) {
+      return { kind: 'rate-limit', message: t('scan.errRateLimit') }
+    }
+    if (lower.includes('401') || lower.includes('unauthorized') || lower.includes('api key') || lower.includes('invalid key')) {
+      return { kind: 'auth', message: t('scan.errAuth') }
+    }
+    if (lower.includes('timeout') || lower.includes('超时')) {
+      return { kind: 'timeout', message: t('scan.errTimeout') }
+    }
+    if (lower.includes('parse') || lower.includes('json') || lower.includes('无法解析')) {
+      return { kind: 'parse', message: t('scan.errParse') }
+    }
+    return { kind: 'network', message: t('scan.errNetwork') }
+  }
+
   // 识别单个文件
   async function handleRecognize(item: ScannedFileItem) {
     setItems((prev) =>
@@ -323,46 +348,75 @@ export default function Scan() {
       )
     } catch (e) {
       console.error('[Scan] recognize_file 失败:', item.name, e)
+      const { kind, message } = classifyRecognizeError(e)
       setItems((prev) =>
         prev.map((x) =>
           x.path === item.path
-            ? { ...x, status: 'error', error: e instanceof Error ? `${e.name}: ${e.message}` : t('scan.recognizeFailed') }
+            ? {
+                ...x,
+                status: 'error',
+                errorKind: kind,
+                error: e instanceof Error ? `${e.name}: ${e.message}` : message,
+              }
             : x,
         ),
       )
     }
   }
 
-  // 识别全部（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
-  async function handleRecognizeAll() {
+  /** 串行识别一组文件：保留 5 秒间隔（Kimi 3 RPM 限流保护），支持停止、整体进度与倒计时反馈 */
+  async function runRecognition(targets: ScannedFileItem[]) {
+    if (targets.length === 0) return
+    cancelRef.current = false
     setRecognizingAll(true)
-    const pending = items.filter((x) => x.status === 'pending' || x.status === 'error')
-    setRecognizeProgress({ done: 0, total: pending.length })
-    for (let i = 0; i < pending.length; i++) {
-      await handleRecognize(pending[i])
-      setRecognizeProgress({ done: i + 1, total: pending.length })
-      // 非最后一个文件：间隔 5 秒，避免触发 429 限流
-      if (i < pending.length - 1) {
-        await new Promise((r) => setTimeout(r, 5000))
+    const total = targets.length
+    setRecognizeProgress({ done: 0, total, currentName: targets[0].name, phase: 'recognizing', secondsLeft: 0 })
+    for (let i = 0; i < total; i++) {
+      if (cancelRef.current) break
+      const item = targets[i]
+      setRecognizeProgress((p) => (p ? { ...p, currentName: item.name, phase: 'recognizing', secondsLeft: 0 } : p))
+      await handleRecognize(item)
+      setRecognizeProgress((p) => (p ? { ...p, done: i + 1 } : p))
+      if (cancelRef.current) break
+      // 非最后一个文件：5 秒间隔 + 逐秒倒计时，把"疑似卡死"变成"已知机制"
+      if (i < total - 1) {
+        for (let s = 5; s >= 1; s--) {
+          if (cancelRef.current) break
+          setRecognizeProgress((p) => (p ? { ...p, phase: 'waiting', secondsLeft: s } : p))
+          await new Promise((r) => setTimeout(r, 1000))
+        }
+      }
+    }
+    // 取消：把仍在识别的项回 pending（已识别的保留，可续跑）
+    if (cancelRef.current) {
+      setItems((prev) => prev.map((x) => (x.status === 'recognizing' ? { ...x, status: 'pending' as const } : x)))
+      toast(t('scan.recognizeStopped'), 'info')
+    } else {
+      const failed = itemsRef.current.filter((x) => x.status === 'error').length
+      if (failed > 0) {
+        toast(t('scan.recognizePartialDone', { done: total - failed, failed }), 'warning')
+      } else {
+        toast(t('scan.recognizeDone'), 'success')
       }
     }
     setRecognizingAll(false)
     setRecognizeProgress(null)
-    toast(t('scan.recognizeDone'), 'success')
+  }
+
+  // 识别全部（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
+  function handleRecognizeAll() {
+    const pending = itemsRef.current.filter((x) => x.status === 'pending' || x.status === 'error')
+    void runRecognition(pending)
   }
 
   // 追加后自动识别一组新文件（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
-  async function handleRecognizeAllFresh(fresh: ScannedFileItem[]) {
-    setRecognizingAll(true)
-    for (let i = 0; i < fresh.length; i++) {
-      await handleRecognize(fresh[i])
-      // 非最后一个文件：间隔 5 秒，避免触发 429 限流
-      if (i < fresh.length - 1) {
-        await new Promise((r) => setTimeout(r, 5000))
-      }
-    }
-    setRecognizingAll(false)
-    toast(t('scan.appendRecognizeDone'), 'success')
+  function handleRecognizeAllFresh(fresh: ScannedFileItem[]) {
+    void runRecognition(fresh)
+  }
+
+  // 停止批量识别（A3）
+  function handleStopRecognize() {
+    cancelRef.current = true
   }
 
   // 从识别结果聚合字段到核对表单
@@ -572,13 +626,13 @@ export default function Scan() {
       {step === 2 && (
         <ScannedFileList
           items={items}
-          folder={folder}
           scanning={scanning}
           recognizingAll={recognizingAll}
           recognizeProgress={recognizeProgress}
           recognizedCount={recognizedCount}
           onAddMore={handleAddMore}
           onRecognizeAll={handleRecognizeAll}
+          onStopRecognize={handleStopRecognize}
           onRecognize={handleRecognize}
           onNext={handleNextToConfirm}
         />
