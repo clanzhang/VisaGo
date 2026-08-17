@@ -69,6 +69,8 @@ export default function Assistant() {
   const [added, setAdded] = useState(false)
   // 材料是否全部就绪（由 MaterialChecklist 上报）
   const [materialsReady, setMaterialsReady] = useState(false)
+  // 材料完成度（供 Step 4 sticky 头部显示「已就绪 N / M」）
+  const [stepProgress, setStepProgress] = useState<{ done: number; total: number } | null>(null)
   // 活跃资料卡（从材料扫描保存，自动读取）
   const [activeCard, setActiveCard] = useState<UserProfile | null>(null)
   // 归一化后的资料卡值（自动填充来源，用于字段溯源与覆盖确认）
@@ -272,6 +274,7 @@ export default function Assistant() {
           <StepContextBar
             country={country}
             visaType={visaType}
+            stepText={t('assistant.stepOf', { current: 2, total: 4 })}
             changeLabel={t('assistant.changeCountry')}
             onChange={() => setStep(0)}
           />
@@ -291,6 +294,7 @@ export default function Assistant() {
           <StepContextBar
             country={country}
             visaType={visaType}
+            stepText={t('assistant.stepOf', { current: 3, total: 4 })}
             changeLabel={t('assistant.changeVisaType')}
             onChange={() => setStep(1)}
           />
@@ -322,8 +326,12 @@ export default function Assistant() {
           <StepContextBar
             country={country}
             visaType={visaType}
+            stepText={t('assistant.stepOf', { current: 4, total: 4 })}
+            progress={stepProgress}
             changeLabel={t('assistant.changeVisaType')}
             onChange={() => setStep(1)}
+            onBack={() => setStep(2)}
+            backLabel={t('assistant.backStep3')}
           />
           <Step4Result
             country={country}
@@ -333,10 +341,10 @@ export default function Assistant() {
             materialsReady={materialsReady}
             added={added}
             onMaterialsReadyChange={setMaterialsReady}
+            onProgressChange={(done, total) => setStepProgress({ done, total })}
             onReset={() => {
               if (window.confirm(t('assistant.resetConfirm'))) reset()
             }}
-            onBack={() => setStep(2)}
             onTrack={startTracking}
           />
         </>

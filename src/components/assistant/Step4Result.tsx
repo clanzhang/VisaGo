@@ -1,8 +1,10 @@
-// components/assistant/Step4Result.tsx — 第四步：方案结果（材料 + 费用 + 周期 + 追踪）
+// components/assistant/Step4Result.tsx — 第四步：方案结果
+// 布局：左栏材料清单（整页滚动，无内层滚动）＋ 右栏 sticky 摘要/行动区（完成度/费用/周期/CTA）
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { VButton } from '@/components/common'
 import { MaterialChecklist } from '@/components/visa'
+import { MATERIAL_TEMPLATE } from '@/lib/material-check'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
 import { getVisaOfficialFee, formatFee } from '@/data/visa-fees'
 import type { Country, UserProfile, VisaType } from '@/types'
@@ -15,8 +17,9 @@ interface Props {
   materialsReady: boolean
   added: boolean
   onMaterialsReadyChange: (ready: boolean) => void
+  /** 完成度上报（供 sticky 头部显示「已就绪 N / M」） */
+  onProgressChange?: (done: number, total: number) => void
   onReset: () => void
-  onBack: () => void
   onTrack: () => void
 }
 
@@ -28,16 +31,21 @@ export function Step4Result({
   materialsReady,
   added,
   onMaterialsReadyChange,
+  onProgressChange,
   onReset,
-  onBack,
   onTrack,
 }: Props) {
   const { t, isZh, pickL } = useI18n()
   const extra = getVisaExtra(country.id, visaType.id)
-  // 未完成材料（P1-6：CTA 可点击，点击后高亮第一个未完成项）
+  // 未完成材料（CTA 可点击，点击后高亮第一个未完成项）
   const [incompleteIds, setIncompleteIds] = useState<string[]>([])
   const [highlightPending, setHighlightPending] = useState(false)
+  const [feeOpen, setFeeOpen] = useState(false)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const total = MATERIAL_TEMPLATE.length
+  const done = total - incompleteIds.length
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0
 
   // 材料就绪后清除高亮
   useEffect(() => {
@@ -50,6 +58,12 @@ export function Step4Result({
   useEffect(() => () => {
     if (highlightTimer.current) clearTimeout(highlightTimer.current)
   }, [])
+
+  // 完成度上报给父级（sticky 头部）
+  useEffect(() => {
+    onProgressChange?.(done, total)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, total])
 
   function handleTrackClick() {
     if (added) return
@@ -68,22 +82,36 @@ export function Step4Result({
     ? visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))
     : undefined
 
+  // 费用明细行（官方多档位优先）
+  const feeRows = (() => {
+    const f = extra?.fees
+    const official = getVisaOfficialFee(country.id, visaType.id, {
+      serviceFee: f?.serviceFee ?? visaType.serviceFee?.amount ?? 0,
+      courierFee: f?.courierFee ?? 0,
+      photoFee: f?.photoFee ?? 0,
+    })
+    if (official && official.tiers.length > 0) {
+      const rows: { label: string; value: string }[] = official.tiers.map((tr) => ({
+        label: pickL(tr.label),
+        value: formatFee(tr),
+      }))
+      if (official.serviceFee > 0) rows.push({ label: t('assistant.serviceFee'), value: `¥${official.serviceFee}` })
+      if (official.courierFee > 0) rows.push({ label: t('encyclopedia.courierFee'), value: `¥${official.courierFee}` })
+      if (official.photoFee > 0) rows.push({ label: t('encyclopedia.photoFee'), value: `¥${official.photoFee}` })
+      const firstPaidTier = official.tiers.find((tr) => tr.currency !== 'FREE')
+      return { rows, totalLabel: firstPaidTier ? `${formatFee(firstPaidTier)} ${t('assistant.from')}` : t('assistant.free') }
+    }
+    const rows = [
+      { label: t('assistant.visaFee'), value: `¥${f?.visaFee ?? visaType.fee.amount}` },
+      { label: t('assistant.serviceFee'), value: `¥${f?.serviceFee ?? visaType.serviceFee?.amount ?? 0}` },
+      { label: t('encyclopedia.courierFee'), value: `¥${f?.courierFee ?? 0}` },
+      { label: t('encyclopedia.photoFee'), value: `¥${f?.photoFee ?? 0}` },
+    ]
+    return { rows, totalLabel: `¥${totalFees}` }
+  })()
+
   return (
     <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-ink">
-          {country.flag} {pickL(country.name)} · {pickL(visaType.name)}
-        </h2>
-        <div className="flex gap-2">
-          <VButton variant="secondary" size="sm" onClick={onReset}>
-            {t('assistant.reset')}
-          </VButton>
-          <VButton variant="secondary" size="sm" onClick={onBack}>
-            {t('assistant.backStep3')}
-          </VButton>
-        </div>
-      </div>
-
       {/* 领区 */}
       {matchedDistrict && (
         <div className="mb-6 rounded-xl bg-[#E0F7FA] px-5 py-4">
@@ -92,9 +120,9 @@ export function Step4Result({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* 材料（自动检测/上传/生成） */}
-        <div>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* 左栏：材料（整页滚动，无内层滚动容器） */}
+        <div className="min-w-0">
           <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.materials')}</h3>
           <div className="rounded-xl border border-ink/5 p-4">
             <MaterialChecklist
@@ -108,119 +136,98 @@ export function Step4Result({
               pendingHighlight={highlightPending}
             />
           </div>
+          {/* C17：注意事项降为页脚级小字 */}
+          <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-ink/60">
+            <span className="mt-0.5 h-4 w-4 shrink-0 icon-[mdi-light--information]" />
+            {pickL(visaType.tips)}
+          </p>
         </div>
 
-        {/* 费用与周期 */}
-        <div className="space-y-4">
+        {/* 右栏：sticky 摘要/行动区（窄屏堆叠到材料区下方） */}
+        <div className="space-y-4 lg:sticky lg:top-16">
+          {/* 完成度 */}
           <div className="rounded-xl border border-ink/5 p-5">
-            <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.feeBreakdown')}</h3>
-            {(() => {
-              const f = extra?.fees
-              const official = getVisaOfficialFee(country.id, visaType.id, {
-                serviceFee: f?.serviceFee ?? visaType.serviceFee?.amount ?? 0,
-                courierFee: f?.courierFee ?? 0,
-                photoFee: f?.photoFee ?? 0,
-              })
-              if (official && official.tiers.length > 0) {
-                const firstPaidTier = official.tiers.find((tr) => tr.currency !== 'FREE')
-                return (
-                  <>
-                    <div className="space-y-2">
-                      {official.tiers.map((tr, i) => (
-                        <div key={i} className="flex justify-between text-sm">
-                          <span className="text-ink/60">{pickL(tr.label)}</span>
-                          <span className="font-medium">{formatFee(tr)}</span>
-                        </div>
-                      ))}
-                      {official.serviceFee > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-ink/60">{t('assistant.serviceFee')}</span>
-                          <span className="font-medium">¥{official.serviceFee}</span>
-                        </div>
-                      )}
-                      {official.courierFee > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-ink/60">{t('encyclopedia.courierFee')}</span>
-                          <span className="font-medium">¥{official.courierFee}</span>
-                        </div>
-                      )}
-                      {official.photoFee > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-ink/60">{t('encyclopedia.photoFee')}</span>
-                          <span className="font-medium">¥{official.photoFee}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-3 flex justify-between border-t border-ink/10 pt-3">
-                      <span className="text-sm font-medium">{t('assistant.total')}</span>
-                      <span className="font-display text-lg font-bold text-primary">
-                        {firstPaidTier ? `${formatFee(firstPaidTier)} ${t('assistant.from')}` : t('assistant.free')}
-                      </span>
-                    </div>
-                    {(official.effectiveFrom || official.note || official.freeNote) && (
-                      <div className="mt-3 space-y-1 text-xs text-ink/60">
-                        {official.effectiveFrom && <p className="inline-flex items-start gap-1"><span className="mt-0.5 h-4 w-4 shrink-0 icon-[mdi-light--calendar]" />{t('encyclopedia.effectiveFrom')}: {official.effectiveFrom}</p>}
-                        {official.freeNote && <p>{pickL(official.freeNote)}</p>}
-                        {official.note && <p className="inline-flex items-start gap-1"><span className="mt-0.5 h-4 w-4 shrink-0 icon-[mdi-light--information]" />{pickL(official.note)}</p>}
-                      </div>
-                    )}
-                  </>
-                )
-              }
-              const rows = [
-                { label: t('assistant.visaFee'), value: f?.visaFee ?? visaType.fee.amount },
-                { label: t('assistant.serviceFee'), value: f?.serviceFee ?? visaType.serviceFee?.amount ?? 0 },
-                { label: t('encyclopedia.courierFee'), value: f?.courierFee ?? 0 },
-                { label: t('encyclopedia.photoFee'), value: f?.photoFee ?? 0 },
-              ]
-              return (
-                <>
-                  <div className="space-y-2">
-                    {rows.map((r) => (
-                      <div key={r.label} className="flex justify-between text-sm">
-                        <span className="text-ink/60">{r.label}</span>
-                        <span className="font-medium">¥{r.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex justify-between border-t border-ink/10 pt-3">
-                    <span className="text-sm font-medium">{t('assistant.total')}</span>
-                    <span className="font-display text-lg font-bold text-primary">¥{totalFees}</span>
-                  </div>
-                </>
-              )
-            })()}
+            <div className="mb-2 flex items-baseline justify-between">
+              <h3 className="text-sm font-semibold text-ink">{t('assistant.summaryTitle')}</h3>
+              <span className="font-display text-lg font-bold text-ink">{percent}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-[#F3F4F6]">
+              <div className="h-full rounded-full bg-success transition-all duration-500" style={{ width: `${percent}%` }} />
+            </div>
+            <p className="mt-2 text-xs text-ink/60">{t('assistant.summaryProgress', { done, total })}</p>
           </div>
 
+          {/* 费用（明细可折叠，默认收起） */}
           <div className="rounded-xl border border-ink/5 p-5">
-            <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.processingTime')}</h3>
-            <div className="text-2xl font-bold text-ink">
-              {visaType.processingDays.min}-{visaType.processingDays.max}
-              <span className="ml-1 text-sm font-normal text-ink/60">{t('assistant.days')}</span>
+            <button
+              type="button"
+              onClick={() => setFeeOpen((v) => !v)}
+              aria-expanded={feeOpen}
+              aria-controls="step4-fee-detail"
+              className="flex w-full items-center justify-between text-left"
+            >
+              <h3 className="text-sm font-semibold text-ink">{t('assistant.feeBreakdown')}</h3>
+              <span className={`h-4 w-4 shrink-0 text-ink/60 transition-transform ${feeOpen ? '' : 'rotate-180'} icon-[mdi-light--chevron-down]`} />
+            </button>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-sm text-ink/60">{t('assistant.total')}</span>
+              <span className="font-display text-xl font-bold text-primary">{feeRows.totalLabel}</span>
             </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink/60">
+            {feeOpen && (
+              <div id="step4-fee-detail" className="mt-3 space-y-1.5 border-t border-ink/5 pt-3">
+                {feeRows.rows.map((r) => (
+                  <div key={r.label} className="flex justify-between text-sm">
+                    <span className="text-ink/60">{r.label}</span>
+                    <span className="font-medium">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 周期 + 面签 */}
+          <div className="rounded-xl border border-ink/5 p-5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-ink/60">{t('assistant.processingTime')}</span>
+              <span className="font-semibold text-ink">
+                {visaType.processingDays.min}-{visaType.processingDays.max} {t('assistant.days')}
+              </span>
+            </div>
+            <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-ink/60">
               {visaType.needInterview ? (
                 <span className="h-4 w-4 shrink-0 text-red-500 icon-[mdi-light--alert-circle]" />
               ) : (
                 <span className="h-4 w-4 shrink-0 text-success icon-[mdi-light--check-circle]" />
               )}
-              {visaType.needInterview ? `${t('encyclopedia.needInterview')}: ${t('common.yes')}` : `${t('encyclopedia.needInterview')}: ${t('common.no')}`}
+              {visaType.needInterview
+                ? `${t('encyclopedia.needInterview')}: ${t('common.yes')}`
+                : `${t('encyclopedia.needInterview')}: ${t('common.no')}`}
             </div>
           </div>
 
-          <div className="rounded-xl bg-[#F9F9F6] p-5">
-            <h3 className="mb-2 text-sm font-semibold text-ink">{t('assistant.notes')}</h3>
-            <p className="text-sm leading-relaxed text-ink/70">{pickL(visaType.tips)}</p>
+          {/* 主 CTA（唯一主行动） */}
+          <div className="rounded-xl border border-ink/5 p-4">
+            <VButton size="lg" className="w-full" onClick={handleTrackClick} disabled={added}>
+              {added ? <span className="h-4 w-4 icon-[mdi-light--check]" /> : null}
+              {!materialsReady
+                ? incompleteIds.length > 0
+                  ? t('assistant.materialsMissing', { n: incompleteIds.length, names: incompleteNames.join(isZh ? '、' : ', ') })
+                  : t('assistant.materialsNotReady')
+                : `+ ${t('assistant.trackApplication')}`}
+            </VButton>
+            <p className="mt-2 text-center text-xs leading-relaxed text-ink/60">{t('assistant.trackHint')}</p>
           </div>
 
-          <VButton size="lg" className="w-full" onClick={handleTrackClick} disabled={added}>
-            {added ? <span className="h-4 w-4 icon-[mdi-light--check]" /> : null}
-            {!materialsReady
-              ? incompleteIds.length > 0
-                ? t('assistant.materialsMissing', { n: incompleteIds.length, names: incompleteNames.join(isZh ? '、' : ', ') })
-                : t('assistant.materialsNotReady')
-              : `+ ${t('assistant.trackApplication')}`}
-          </VButton>
+          {/* 重新开始（降级为脚注级操作） */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={onReset}
+              className="rounded-md px-2 py-1 text-xs text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+            >
+              {t('assistant.reset')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

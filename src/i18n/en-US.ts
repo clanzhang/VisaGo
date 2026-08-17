@@ -200,6 +200,13 @@ export default {
     backStep3: 'Back: identity',
     materialsMissing: '{n} material(s) missing: {names}',
     fillManually: 'Fill in manually, or scan your documents to auto-fill (faster & more accurate)',
+    headerProgress: '{done} / {total} ready',
+    stepOf: 'Step {current} / {total}',
+    summaryTitle: 'Overview',
+    summaryProgress: '{done} of {total} materials ready',
+    trackHint: 'Saved to your progress tracker — stored locally only, never submitted to any authority.',
+    expand: 'Expand',
+    collapse: 'Collapse',
   },
   tracker: {
     title: 'Progress Tracker',

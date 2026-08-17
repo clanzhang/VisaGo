@@ -200,6 +200,13 @@ export default {
     backStep3: '返回：填身份',
     materialsMissing: '还差 {n} 项材料：{names}',
     fillManually: '可手动填写，或扫描证件自动填充（更快、更准）',
+    headerProgress: '{done} / {total} 已就绪',
+    stepOf: '第 {current} / {total} 步',
+    summaryTitle: '申请概览',
+    summaryProgress: '已就绪 {done} / 共 {total} 项',
+    trackHint: '加入进度追踪后仅保存在本机，不会向任何机构提交。',
+    expand: '展开',
+    collapse: '收起',
   },
   tracker: {
     title: '进度追踪',
