@@ -14,6 +14,8 @@ export interface CountryMeta {
   difficulty: DifficultyLabel
   region: string
   desc: string
+  /** 搜索别名（拼音/常见说法/首字母），可选、向后兼容 */
+  aliases?: string[]
 }
 
 export const COUNTRY_LIST: CountryMeta[] = [
@@ -29,9 +31,9 @@ export const COUNTRY_LIST: CountryMeta[] = [
   { id: 'azerbaijan', zh: '阿塞拜疆', en: 'Azerbaijan', flag: '🇦🇿', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '2025起互免，每次停留不超过30天' },
   { id: 'armenia', zh: '亚美尼亚', en: 'Armenia', flag: '🇦🇲', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '互免签证，180天内累计不超过90天' },
   { id: 'belarus', zh: '白俄罗斯', en: 'Belarus', flag: '🇧🇾', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '互免签证，每次停留不超过30天' },
-  { id: 'thailand', zh: '泰国', en: 'Thailand', flag: '🇹🇭', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024.3起永久互免，每次停留不超过30天' },
-  { id: 'singapore', zh: '新加坡', en: 'Singapore', flag: '🇸🇬', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024.2起互免，每次停留不超过30天' },
-  { id: 'malaysia', zh: '马来西亚', en: 'Malaysia', flag: '🇲🇾', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2025起互免，每次停留不超过30天' },
+  { id: 'thailand', zh: '泰国', en: 'Thailand', flag: '🇹🇭', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024.3起永久互免，每次停留不超过30天', aliases: ['tai guo', 'taiguo', 'tg', '暹罗'] },
+  { id: 'singapore', zh: '新加坡', en: 'Singapore', flag: '🇸🇬', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2024.2起互免，每次停留不超过30天', aliases: ['xin jia po', 'xinjiapo', '狮城', '星加坡'] },
+  { id: 'malaysia', zh: '马来西亚', en: 'Malaysia', flag: '🇲🇾', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2025起互免，每次停留不超过30天', aliases: ['ma lai xi ya', 'malaixiya', '大马'] },
   { id: 'brunei', zh: '文莱', en: 'Brunei', flag: '🇧🇳', visaType: '互免签证', difficulty: 'easy', region: '亚洲', desc: '2025起互免，每次停留不超过14天' },
   // ---- 欧洲（4） ----
   { id: 'serbia', zh: '塞尔维亚', en: 'Serbia', flag: '🇷🇸', visaType: '互免签证', difficulty: 'easy', region: '欧洲', desc: '互免签证，每次停留不超过30天' },
@@ -111,28 +113,28 @@ export const COUNTRY_LIST: CountryMeta[] = [
 
   // ═════════════ 四、电子签（14） ═════════════
   // ---- 亚洲（4） ----
-  { id: 'japan', zh: '日本', en: 'Japan', flag: '🇯🇵', visaType: '电子签', difficulty: 'medium', region: '亚洲', desc: '需通过指定旅行社代办，单次最长15天' },
-  { id: 'korea', zh: '韩国', en: 'South Korea', flag: '🇰🇷', visaType: '电子签', difficulty: 'medium', region: '亚洲', desc: '济州岛免签，mainland需办C-3签证' },
-  { id: 'india', zh: '印度', en: 'India', flag: '🇮🇳', visaType: '电子签', difficulty: 'medium', region: '亚洲', desc: '电子签最长5年多次，需在线填写详细表格' },
+  { id: 'japan', zh: '日本', en: 'Japan', flag: '🇯🇵', visaType: '电子签', difficulty: 'medium', region: '亚洲', desc: '需通过指定旅行社代办，单次最长15天', aliases: ['ri ben', 'riben', 'rb', '霓虹'] },
+  { id: 'korea', zh: '韩国', en: 'South Korea', flag: '🇰🇷', visaType: '电子签', difficulty: 'medium', region: '亚洲', desc: '济州岛免签，mainland需办C-3签证', aliases: ['han guo', 'hanguo', 'hg', '南韩'] },
+  { id: 'india', zh: '印度', en: 'India', flag: '🇮🇳', visaType: '电子签', difficulty: 'medium', region: '亚洲', desc: '电子签最长5年多次，需在线填写详细表格', aliases: ['yin du', 'yindu'] },
   { id: 'sri-lanka', zh: '斯里兰卡', en: 'Sri Lanka', flag: '🇱🇰', visaType: '电子签', difficulty: 'easy', region: '亚洲', desc: 'ETA电子许可，在线申请，2025起改为电子签' },
   // ---- 欧洲（3） ----
-  { id: 'schengen', zh: '申根区', en: 'Schengen', flag: '🇪🇺', visaType: '电子签', difficulty: 'hard', region: '欧洲', desc: '26国一签通，材料最严，需录指纹，通过VFS递交' },
-  { id: 'uk', zh: '英国', en: 'United Kingdom', flag: '🇬🇧', visaType: '电子签', difficulty: 'medium', region: '欧洲', desc: '标准访客签通常2年多次，在线申请，无需面签' },
+  { id: 'schengen', zh: '申根区', en: 'Schengen', flag: '🇪🇺', visaType: '电子签', difficulty: 'hard', region: '欧洲', desc: '26国一签通，材料最严，需录指纹，通过VFS递交', aliases: ['shen gen', 'shengeng', 'sg', '申根26国', '申根区', '欧洲申根'] },
+  { id: 'uk', zh: '英国', en: 'United Kingdom', flag: '🇬🇧', visaType: '电子签', difficulty: 'medium', region: '欧洲', desc: '标准访客签通常2年多次，在线申请，无需面签', aliases: ['ying guo', 'yingguo', 'britain', '大不列颠'] },
   { id: 'ireland', zh: '爱尔兰', en: 'Ireland', flag: '🇮🇪', visaType: '电子签', difficulty: 'medium', region: '欧洲', desc: '旅游签，需财力证明，持英签可免签入境' },
   // ---- 美洲（4） ----
-  { id: 'usa', zh: '美国', en: 'United States', flag: '🇺🇸', visaType: '电子签', difficulty: 'hard', region: '美洲', desc: 'B1/B2签证需面签，最长10年多次，拒签率较高' },
-  { id: 'canada', zh: '加拿大', en: 'Canada', flag: '🇨🇦', visaType: '电子签', difficulty: 'hard', region: '美洲', desc: '需录指纹，审批周期长，最长10年多次' },
+  { id: 'usa', zh: '美国', en: 'United States', flag: '🇺🇸', visaType: '电子签', difficulty: 'hard', region: '美洲', desc: 'B1/B2签证需面签，最长10年多次，拒签率较高', aliases: ['mei guo', 'meiguo', 'mg', '美利坚'] },
+  { id: 'canada', zh: '加拿大', en: 'Canada', flag: '🇨🇦', visaType: '电子签', difficulty: 'hard', region: '美洲', desc: '需录指纹，审批周期长，最长10年多次', aliases: ['jia na da', 'jianada', '枫叶国'] },
   { id: 'mexico', zh: '墨西哥', en: 'Mexico', flag: '🇲🇽', visaType: '电子签', difficulty: 'medium', region: '美洲', desc: '持有效美签可免签，否则需办签证' },
   { id: 'argentina', zh: '阿根廷', en: 'Argentina', flag: '🇦🇷', visaType: '电子签', difficulty: 'hard', region: '美洲', desc: '持美签或申根签可申请AVE电子许可' },
   // ---- 大洋洲（2） ----
-  { id: 'australia', zh: '澳大利亚', en: 'Australia', flag: '🇦🇺', visaType: '电子签', difficulty: 'medium', region: '大洋洲', desc: '600类电子签，全程在线，出签后与护照号关联' },
-  { id: 'new-zealand', zh: '新西兰', en: 'New Zealand', flag: '🇳🇿', visaType: '电子签', difficulty: 'medium', region: '大洋洲', desc: '在线申请，材料要求中等，审批约20个工作日' },
+  { id: 'australia', zh: '澳大利亚', en: 'Australia', flag: '🇦🇺', visaType: '电子签', difficulty: 'medium', region: '大洋洲', desc: '600类电子签，全程在线，出签后与护照号关联', aliases: ['ao da li ya', 'aodaliya', '土澳'] },
+  { id: 'new-zealand', zh: '新西兰', en: 'New Zealand', flag: '🇳🇿', visaType: '电子签', difficulty: 'medium', region: '大洋洲', desc: '在线申请，材料要求中等，审批约20个工作日', aliases: ['xin xi lan', 'xinxilan', '纽西兰'] },
   // ---- 非洲（1） ----
   { id: 'south-africa', zh: '南非', en: 'South Africa', flag: '🇿🇦', visaType: '电子签', difficulty: 'medium', region: '非洲', desc: '需递交纸质材料到签证中心，审批约10个工作日' },
 
   // ═════════════ 五、港澳台（2） ═════════════
-  { id: 'hong-kong', zh: '香港', en: 'Hong Kong', flag: '🇭🇰', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '港澳通行证 + 签注，部分城市可自助签注' },
-  { id: 'taiwan', zh: '台湾', en: 'Taiwan', flag: '🏝️', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '大陆居民需办入台证 + 大通证，目前个人游部分开放' },
+  { id: 'hong-kong', zh: '香港', en: 'Hong Kong', flag: '🇭🇰', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '港澳通行证 + 签注，部分城市可自助签注', aliases: ['xiang gang', 'xianggang', 'hk'] },
+  { id: 'taiwan', zh: '台湾', en: 'Taiwan', flag: '🏝️', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '大陆居民需办入台证 + 大通证，目前个人游部分开放', aliases: ['tai wan', 'taiwan', 'tw', '宝岛'] },
 ]
 
 /** 分组顺序（按签证类型四大组） */

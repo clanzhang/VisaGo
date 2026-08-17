@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
 
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main id="app-main" className="min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1280px] px-4 py-5 sm:px-8 sm:py-8">
           {/* 移动端汉堡按钮（仅 ≤768px 显示） */}
           <button

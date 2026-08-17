@@ -188,12 +188,21 @@ export function getVisaType(countryId: string, visaTypeId: string) {
 export function searchCountries(keyword: string): Country[] {
   const kw = keyword.trim().toLowerCase()
   if (!kw) return countries
-  return countries.filter(
-    (c) =>
-      c.name.zh.includes(kw) ||
-      c.name.en.toLowerCase().includes(kw) ||
-      c.visaTypes.some(
-        (v) => v.name.zh.includes(kw) || v.name.en.toLowerCase().includes(kw),
-      ),
-  )
+  return countries.filter((c) => {
+    // 名称（中/英）
+    if (c.name.zh.includes(kw) || c.name.en.toLowerCase().includes(kw)) return true
+    // 所属区域（如「欧洲」）
+    if (c.region.includes(kw)) return true
+    // 签证类型（如「免签」「落地签」）
+    if (c.visaType.includes(kw)) return true
+    // 描述（如「申根 26 国」里的关键词）
+    if ((c.overview?.zh ?? '').includes(kw) || (c.overview?.en ?? '').toLowerCase().includes(kw)) return true
+    // 别名/拼音/首字母（country-list.ts aliases）
+    const meta = COUNTRY_LIST.find((m) => m.id === c.id)
+    if (meta?.aliases?.some((a) => a.toLowerCase().includes(kw))) return true
+    // 签证类型名
+    return c.visaTypes.some(
+      (v) => v.name.zh.includes(kw) || v.name.en.toLowerCase().includes(kw),
+    )
+  })
 }
