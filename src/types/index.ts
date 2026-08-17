@@ -42,8 +42,14 @@ export interface VisaType {
 
 export interface ConsularDistrict {
   name: Localized
-  city?: string // 使馆所在城市
+  city?: string // 使馆/签证中心所在城市
   provinces: string[]
+  /** 机构类型：使馆 / 总领馆 / 签证申请中心 */
+  kind?: 'embassy' | 'consulate' | 'visa_center'
+  /** 数据来源（官方 URL 或机构名） */
+  source?: string
+  /** 核对年月（YYYY-MM），供界面标注 */
+  verifiedAt?: string
 }
 
 export interface Requirement {
