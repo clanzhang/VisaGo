@@ -181,7 +181,9 @@ export default function Assistant() {
           materialsReady={materialsReady}
           added={added}
           onMaterialsReadyChange={setMaterialsReady}
-          onReset={reset}
+          onReset={() => {
+            if (window.confirm(t('assistant.resetConfirm'))) reset()
+          }}
           onBack={() => setStep(2)}
           onTrack={startTracking}
         />

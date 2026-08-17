@@ -1,5 +1,6 @@
 // components/common/VToast.tsx — Toast 消息
 import { useAppStore } from '@/stores/appStore'
+import { useI18n } from '@/i18n'
 
 const toneStyles = {
   success: 'border-success/30 text-success',
@@ -10,17 +11,30 @@ const toneStyles = {
 
 export function VToast() {
   const { toasts, dismissToast } = useAppStore()
+  const { t } = useI18n()
 
   return (
-    <div className="pointer-events-none fixed right-6 top-6 z-[60] flex flex-col gap-2">
+    <div
+      className="pointer-events-none fixed right-4 top-4 z-[60] flex flex-col items-end gap-2 sm:right-6 sm:top-6"
+      role="status"
+      aria-live="polite"
+    >
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`pointer-events-auto flex items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-card-lg animate-[fadeInUp_0.2s_ease] ${toneStyles[t.type]}`}
-          onClick={() => dismissToast(t.id)}
+          className={`pointer-events-auto flex max-w-[min(90vw,360px)] items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-card-lg animate-[fadeInUp_0.2s_ease] ${toneStyles[t.type]}`}
         >
-          <span className="h-2 w-2 rounded-full bg-current" />
-          <span className="text-sm">{t.message}</span>
+          <span className="h-2 w-2 shrink-0 rounded-full bg-current" />
+          <span className="min-w-0 flex-1 text-sm">{t.message}</span>
+          <button
+            onClick={() => dismissToast(t.id)}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-current opacity-60 transition-opacity hover:opacity-100"
+            aria-label={t('common.close')}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       ))}
     </div>

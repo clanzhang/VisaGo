@@ -270,7 +270,7 @@ function SidebarFooter({
             </button>
           ))}
         </div>
-        <div className="text-[11px] text-white/55">v0.0.9</div>
+        <div className="text-[11px] text-white/55">v{__APP_VERSION__}</div>
       </div>
     </div>
   )

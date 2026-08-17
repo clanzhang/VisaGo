@@ -53,8 +53,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const toast = useCallback(
     (message: string, type: ToastItem['type'] = 'info') => {
       const id = ++toastId.current
-      setToasts((prev) => [...prev, { id, message, type }])
-      setTimeout(() => dismissToast(id), 3000)
+      setToasts((prev) => [...prev, { id, message, type }].slice(-3)) // 最多同时 3 条，不遮挡
+      setTimeout(() => dismissToast(id), 4000) // 停留 4s，足够读完
     },
     [dismissToast],
   )

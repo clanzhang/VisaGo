@@ -214,7 +214,7 @@ export function SettingsModal() {
                   </div>
                   <div>
                     <div className="font-display text-lg font-bold text-ink">VisaGo</div>
-                    <div className="text-xs text-ink/60">{t('settings.version', { version: '0.0.11' })}</div>
+                    <div className="text-xs text-ink/60">{t('settings.version', { version: __APP_VERSION__ })}</div>
                   </div>
                 </div>
                 <div className="space-y-2 border-t border-ink/8 pt-4 text-sm">
@@ -231,7 +231,7 @@ export function SettingsModal() {
                   </a>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => toast(t('settings.upToDate', { version: '0.0.11' }), 'info')}
+                      onClick={() => toast(t('settings.upToDate', { version: __APP_VERSION__ }), 'info')}
                       className="flex items-center gap-2 rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-[#1460A4]/40 hover:text-[#1460A4]"
                     >
                       {t('settings.checkUpdate')}
