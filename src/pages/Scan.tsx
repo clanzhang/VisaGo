@@ -271,13 +271,22 @@ export default function Scan() {
     }
     setStep(2)
     if (append) {
-      toast(t('scan.filesAppended', { count: fresh.length }), 'success')
+      const dupCount = result.files.length - fresh.length
+      if (fresh.length > 0) toast(t('scan.filesAppended', { count: fresh.length }), 'success')
+      // C15：追加时去重命中要明确反馈，不静默
+      if (dupCount > 0) toast(t('scan.duplicatesSkipped', { n: dupCount }), 'info')
       if (fresh.length > 0) {
         void handleRecognizeAllFresh(fresh)
       }
     } else {
       toast(t('scan.filesFound', { count: fresh.length }), 'success')
     }
+  }
+
+  /** 移除误选文件（C14）：识别中禁止，移除后计数/进度同步更新 */
+  function handleRemoveItem(path: string) {
+    setItems((prev) => prev.filter((x) => x.path !== path))
+    toast(t('scan.fileRemoved'), 'info')
   }
 
   /** 追加更多文件：重新弹选择器，新文件追加到列表并自动识别 */
@@ -637,6 +646,7 @@ export default function Scan() {
           onRecognizeAll={handleRecognizeAll}
           onStopRecognize={handleStopRecognize}
           onRecognize={handleRecognize}
+          onRemove={handleRemoveItem}
           onNext={handleNextToConfirm}
         />
       )}
