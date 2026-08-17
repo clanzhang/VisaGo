@@ -64,6 +64,8 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
   const [bankResult, setBankResult] = useState<BankCheckResult | null>(null)
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [generatingLabel, setGeneratingLabel] = useState('')
+  const [loading, setLoading] = useState(true)
   const [currentUploadTarget, setCurrentUploadTarget] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -100,6 +102,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
 
   // 重新检测：读资料卡 + 查已扫描文件 → 刷新材料状态（挂载与 profile-updated 事件共用）
   const refreshMaterials = async () => {
+    setLoading(true)
     const profile = await loadProfile()
     // 先取已扫描文件记录（识别过的户口本/银行流水/身份证等），传给 checkMaterials 统一判断
     let scannedFiles: ScannedFileRecord[] = []
@@ -113,6 +116,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
     }
     const list = checkMaterials(profile, scannedFiles)
     setItems(list)
+    setLoading(false)
     return profile
   }
 
@@ -180,28 +184,36 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
     return t(`scan.materialHint_${item.id}`)
   }
 
-  // 一键生成：申请表 + 在职证明 + 行程
+  // 一键生成：申请表 + 在职证明 + 行程（Kimi 队列本身串行，逐项推进便于分阶段反馈）
   async function handleGenerateAll() {
     const profile = await loadProfile()
     if (!profile) return
     setGenerating(true)
+    const stages = [
+      { id: 'application' as const, label: t('scan.materialName_application'), run: () => generateApplicationForm(profile, countryName) },
+      { id: 'employment' as const, label: t('scan.materialName_employment'), run: () => generateEmploymentCertificate(profile, dates) },
+      { id: 'itinerary' as const, label: t('scan.materialName_itinerary'), run: () => generateItinerary(countryName, dates) },
+    ]
     try {
-      const [app, emp, iti] = await Promise.all([
-        generateApplicationForm(profile, countryName),
-        generateEmploymentCertificate(profile, dates),
-        generateItinerary(countryName, dates),
-      ])
-      updateItem('application', { status: 'auto-generate', progress: 100 })
-      updateItem('employment', { status: 'auto-generate', progress: 100 })
-      updateItem('itinerary', { status: 'auto-generate', progress: 100 })
+      let first: { content: string; filename: string } | null = null
+      for (let i = 0; i < stages.length; i++) {
+        setGeneratingLabel(t('scan.generatingStep', { n: i + 1, total: stages.length, name: stages[i].label }))
+        try {
+          const doc = await stages[i].run()
+          updateItem(stages[i].id, { status: 'auto-generate', progress: 100 })
+          if (i === 0) first = doc
+        } catch {
+          /* 单项失败不阻塞后续 */
+        }
+      }
+      setGeneratingLabel('')
       // 导出第一份（申请表）作为示例
-      await exportPdf(app.content, app.filename.replace('.pdf', '')).catch(() => {})
-      void emp
-      void iti
-    } catch {
-      /* 静默 */
+      if (first) {
+        await exportPdf(first.content, first.filename.replace('.pdf', '')).catch(() => {})
+      }
     } finally {
       setGenerating(false)
+      setGeneratingLabel('')
     }
   }
 
@@ -336,15 +348,29 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
         {t('scan.autoProgress', { done: autoDoneCount })}
       </div>
 
-      {/* 一键生成 */}
+      {/* 一键生成（长任务：显示分阶段进度文案） */}
       <div className="mb-5">
         <VButton onClick={handleGenerateAll} disabled={generating} className="w-full">
-          {generating ? t('scan.generating') : t('scan.oneClickGenerate')}
+          {generating && generatingLabel ? `⏳ ${generatingLabel}` : generating ? t('scan.generating') : t('scan.oneClickGenerate')}
         </VButton>
       </div>
 
-      {/* 材料列表 */}
-      <div className="space-y-2">
+      {/* 材料列表（加载中显示骨架，避免空白闪烁） */}
+      <div className="space-y-2" aria-busy={loading}>
+        {loading && items.length === 0 && (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
+                <div className="h-6 w-6 animate-pulse rounded-full bg-[#E8EEF4]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 animate-pulse rounded bg-[#E8EEF4]" />
+                  <div className="h-3 w-64 animate-pulse rounded bg-[#EEF2F6]" />
+                </div>
+                <div className="h-8 w-20 animate-pulse rounded-lg bg-[#E8EEF4]" />
+              </div>
+            ))}
+          </div>
+        )}
         {items.map((item) => (
           <div key={item.id} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
             <span className="text-base">{item.id === 'photo' ? '📸' : item.id === 'bank' ? '🏦' : '📄'}</span>

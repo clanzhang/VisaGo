@@ -10,6 +10,8 @@ interface Props {
   tripData: TripData | null
   generated: string
   generating: boolean
+  /** 是否正在导出 PDF */
+  exporting?: boolean
   onCountryChange: (v: string) => void
   onVisaTypeChange: (v: string) => void
   onDocTypeChange: (v: 'itinerary' | 'employment' | 'cover') => void
@@ -32,6 +34,7 @@ export function ResultGenerator({
   tripData,
   generated,
   generating,
+  exporting = false,
   onCountryChange,
   onVisaTypeChange,
   onDocTypeChange,
@@ -121,8 +124,8 @@ export function ResultGenerator({
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-ink">{t('scan.result')}</h2>
           {generated && (
-            <VButton variant="secondary" size="sm" onClick={onExport} disabled={generating}>
-              {t('scan.exportPdf')}
+            <VButton variant="secondary" size="sm" onClick={onExport} disabled={generating || exporting}>
+              {exporting ? t('scan.exporting') : t('scan.exportPdf')}
             </VButton>
           )}
         </div>

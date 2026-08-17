@@ -19,6 +19,8 @@ interface Props {
   folder: string
   scanning: boolean
   recognizingAll: boolean
+  /** 识别进度（串行处理到第几个 / 共几个） */
+  recognizeProgress?: { done: number; total: number } | null
   recognizedCount: number
   onAddMore: () => void
   onRecognizeAll: () => void
@@ -31,6 +33,7 @@ export function ScannedFileList({
   folder,
   scanning,
   recognizingAll,
+  recognizeProgress,
   recognizedCount,
   onAddMore,
   onRecognizeAll,
@@ -55,7 +58,7 @@ export function ScannedFileList({
               {scanning ? t('scan.picking') : t('scan.addFiles')}
             </VButton>
             <VButton size="sm" onClick={onRecognizeAll} disabled={recognizingAll}>
-              {recognizingAll ? t('common.recognizing') : t('scan.recognizeAll', { done: recognizedCount, total: items.length })}
+              {recognizingAll ? (recognizeProgress && recognizeProgress.total > 0 ? t('common.recognizingProgress', { done: recognizeProgress.done, total: recognizeProgress.total }) : t('common.recognizing')) : t('scan.recognizeAll', { done: recognizedCount, total: items.length })}
             </VButton>
           </div>
         </div>

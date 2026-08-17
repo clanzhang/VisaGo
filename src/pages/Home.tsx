@@ -59,11 +59,54 @@ export default function Home() {
         </div>
       )}
 
-      <HeroCards hero={data.hero} />
+      {loading ? <HomeSkeleton /> : (
+        <>
+          <HeroCards hero={data.hero} />
+          <DestinationGrid destinations={data.destinations} />
+        </>
+      )}
       <StatsSection
         stats={{ feeTotal: realStats.feeTotal, feeCategories: realStats.feeCategories, progress: realStats.progress }}
       />
-      <DestinationGrid destinations={data.destinations} />
+    </div>
+  )
+}
+
+/** 首页加载骨架屏：与 HeroCards/DestinationGrid 布局同尺寸，避免 CLS */
+function HomeSkeleton() {
+  return (
+    <div className="flex flex-col gap-8" aria-busy="true" aria-label="Loading">
+      <div className="grid gap-6 md:grid-cols-2">
+        {[0, 1].map((i) => (
+          <div key={i} className="h-[212px] animate-pulse rounded-3xl bg-white shadow-card">
+            <div className="flex h-full items-center justify-between p-8">
+              <div className="flex h-[150px] w-[150px] animate-pulse rounded-full bg-[#E8EEF4]" />
+              <div className="ml-6 flex-1 space-y-3">
+                <div className="h-6 w-3/4 animate-pulse rounded-lg bg-[#E8EEF4]" />
+                <div className="h-4 w-full animate-pulse rounded bg-[#EEF2F6]" />
+                <div className="h-4 w-5/6 animate-pulse rounded bg-[#EEF2F6]" />
+                <div className="h-9 w-28 animate-pulse rounded-full bg-[#E8EEF4]" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <div className="mb-5 h-7 w-40 animate-pulse rounded-lg bg-[#E8EEF4]" />
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-3xl bg-white shadow-card">
+              <div className="h-[140px] animate-pulse bg-[#E8EEF4]" />
+              <div className="space-y-3 p-5">
+                <div className="h-5 w-1/2 animate-pulse rounded bg-[#EEF2F6]" />
+                <div className="h-4 w-full animate-pulse rounded bg-[#EEF2F6]" />
+                <div className="h-5 w-1/3 animate-pulse rounded bg-[#E8EEF4]" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

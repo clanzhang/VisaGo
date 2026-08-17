@@ -34,6 +34,8 @@ export default function Scan() {
   const [items, setItems] = useState<ScannedFileItem[]>([])
   const [scanning, setScanning] = useState(false)
   const [recognizingAll, setRecognizingAll] = useState(false)
+  // 识别进度（i/n），用于长任务分阶段反馈
+  const [recognizeProgress, setRecognizeProgress] = useState<{ done: number; total: number } | null>(null)
 
   // 核对表单（从识别结果汇总）
   const [profile, setProfile] = useState<Record<string, string>>({})
@@ -47,6 +49,7 @@ export default function Scan() {
   const [docType, setDocType] = useState<'itinerary' | 'employment' | 'cover'>('itinerary')
   const [generated, setGenerated] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const tauriEnv = isTauri()
 
@@ -334,14 +337,17 @@ export default function Scan() {
   async function handleRecognizeAll() {
     setRecognizingAll(true)
     const pending = items.filter((x) => x.status === 'pending' || x.status === 'error')
+    setRecognizeProgress({ done: 0, total: pending.length })
     for (let i = 0; i < pending.length; i++) {
       await handleRecognize(pending[i])
+      setRecognizeProgress({ done: i + 1, total: pending.length })
       // 非最后一个文件：间隔 5 秒，避免触发 429 限流
       if (i < pending.length - 1) {
         await new Promise((r) => setTimeout(r, 5000))
       }
     }
     setRecognizingAll(false)
+    setRecognizeProgress(null)
     toast(t('scan.recognizeDone'), 'success')
   }
 
@@ -495,11 +501,15 @@ export default function Scan() {
   }
 
   async function handleExport() {
+    if (exporting) return
+    setExporting(true)
     try {
       const path = await exportPdf(`<html><body><pre>${generated}</pre></body></html>`, `${country}-${docType}`)
       toast(t('scan.exportDone', { path }), 'success')
     } catch (e) {
       toast(e instanceof Error ? e.message : t('scan.exportFailed'), 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -565,6 +575,7 @@ export default function Scan() {
           folder={folder}
           scanning={scanning}
           recognizingAll={recognizingAll}
+          recognizeProgress={recognizeProgress}
           recognizedCount={recognizedCount}
           onAddMore={handleAddMore}
           onRecognizeAll={handleRecognizeAll}
@@ -592,6 +603,7 @@ export default function Scan() {
             tripData={tripData}
             generated={generated}
             generating={generating}
+            exporting={exporting}
             onCountryChange={setCountry}
             onVisaTypeChange={setVisaType}
             onDocTypeChange={setDocType}
