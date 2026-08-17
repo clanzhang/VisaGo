@@ -84,7 +84,7 @@ export function HeroCards({ hero }: { hero?: HeroText }) {
         <span className="pointer-events-none absolute right-10 top-10 h-10 w-10 rounded-full bg-[#39A2B8]/20" />
         <div className="relative flex items-center justify-between">
           <PassportIllustration />
-          <div className="ml-6 flex-1 text-left">
+          <div className="ml-6 min-w-0 flex-1 text-left">
             <h3 className="font-display text-xl font-bold tracking-tight text-ink">{text.assistantTitle}</h3>
             <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.assistantDesc}</p>
             <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-all duration-150 group-hover:gap-2.5 hover:shadow-card-lg">
@@ -108,7 +108,7 @@ export function HeroCards({ hero }: { hero?: HeroText }) {
         <span className="pointer-events-none absolute right-10 top-10 h-10 w-10 rounded-full bg-[#4F9E28]/20" />
         <div className="relative flex items-center justify-between">
           <MapIllustration />
-          <div className="ml-6 flex-1 text-left">
+          <div className="ml-6 min-w-0 flex-1 text-left">
             <h3 className="font-display text-xl font-bold tracking-tight text-ink">{text.encyclopediaTitle}</h3>
             <p className="mt-2 text-sm leading-relaxed text-ink/60">{text.encyclopediaDesc}</p>
             <button className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-ink shadow-sm transition-all duration-150 group-hover:gap-2.5 hover:shadow-card-lg">
