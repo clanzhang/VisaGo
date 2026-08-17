@@ -1,8 +1,9 @@
 // pages/Assistant.tsx — 签证申请助手（四步流程编排）
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
-import { StepIndicator } from '@/components/common'
+import { StepIndicator, VButton, VModal } from '@/components/common'
+import { StepContextBar } from '@/components/assistant/StepContextBar'
 import { Step1Country } from '@/components/assistant/Step1Country'
 import { Step2VisaType } from '@/components/assistant/Step2VisaType'
 import { Step3Identity } from '@/components/assistant/Step3Identity'
@@ -17,6 +18,17 @@ import { normalizeProvince, isKnownProvince } from '@/utils/province'
 import type { UserProfile } from '@/types'
 
 const STEPS = ['step1', 'step2', 'step3', 'step4']
+
+/** 资料卡可自动填充的字段（用于溯源/恢复/覆盖） */
+const CARD_FIELDS: (keyof UserProfile)[] = [
+  'name',
+  'passportNumber',
+  'nationality',
+  'birthDate',
+  'occupation',
+  'homeProvince',
+  'passportIssuedIn',
+]
 
 /** 把 Rust 资料卡 snake_case fields 转成前端 camelCase UserProfile */
 function cardFieldsToProfile(fields: Record<string, unknown>): UserProfile {
@@ -50,6 +62,7 @@ export default function Assistant() {
     selectedVisaTypeId, setVisaType,
     profile, setProfile, reset,
     savedProfile, saveProfile,
+    cardSource, setCardSource,
   } = useVisaStore()
   const { addApplication } = useTrackerStore()
   const { toast } = useAppStore()
@@ -58,48 +71,113 @@ export default function Assistant() {
   const [materialsReady, setMaterialsReady] = useState(false)
   // 活跃资料卡（从材料扫描保存，自动读取）
   const [activeCard, setActiveCard] = useState<UserProfile | null>(null)
-  const [activeCardName, setActiveCardName] = useState('')
+  // 归一化后的资料卡值（自动填充来源，用于字段溯源与覆盖确认）
+  const [cardProfile, setCardProfile] = useState<Partial<UserProfile> | null>(cardSource.profile)
+  const [cardName, setCardName] = useState(cardSource.name)
   // 资料卡识别结果无法匹配标准枚举时，在对应字段下方给提示（不让用户看到矛盾界面）
   const [unrecognizedProvince, setUnrecognizedProvince] = useState(false)
   const [unrecognizedOccupation, setUnrecognizedOccupation] = useState(false)
+  // /scan 返回后资料卡更新 → 覆盖确认弹窗
+  const [overwritePrompt, setOverwritePrompt] = useState<{ profile: UserProfile; name: string } | null>(null)
 
-  // 挂载时读取活跃资料卡（仅当没有已恢复的草稿时自动填入，避免覆盖用户已填内容）
+  /** 读取活跃资料卡（归一化 + 兜底校验），返回 null 表示无卡 */
+  const readActiveCard = useCallback(async (): Promise<{ profile: UserProfile; name: string } | null> => {
+    if (!isTauri()) return null
+    try {
+      const id = await getActiveProfileId()
+      if (!id) {
+        return savedProfile ? { profile: savedProfile, name: '' } : null
+      }
+      const cards = await listProfiles()
+      const card = cards.find((c) => c.id === id)
+      if (!card) return null
+      const p = cardFieldsToProfile(card.fields ?? {})
+      const rawFields = (card.fields ?? {}) as Record<string, unknown>
+      const rawOcc = String(rawFields['occupation'] ?? '').trim()
+      const rawProvince = String(rawFields['home_province'] ?? '').trim()
+      if (rawProvince && !isKnownProvince(p.homeProvince, PROVINCES)) {
+        setUnrecognizedProvince(true)
+        p.homeProvince = ''
+      }
+      if (rawOcc && !p.occupation) {
+        setUnrecognizedOccupation(true)
+      }
+      return { profile: p, name: card.name }
+    } catch (e) {
+      console.warn('[Assistant] 读取活跃资料卡失败:', e)
+      return null
+    }
+  }, [savedProfile])
+
+  /** 两个归一化资料卡是否内容一致（不一致才需要覆盖确认） */
+  const sameCard = useCallback((a: Partial<UserProfile> | null, b: Partial<UserProfile> | null): boolean => {
+    if (!a || !b) return false
+    return CARD_FIELDS.every((k) => String(a[k] ?? '') === String(b[k] ?? ''))
+  }, [])
+
+  /** 应用资料卡内容到表单：仅覆盖仍与旧卡一致的字段（用户手改过的保留） */
+  const applyCardToProfile = useCallback(
+    (oldCard: Partial<UserProfile> | null, newCard: Partial<UserProfile>) => {
+      setProfile((prev) => {
+        const next: Record<string, unknown> = { ...(prev ?? {}) }
+        for (const key of CARD_FIELDS) {
+          if (!oldCard || String((prev ?? {})[key] ?? '') === String(oldCard[key] ?? '')) {
+            next[key] = newCard[key]
+          }
+        }
+        return next as Partial<UserProfile>
+      })
+    },
+    [setProfile],
+  )
+
+  // 挂载时：读活跃资料卡 → 自动填充或提示覆盖
   useEffect(() => {
-    if (!isTauri()) return
-    ;(async () => {
-      try {
-        const id = await getActiveProfileId()
-        if (!id) {
-          // 兼容旧版 localStorage 保存的资料
-          if (savedProfile) setActiveCard(savedProfile)
-          return
-        }
-        const cards = await listProfiles()
-        const card = cards.find((c) => c.id === id)
-        if (card) {
-          const p = cardFieldsToProfile(card.fields ?? {})
-          const rawFields = (card.fields ?? {}) as Record<string, unknown>
-          const rawOcc = String(rawFields['occupation'] ?? '').trim()
-          const rawProvince = String(rawFields['home_province'] ?? '').trim()
-          // 户籍/职业归一化后的兜底校验：仍不在标准列表 → 不写入，改由用户手动选择并提示
-          if (rawProvince && !isKnownProvince(p.homeProvince, PROVINCES)) {
-            setUnrecognizedProvince(true)
-            p.homeProvince = ''
-          }
-          if (rawOcc && !p.occupation) {
-            setUnrecognizedOccupation(true)
-          }
-          setActiveCard(p)
-          setActiveCardName(card.name)
-          // 自动填入申请流程（草稿已存在则保留草稿）
-          setProfile((prev) => (prev && (prev.name || prev.passportNumber || prev.nationality)) ? prev : p)
-        }
-      } catch (e) {
-        console.warn('[Assistant] 读取活跃资料卡失败:', e)
+    let cancelled = false
+    void (async () => {
+      const data = await readActiveCard()
+      if (cancelled || !data) return
+      setActiveCard(data.profile)
+      setCardName(data.name)
+      // 已有草稿且曾记录过填充来源：资料卡变了 → 询问是否覆盖（不静默覆盖用户手输内容）
+      const hasDraftContent = !!(profile && (profile.name || profile.passportNumber || profile.nationality))
+      if (hasDraftContent && cardProfile && !sameCard(cardProfile, data.profile)) {
+        setOverwritePrompt(data)
+        return
+      }
+      if (!hasDraftContent) {
+        setCardProfile(data.profile)
+        setCardSource(data.profile, data.name)
+        setProfile(data.profile)
+      } else if (!cardProfile) {
+        // 旧版草稿没有填充来源记录：保持草稿，仅记录当前卡作为后续来源
+        setCardProfile(data.profile)
+        setCardSource(data.profile, data.name)
       }
     })()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 资料卡保存事件（Scan 页 dispatch）：重新读取，若与来源不一致则询问覆盖
+  useEffect(() => {
+    const handler = () => {
+      void (async () => {
+        const data = await readActiveCard()
+        if (!data) return
+        setActiveCard(data.profile)
+        setCardName(data.name)
+        if (profile && (profile.name || profile.passportNumber || profile.nationality) && cardProfile && !sameCard(cardProfile, data.profile)) {
+          setOverwritePrompt(data)
+        }
+      })()
+    }
+    window.addEventListener('visago:profile-updated', handler)
+    return () => window.removeEventListener('visago:profile-updated', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, cardProfile])
 
   // 从详情页跳转带参
   useEffect(() => {
@@ -134,6 +212,24 @@ export default function Assistant() {
     setTimeout(() => navigate('/tracker'), 1200)
   }
 
+  /** 重新识别：重读资料卡并应用到仍与来源一致的字段 */
+  async function handleRescan() {
+    const data = await readActiveCard()
+    if (!data) return
+    setActiveCard(data.profile)
+    setCardName(data.name)
+    const oldCard = cardProfile
+    setCardProfile(data.profile)
+    setCardSource(data.profile, data.name)
+    applyCardToProfile(oldCard, data.profile)
+  }
+
+  /** 全部恢复为资料卡内容 */
+  function handleRestoreAll() {
+    if (!cardProfile) return
+    setProfile((prev) => ({ ...(prev ?? {}), ...cardProfile }))
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -148,8 +244,17 @@ export default function Assistant() {
         onStep={(i) => setStep(i)}
         renderLabel={(s) => t(`assistant.${s}`)}
         titleFor={(i) =>
-          i < step ? t('assistant.jumpBack') : i === step ? t('assistant.currentStep') : t('assistant.lockedStep')
+          i < step
+            ? t('assistant.backToStep', { n: i + 1, name: t(`assistant.${STEPS[i]}`) })
+            : i === step
+              ? t('assistant.currentStep')
+              : t('assistant.lockedStep')
         }
+        mobileText={t('assistant.mobileProgress', {
+          current: step + 1,
+          total: STEPS.length,
+          name: t(`assistant.${STEPS[step]}`),
+        })}
       />
 
       {/* Step 1: 选国家 */}
@@ -163,50 +268,107 @@ export default function Assistant() {
 
       {/* Step 2: 选类型 */}
       {step === 1 && country && (
-        <Step2VisaType
-          country={country}
-          selectedVisaTypeId={selectedVisaTypeId}
-          onSelect={setVisaType}
-          onBack={() => setStep(0)}
-          onNext={() => setStep(2)}
-        />
+        <>
+          <StepContextBar
+            country={country}
+            visaType={visaType}
+            changeLabel={t('assistant.changeCountry')}
+            onChange={() => setStep(0)}
+          />
+          <Step2VisaType
+            country={country}
+            selectedVisaTypeId={selectedVisaTypeId}
+            onSelect={setVisaType}
+            onBack={() => setStep(0)}
+            onNext={() => setStep(2)}
+          />
+        </>
       )}
 
       {/* Step 3: 填身份 */}
       {step === 2 && country && visaType && (
-        <Step3Identity
-          profile={profile}
-          setProfile={setProfile}
-          activeCard={activeCard}
-          activeCardName={activeCardName}
-          unrecognizedProvince={unrecognizedProvince}
-          unrecognizedOccupation={unrecognizedOccupation}
-          onBack={() => setStep(1)}
-          onNext={(p) => {
-            saveProfile(p)
-            setProfile(p)
-            setStep(3)
-          }}
-        />
+        <>
+          <StepContextBar
+            country={country}
+            visaType={visaType}
+            changeLabel={t('assistant.changeVisaType')}
+            onChange={() => setStep(1)}
+          />
+          <Step3Identity
+            profile={profile}
+            setProfile={setProfile}
+            activeCard={activeCard}
+            cardName={cardName}
+            cardProfile={cardProfile}
+            hasCard={!!activeCard}
+            unrecognizedProvince={unrecognizedProvince}
+            unrecognizedOccupation={unrecognizedOccupation}
+            onBack={() => setStep(1)}
+            onNext={(p) => {
+              saveProfile(p)
+              setProfile(p)
+              setStep(3)
+            }}
+            onManageCards={() => navigate('/scan')}
+            onRescan={handleRescan}
+            onRestoreAll={handleRestoreAll}
+          />
+        </>
       )}
 
       {/* Step 4: 结果 */}
       {step === 3 && country && visaType && (
-        <Step4Result
-          country={country}
-          visaType={visaType}
-          profile={profile}
-          totalFees={totalFees}
-          materialsReady={materialsReady}
-          added={added}
-          onMaterialsReadyChange={setMaterialsReady}
-          onReset={() => {
-            if (window.confirm(t('assistant.resetConfirm'))) reset()
-          }}
-          onBack={() => setStep(2)}
-          onTrack={startTracking}
-        />
+        <>
+          <StepContextBar
+            country={country}
+            visaType={visaType}
+            changeLabel={t('assistant.changeVisaType')}
+            onChange={() => setStep(1)}
+          />
+          <Step4Result
+            country={country}
+            visaType={visaType}
+            profile={profile}
+            totalFees={totalFees}
+            materialsReady={materialsReady}
+            added={added}
+            onMaterialsReadyChange={setMaterialsReady}
+            onReset={() => {
+              if (window.confirm(t('assistant.resetConfirm'))) reset()
+            }}
+            onBack={() => setStep(2)}
+            onTrack={startTracking}
+          />
+        </>
       )}
+
+      {/* 资料卡更新 → 覆盖确认（不静默覆盖用户手输内容） */}
+      <VModal
+        open={!!overwritePrompt}
+        onClose={() => setOverwritePrompt(null)}
+        title={t('assistant.cardUpdatedTitle')}
+        footer={
+          <>
+            <VButton variant="secondary" onClick={() => setOverwritePrompt(null)}>
+              {t('assistant.keepCurrent')}
+            </VButton>
+            <VButton
+              onClick={() => {
+                if (overwritePrompt) {
+                  applyCardToProfile(cardProfile, overwritePrompt.profile)
+                  setCardProfile(overwritePrompt.profile)
+                  setCardSource(overwritePrompt.profile, overwritePrompt.name)
+                }
+                setOverwritePrompt(null)
+              }}
+            >
+              {t('assistant.overwrite')}
+            </VButton>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink/70">{t('assistant.cardUpdatedDesc')}</p>
+      </VModal>
     </div>
   )
 }

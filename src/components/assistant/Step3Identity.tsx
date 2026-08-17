@@ -1,7 +1,7 @@
 // components/assistant/Step3Identity.tsx — 第三步：填写身份信息
 // 校验：onBlur 首次校验 + 提交时全量校验；已报错字段输入时实时清除；不替用户编造默认值
+// 溯源：自动填充字段标注「来自资料卡」/「已修改」，可单字段恢复或全部恢复
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VButton } from '@/components/common'
 import { PROVINCES, OCCUPATIONS } from '@/data/countries'
@@ -11,13 +11,21 @@ interface Props {
   profile: Partial<UserProfile> | null
   setProfile: (p: Partial<UserProfile>) => void
   activeCard: UserProfile | null
-  activeCardName: string
+  /** 资料卡自定义名称（如「我的资料」） */
+  cardName: string
+  /** 归一化后的资料卡值（自动填充来源，用于溯源标记） */
+  cardProfile: Partial<UserProfile> | null
+  /** 是否有资料卡（决定身份来源条 vs 手动填写提示） */
+  hasCard: boolean
   /** 资料卡户籍归一化后仍不在标准列表 → 提示手动选择 */
   unrecognizedProvince?: boolean
   /** 资料卡职业识别值未知 → 提示手动选择 */
   unrecognizedOccupation?: boolean
   onBack: () => void
   onNext: (p: UserProfile) => void
+  onManageCards: () => void
+  onRescan: () => void
+  onRestoreAll: () => void
 }
 
 type FieldKey = 'name' | 'passportNumber' | 'nationality' | 'occupation' | 'homeProvince'
@@ -31,6 +39,17 @@ const REQUIRED_FIELDS: { key: FieldKey; labelKey: string }[] = [
   { key: 'homeProvince', labelKey: 'assistant.homeProvince' },
 ]
 
+/** 资料卡可自动填充的字段 */
+const CARD_FIELDS: (keyof UserProfile)[] = [
+  'name',
+  'passportNumber',
+  'nationality',
+  'birthDate',
+  'occupation',
+  'homeProvince',
+  'passportIssuedIn',
+]
+
 /** 中国普通护照：1-2 位字母 + 7-8 位数字 */
 const PASSPORT_RE = /^[A-Z]{1,2}[0-9]{7,8}$/
 
@@ -38,14 +57,18 @@ export function Step3Identity({
   profile,
   setProfile,
   activeCard,
-  activeCardName,
+  cardName,
+  cardProfile,
+  hasCard,
   unrecognizedProvince,
   unrecognizedOccupation,
   onBack,
   onNext,
+  onManageCards,
+  onRescan,
+  onRestoreAll,
 }: Props) {
   const { t } = useI18n()
-  const navigate = useNavigate()
   // 阻塞性错误（红字，阻止下一步）
   const [errors, setErrors] = useState<Record<string, string>>({})
   // 提示型错误（如护照号格式，不阻塞，仅提示）
@@ -115,7 +138,6 @@ export function Step3Identity({
       if (res.err) nextErrors[f.key] = res.err
       if (res.hint) nextHints[f.key] = res.hint
     }
-    // 护照号格式提示（非必填字段外的所有字段兜底）
     const passport = fieldValue('passportNumber')
     if (passport && !PASSPORT_RE.test(passport)) nextHints['passportNumber'] = t('assistant.passportFormatHint')
     setErrors(nextErrors)
@@ -153,10 +175,79 @@ export function Step3Identity({
         : 'border-ink/10 focus:border-primary/40 focus:ring-primary/10'
     }`
 
-  /** label + 校验提示（含 aria 关联） */
+  // ===== 溯源标记（P0-4） =====
+  function fieldFromCard(key: keyof UserProfile): boolean {
+    return (
+      !!cardProfile &&
+      String(cardProfile[key] ?? '').trim() !== '' &&
+      String(p[key] ?? '') === String(cardProfile[key] ?? '')
+    )
+  }
+
+  function fieldModified(key: keyof UserProfile): boolean {
+    return (
+      !!cardProfile &&
+      String(cardProfile[key] ?? '').trim() !== '' &&
+      String(p[key] ?? '') !== String(cardProfile[key] ?? '')
+    )
+  }
+
+  const autoFilledCount = CARD_FIELDS.filter(fieldFromCard).length
+  const modifiedCount = CARD_FIELDS.filter(fieldModified).length
+
+  function restoreField(key: keyof UserProfile) {
+    if (!cardProfile) return
+    setProfile({ ...p, [key]: cardProfile[key] })
+    if (key === 'name' || key === 'passportNumber' || key === 'nationality' || key === 'occupation' || key === 'homeProvince') {
+      clearFieldState(key)
+    }
+  }
+
+  /** label 行：label + 必填星号 + 右侧溯源标记 */
+  function labelRow(key: keyof UserProfile, labelText: string, required: boolean) {
+    const fromCard = fieldFromCard(key)
+    const modified = fieldModified(key)
+    return (
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <label htmlFor={`identity-${key}`} className="text-sm font-medium text-ink/70">
+          {labelText} {required && <span className="text-red-500">*</span>}
+        </label>
+        {fromCard && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 text-[11px] text-ink/60"
+            title={t('assistant.fromCardTooltip')}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan" />
+            {t('assistant.fromCard')}
+          </span>
+        )}
+        {modified && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-amber-600">
+            <span className="h-3.5 w-3.5 icon-[mdi-light--pencil]" />
+            {t('assistant.modified')}
+            <button
+              type="button"
+              onClick={() => restoreField(key)}
+              className="font-medium text-primary transition-colors hover:text-[#0e4a80] hover:underline"
+            >
+              {t('assistant.restore')}
+            </button>
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  /** 校验提示块（含 aria 关联） */
   function fieldErrorBlock(key: FieldKey) {
     const err = errors[key]
-    const hint = hints[key] ?? (key === 'homeProvince' && unrecognizedProvince ? t('assistant.provinceUnrecognized') : key === 'occupation' && unrecognizedOccupation ? t('assistant.occupationUnrecognized') : '')
+    const hint =
+      hints[key] ??
+      (key === 'homeProvince' && unrecognizedProvince
+        ? t('assistant.provinceUnrecognized')
+        : key === 'occupation' && unrecognizedOccupation
+          ? t('assistant.occupationUnrecognized')
+          : '')
     if (!err && !hint) return null
     return (
       <p id={`identity-${key}-error`} className={`mt-1 text-[13px] ${err ? 'text-red-600' : 'text-amber-600'}`}>
@@ -166,40 +257,44 @@ export function Step3Identity({
   }
 
   function describedBy(key: FieldKey): string | undefined {
-    return errors[key] || hints[key] || (key === 'homeProvince' && unrecognizedProvince) || (key === 'occupation' && unrecognizedOccupation)
-      ? `identity-${key}-error`
-      : undefined
+    const has =
+      errors[key] ||
+      hints[key] ||
+      (key === 'homeProvince' && unrecognizedProvince) ||
+      (key === 'occupation' && unrecognizedOccupation)
+    return has ? `identity-${key}-error` : undefined
   }
 
   return (
     <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
       <h2 className="mb-5 text-lg font-bold text-ink">{t('assistant.identityTitle')}</h2>
 
-      {/* 活跃资料卡提示（从材料扫描自动读取） */}
-      {activeCard ? (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-success/30 bg-success/5 px-4 py-3">
+      {/* 身份来源条（P0-3）：只说明来源，不再罗列字段值（字段值由表单负责展示） */}
+      {hasCard && activeCard ? (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-success/25 bg-success/5 px-4 py-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
             {(activeCard.name || '?').slice(0, 1)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-ink">
-              {activeCard.name || t('assistant.unnamed')}{' '}
-              <span className="ml-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
-                <span className="mr-0.5 inline-block h-3.5 w-3.5 align-[-2px] icon-[mdi-light--check]" />
-                {t('assistant.autoLoaded')}
-              </span>
+            <div className="truncate text-sm font-semibold text-ink">
+              {activeCard.name || t('assistant.unnamed')}
+              {cardName && <span className="ml-1.5 font-normal text-ink/60">（{cardName}）</span>}
             </div>
-            <div className="mt-0.5 truncate text-xs text-ink/60">
-              {t('assistant.cardSummary', {
-                passport: activeCard.passportNumber || '—',
-                nationality: activeCard.nationality || '—',
-                occupation: t(`documents.occupation${activeCard.occupation.charAt(0).toUpperCase() + activeCard.occupation.slice(1)}`),
-                home: activeCard.homeProvince || '—',
-              })}
-              {activeCardName && `（${activeCardName}）`}
+            <div className="mt-0.5 text-xs text-ink/60">
+              {t('assistant.autoFilledCount', { n: autoFilledCount })}
             </div>
           </div>
-          <VButton variant="secondary" size="sm" onClick={() => navigate('/scan')}>
+          {modifiedCount > 0 && cardProfile && (
+            <VButton type="button" variant="ghost" size="sm" onClick={onRestoreAll}>
+              <span className="h-4 w-4 icon-[mdi-light--refresh]" />
+              {t('assistant.restoreAll')}
+            </VButton>
+          )}
+          <VButton type="button" variant="secondary" size="sm" onClick={onRescan}>
+            <span className="h-4 w-4 icon-[mdi-light--refresh]" />
+            {t('assistant.rescan')}
+          </VButton>
+          <VButton type="button" variant="secondary" size="sm" onClick={onManageCards}>
             <span className="h-4 w-4 icon-[mdi-light--folder]" />
             {t('assistant.manageCards')}
           </VButton>
@@ -211,7 +306,7 @@ export function Step3Identity({
             <div className="text-sm font-semibold text-amber-700">{t('assistant.scanFirstTitle')}</div>
             <div className="mt-0.5 text-xs text-amber-700">{t('assistant.scanFirstDesc')}</div>
           </div>
-          <VButton size="sm" onClick={() => navigate('/scan')}>
+          <VButton size="sm" onClick={onManageCards}>
             <span className="h-4 w-4 icon-[mdi-light--folder]" />
             {t('assistant.goScan')}
           </VButton>
@@ -227,9 +322,7 @@ export function Step3Identity({
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="identity-name" className="mb-1.5 block text-sm font-medium text-ink/70">
-              {t('documents.name')} <span className="text-red-500">*</span>
-            </label>
+            {labelRow('name', t('documents.name'), true)}
             <input
               id="identity-name"
               ref={(el) => { inputRefs.current['name'] = el }}
@@ -248,9 +341,7 @@ export function Step3Identity({
             {fieldErrorBlock('name')}
           </div>
           <div>
-            <label htmlFor="identity-passportNumber" className="mb-1.5 block text-sm font-medium text-ink/70">
-              {t('documents.passportNumber')} <span className="text-red-500">*</span>
-            </label>
+            {labelRow('passportNumber', t('documents.passportNumber'), true)}
             <input
               id="identity-passportNumber"
               ref={(el) => { inputRefs.current['passportNumber'] = el }}
@@ -273,9 +364,7 @@ export function Step3Identity({
             {fieldErrorBlock('passportNumber')}
           </div>
           <div>
-            <label htmlFor="identity-nationality" className="mb-1.5 block text-sm font-medium text-ink/70">
-              {t('documents.nationality')} <span className="text-red-500">*</span>
-            </label>
+            {labelRow('nationality', t('documents.nationality'), true)}
             <input
               id="identity-nationality"
               ref={(el) => { inputRefs.current['nationality'] = el }}
@@ -296,9 +385,7 @@ export function Step3Identity({
             {fieldErrorBlock('nationality')}
           </div>
           <div>
-            <label htmlFor="identity-occupation" className="mb-1.5 block text-sm font-medium text-ink/70">
-              {t('documents.occupation')} <span className="text-red-500">*</span>
-            </label>
+            {labelRow('occupation', t('documents.occupation'), true)}
             <select
               id="identity-occupation"
               ref={(el) => { inputRefs.current['occupation'] = el }}
@@ -324,9 +411,7 @@ export function Step3Identity({
             {fieldErrorBlock('occupation')}
           </div>
           <div>
-            <label htmlFor="identity-passportIssuedIn" className="mb-1.5 block text-sm font-medium text-ink/70">
-              {t('assistant.passportIssuedIn')}
-            </label>
+            {labelRow('passportIssuedIn', t('assistant.passportIssuedIn'), false)}
             <input
               id="identity-passportIssuedIn"
               value={p.passportIssuedIn ?? ''}
@@ -335,9 +420,7 @@ export function Step3Identity({
             />
           </div>
           <div>
-            <label htmlFor="identity-homeProvince" className="mb-1.5 block text-sm font-medium text-ink/70">
-              {t('assistant.homeProvince')} <span className="text-red-500">*</span>
-            </label>
+            {labelRow('homeProvince', t('assistant.homeProvince'), true)}
             <select
               id="identity-homeProvince"
               ref={(el) => { inputRefs.current['homeProvince'] = el }}
