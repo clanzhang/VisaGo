@@ -20,7 +20,7 @@ const FILTERS: { key: VisaFilter; labelKey: string }[] = [
 ]
 
 export default function Encyclopedia() {
-  const { t, pickL } = useI18n()
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<VisaFilter>('all')
   const [aiOpen, setAiOpen] = useState(false)

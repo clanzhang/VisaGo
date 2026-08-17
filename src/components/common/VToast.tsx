@@ -19,15 +19,15 @@ export function VToast() {
       role="status"
       aria-live="polite"
     >
-      {toasts.map((t) => (
+      {toasts.map((item) => (
         <div
-          key={t.id}
-          className={`pointer-events-auto flex max-w-[min(90vw,360px)] items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-card-lg animate-[fadeInUp_0.2s_ease] ${toneStyles[t.type]}`}
+          key={item.id}
+          className={`pointer-events-auto flex max-w-[min(90vw,360px)] items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-card-lg animate-[fadeInUp_0.2s_ease] ${toneStyles[item.type]}`}
         >
           <span className="h-2 w-2 shrink-0 rounded-full bg-current" />
-          <span className="min-w-0 flex-1 text-sm">{t.message}</span>
+          <span className="min-w-0 flex-1 text-sm">{item.message}</span>
           <button
-            onClick={() => dismissToast(t.id)}
+            onClick={() => dismissToast(item.id)}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-current opacity-60 transition-opacity hover:opacity-100"
             aria-label={t('common.close')}
           >
