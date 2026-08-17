@@ -43,15 +43,37 @@ export default function Tracker() {
   const [expectedIssueDate, setExpectedIssueDate] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<VisaApplication | null>(null)
 
+  /** 递签日期不能晚于今天（未来日期明显错误） */
+  const dateInFuture = !!submissionDate && submissionDate > todayISO()
   /** 预计出签不能早于递签（行内校验，不用 alert） */
   const dateOrderInvalid =
     !!submissionDate && !!expectedIssueDate && expectedIssueDate < submissionDate
+  const dateError = dateInFuture ? 'future' : dateOrderInvalid ? 'order' : null
 
   const countryOptions = countries.filter((c) => c.visaTypes.length > 0)
   const visaTypeOptions = useMemo(
     () => countryOptions.find((c) => c.id === countryId)?.visaTypes ?? [],
     [countryId, countryOptions],
   )
+
+  /** 选中的签证类型（用于快捷预填与周期说明） */
+  const selectedVisaType = visaTypeOptions.find((v) => v.id === visaTypeId)
+
+  /** 「今天」快捷：填入递签日期，并自动预填预计出签（可编辑的估算值） */
+  function quickFillSubmission(today: string) {
+    setSubmissionDate(today)
+    if (selectedVisaType) {
+      setExpectedIssueDate((prev) => prev || addDaysISO(today, selectedVisaType.processingDays.max))
+    }
+  }
+
+  /** 递签日期变化：若预计出签为空，自动预填估算值 */
+  function onSubmissionDateChange(v: string) {
+    setSubmissionDate(v)
+    if (selectedVisaType && v) {
+      setExpectedIssueDate((prev) => prev || addDaysISO(v, selectedVisaType.processingDays.max))
+    }
+  }
 
   /** 预计出签日期：用户填写优先，否则用 createdAt + 办理时长推算 */
   function expectedDateOf(app: VisaApplication): string {
@@ -104,7 +126,7 @@ export default function Tracker() {
 
   function submit() {
     if (!countryId || !visaTypeId) return
-    if (dateOrderInvalid) return
+    if (dateError) return
     if (editing) {
       // 编辑：先更新基本字段；若状态变了，同时补一条时间线节点（与「推进」行为一致）
       const statusChanged = status !== editing.status
@@ -382,14 +404,29 @@ export default function Tracker() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="tracker-submission-date" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.submissionDate')}</label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label htmlFor="tracker-submission-date" className="text-sm font-medium text-ink/60">{t('tracker.submissionDate')}</label>
+                <button
+                  type="button"
+                  onClick={() => quickFillSubmission(todayISO())}
+                  className="text-xs font-medium text-primary hover:text-[#0e4a80]"
+                >
+                  {t('tracker.todayShortcut')}
+                </button>
+              </div>
               <input
                 id="tracker-submission-date"
                 type="date"
                 value={submissionDate}
-                onChange={(e) => setSubmissionDate(e.target.value)}
-                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+                max={todayISO()}
+                onChange={(e) => onSubmissionDateChange(e.target.value)}
+                aria-invalid={dateInFuture}
+                aria-describedby={dateInFuture ? 'tracker-date-error' : 'tracker-submission-date-hint'}
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${
+                  dateInFuture ? 'border-red-400' : 'border-ink/10'
+                }`}
               />
+              <p id="tracker-submission-date-hint" className="mt-1 text-xs text-ink/50">{t('tracker.submissionDateHint')}</p>
             </div>
             <div>
               <label htmlFor="tracker-expected-date" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.expectedIssueDate')}</label>
@@ -397,20 +434,25 @@ export default function Tracker() {
                 id="tracker-expected-date"
                 type="date"
                 value={expectedIssueDate}
+                min={submissionDate || todayISO()}
                 onChange={(e) => setExpectedIssueDate(e.target.value)}
                 aria-invalid={dateOrderInvalid}
-                aria-describedby={dateOrderInvalid ? 'tracker-date-order-error' : undefined}
+                aria-describedby={dateOrderInvalid ? 'tracker-date-error' : 'tracker-expected-date-hint'}
                 className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${
                   dateOrderInvalid ? 'border-red-400' : 'border-ink/10'
                 }`}
               />
+              <p id="tracker-expected-date-hint" className="mt-1 text-xs text-ink/50">
+                {expectedIssueDate && !dateOrderInvalid ? t('tracker.autoFilledHint') : t('tracker.expectedDateHint')}
+              </p>
             </div>
           </div>
-          {dateOrderInvalid && (
-            <p id="tracker-date-order-error" role="alert" className="text-xs text-red-600">
-              {t('tracker.dateOrderError')}
+          {dateError && (
+            <p id="tracker-date-error" role="alert" className="text-xs text-red-600">
+              {dateError === 'future' ? t('tracker.dateInFutureError') : t('tracker.dateOrderError')}
             </p>
           )}
+          <p className="text-xs text-ink/50">{t('tracker.dateHint')}</p>
         </div>
       </VModal>
 
