@@ -589,13 +589,24 @@ export default function Scan() {
         )}
       </div>
 
-      {/* 资料卡（列表 + 新建 + 详情弹窗） */}
+      {/* 步骤指示器：sticky 常驻页面顶部，不随资料卡区块高度漂移 */}
+      <div className="sticky top-0 z-20 -mx-4 border-b border-ink/5 bg-bg px-4 pb-3 pt-1 sm:-mx-8 sm:px-8">
+        <StepIndicator
+          steps={[t('scan.stepScan'), t('scan.stepReview'), t('scan.stepResult')]}
+          current={step - 1}
+          startAtOne
+          hideLabelOnMobile={false}
+        />
+      </div>
+
+      {/* 资料卡（列表 + 新建 + 详情弹窗）；第 2 步折叠为一行，不与文件识别抢注意力 */}
       <ProfileCardManager
         cards={cards}
         activeCardId={activeCardId}
         onCardsChange={setCards}
         onActiveCardChange={setActiveCardId}
         disabled={!tauriEnv}
+        collapsed={step === 2}
         onSupplement={(card) => {
           // 切到该资料卡，跳到第一步让用户补充扫描
           setActiveCardId(card.id)
@@ -603,14 +614,6 @@ export default function Scan() {
           setStep(1)
           toast(t('scan.supplementHint'), 'info')
         }}
-      />
-
-      {/* 步骤指示器 */}
-      <StepIndicator
-        steps={[t('scan.stepScan'), t('scan.stepReview'), t('scan.stepResult')]}
-        current={step - 1}
-        startAtOne
-        hideLabelOnMobile={false}
       />
 
       {/* ===== 第一步：扫描 ===== */}

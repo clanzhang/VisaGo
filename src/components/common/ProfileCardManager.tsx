@@ -21,6 +21,8 @@ interface Props {
   onSupplement: (card: ProfileCard) => void
   /** 是否禁用（非 Tauri 环境） */
   disabled?: boolean
+  /** 折叠为一行（Scan 第 2 步时收起，避免与文件识别任务抢注意力）；用户可展开 */
+  collapsed?: boolean
 }
 
 export function ProfileCardManager({
@@ -30,10 +32,14 @@ export function ProfileCardManager({
   onActiveCardChange,
   onSupplement,
   disabled,
+  collapsed = false,
 }: Props) {
   const { toast } = useAppStore()
   const { t } = useI18n()
   const [showNameDialog, setShowNameDialog] = useState(false)
+  // collapsed 时用户可展开查看
+  const [forceOpen, setForceOpen] = useState(false)
+  const open = !collapsed || forceOpen
   const [newCardName, setNewCardName] = useState('')
   const [detailCard, setDetailCard] = useState<ProfileCard | null>(null)
   const nameDialogRef = useModalA11y(showNameDialog, () => setShowNameDialog(false))
@@ -90,7 +96,7 @@ export function ProfileCardManager({
               </span>
               <h2 className="text-base font-bold text-ink">{t('profile.title')}</h2>
             </div>
-            <p className="mt-1 text-xs text-ink/60">{t('profile.subtitle')}</p>
+            {!collapsed && <p className="mt-1 text-xs text-ink/60">{t('profile.subtitle')}</p>}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <div className="hidden rounded-full border border-ink/8 bg-white px-3 py-1.5 text-xs text-ink/60 sm:block">
@@ -100,10 +106,21 @@ export function ProfileCardManager({
               <span className="h-4 w-4 icon-[mdi-light--plus]" />
               {t('profile.newCard')}
             </VButton>
+            {collapsed && (
+              <button
+                type="button"
+                onClick={() => setForceOpen((v) => !v)}
+                aria-expanded={open}
+                aria-label={open ? t('assistant.collapse') : t('assistant.expand')}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <span className={`h-4 w-4 transition-transform ${open ? '' : 'rotate-180'} icon-[mdi-light--chevron-down]`} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
 
-        {cards.length === 0 ? (
+        {open && (cards.length === 0 ? (
           <div className="m-5 rounded-xl border border-dashed border-ink/15 bg-[#F8FAFC] px-4 py-8 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <span className="h-7 w-7 icon-[mdi-light--account]" />
@@ -181,7 +198,7 @@ export function ProfileCardManager({
               )
             })}
           </div>
-        )}
+        ))}
       </div>
 
       {/* 新建资料卡命名弹窗 */}

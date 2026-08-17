@@ -71,6 +71,15 @@ export function ScannedFileList({
     .map(([ext, n]) => `${n} ${ext}`)
     .join(isZh ? '、' : ', ')
   const pendingCount = items.filter((i) => i.status === 'pending').length
+  // B8：未识别文件数（含失败），用于下一步警示
+  const unrecognized = items.filter((i) => i.status === 'pending' || i.status === 'error').length
+
+  function scrollToPending() {
+    const idx = items.findIndex((i) => i.status === 'pending' || i.status === 'error')
+    if (idx >= 0) {
+      document.getElementById(`scan-file-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
 
   const progressPercent =
     recognizeProgress && recognizeProgress.total > 0
@@ -135,8 +144,8 @@ export function ScannedFileList({
 
         {/* 文件列表 */}
         <div className="space-y-2">
-          {items.map((item) => (
-            <div key={item.path} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3" title={item.path}>
+          {items.map((item, idx) => (
+            <div key={item.path} id={`scan-file-${idx}`} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3" title={item.path}>
               <span className="text-lg" aria-hidden="true">📄</span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink">{item.name}</div>
@@ -186,11 +195,29 @@ export function ScannedFileList({
         </div>
       </div>
 
-      {/* 下一步（A4：批量识别中禁用） */}
-      <div className="flex justify-end">
-        <VButton size="lg" onClick={onNext} disabled={recognizedCount === 0 || recognizingAll}>
-          {recognizingAll ? t('scan.nextDisabledRecognizing') : t('scan.nextReview')}
-        </VButton>
+      {/* B9：页面级 sticky 操作栏（实心白底 + 顶分隔 + 圆角，不遮挡最后一个文件项） */}
+      <div className="sticky bottom-0 -mx-4 rounded-t-2xl border border-ink/5 border-b-0 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(16,24,40,0.08)] sm:-mx-8 sm:px-8">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-2">
+          {/* B8：未识别警示 + 一键返回处理 */}
+          {unrecognized > 0 && !recognizingAll && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <p className="text-xs text-amber-700">{t('scan.unrecognizedWarning', { n: unrecognized })}</p>
+              <button
+                type="button"
+                onClick={scrollToPending}
+                className="shrink-0 text-xs font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                {t('scan.backToPending')}
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-ink/60">{t('scan.recognizedSummary', { done: recognizedCount, total: items.length })}</span>
+            <VButton size="lg" onClick={onNext} disabled={recognizedCount === 0 || recognizingAll}>
+              {recognizingAll ? t('scan.nextDisabledRecognizing') : t('scan.nextReview')}
+            </VButton>
+          </div>
+        </div>
       </div>
     </div>
   )
