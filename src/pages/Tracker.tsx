@@ -43,6 +43,10 @@ export default function Tracker() {
   const [expectedIssueDate, setExpectedIssueDate] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<VisaApplication | null>(null)
 
+  /** 预计出签不能早于递签（行内校验，不用 alert） */
+  const dateOrderInvalid =
+    !!submissionDate && !!expectedIssueDate && expectedIssueDate < submissionDate
+
   const countryOptions = countries.filter((c) => c.visaTypes.length > 0)
   const visaTypeOptions = useMemo(
     () => countryOptions.find((c) => c.id === countryId)?.visaTypes ?? [],
@@ -100,6 +104,7 @@ export default function Tracker() {
 
   function submit() {
     if (!countryId || !visaTypeId) return
+    if (dateOrderInvalid) return
     if (editing) {
       // 编辑：先更新基本字段；若状态变了，同时补一条时间线节点（与「推进」行为一致）
       const statusChanged = status !== editing.status
@@ -303,15 +308,23 @@ export default function Tracker() {
         title={editing ? t('tracker.editApplication') : t('tracker.newApplication')}
         footer={
           <>
+            <div className="flex flex-1 items-center text-xs text-ink/60">
+              {dateOrderInvalid
+                ? t('tracker.dateOrderError')
+                : !countryId || !visaTypeId
+                  ? t('tracker.missingRequired')
+                  : null}
+            </div>
             <VButton variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</VButton>
-            <VButton onClick={submit} disabled={!countryId || !visaTypeId}>{t('common.save')}</VButton>
+            <VButton onClick={submit} disabled={!countryId || !visaTypeId || dateOrderInvalid}>{t('common.save')}</VButton>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.country')}</label>
+            <label htmlFor="tracker-country" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.country')}</label>
             <select
+              id="tracker-country"
               value={countryId}
               onChange={(e) => {
                 setCountryId(e.target.value)
@@ -326,21 +339,28 @@ export default function Tracker() {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.visaType')}</label>
+            <label htmlFor="tracker-visa-type" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.visaType')}</label>
             <select
+              id="tracker-visa-type"
               value={visaTypeId}
               onChange={(e) => setVisaTypeId(e.target.value)}
-              className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+              disabled={!countryId}
+              aria-describedby={!countryId ? 'tracker-visa-type-hint' : undefined}
+              className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:bg-ink/5 disabled:text-ink/40"
             >
               <option value="">{t('common.select')}</option>
               {visaTypeOptions.map((v) => (
                 <option key={v.id} value={v.id}>{pickL(v.name)}</option>
               ))}
             </select>
+            {!countryId && (
+              <p id="tracker-visa-type-hint" className="mt-1 text-xs text-ink/50">{t('tracker.selectCountryFirst')}</p>
+            )}
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.statusLabel')}</label>
+            <label htmlFor="tracker-status" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.statusLabel')}</label>
             <select
+              id="tracker-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
               className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
@@ -351,8 +371,9 @@ export default function Tracker() {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.notes')}</label>
+            <label htmlFor="tracker-notes" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.notes')}</label>
             <textarea
+              id="tracker-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
@@ -361,8 +382,9 @@ export default function Tracker() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.submissionDate')}</label>
+              <label htmlFor="tracker-submission-date" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.submissionDate')}</label>
               <input
+                id="tracker-submission-date"
                 type="date"
                 value={submissionDate}
                 onChange={(e) => setSubmissionDate(e.target.value)}
@@ -370,15 +392,25 @@ export default function Tracker() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.expectedIssueDate')}</label>
+              <label htmlFor="tracker-expected-date" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.expectedIssueDate')}</label>
               <input
+                id="tracker-expected-date"
                 type="date"
                 value={expectedIssueDate}
                 onChange={(e) => setExpectedIssueDate(e.target.value)}
-                className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+                aria-invalid={dateOrderInvalid}
+                aria-describedby={dateOrderInvalid ? 'tracker-date-order-error' : undefined}
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 ${
+                  dateOrderInvalid ? 'border-red-400' : 'border-ink/10'
+                }`}
               />
             </div>
           </div>
+          {dateOrderInvalid && (
+            <p id="tracker-date-order-error" role="alert" className="text-xs text-red-600">
+              {t('tracker.dateOrderError')}
+            </p>
+          )}
         </div>
       </VModal>
 

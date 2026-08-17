@@ -218,6 +218,7 @@ function NavItems({
           to={item.to}
           end={item.to === '/'}
           title={t(`nav.${item.key}`)}
+          aria-label={t(`nav.${item.key}`)}
           onClick={() => onNavigate(item.to)}
           className={({ isActive }) =>
             `group relative flex w-full items-center rounded-lg py-2.5 text-sm transition-all duration-[390ms] ${
