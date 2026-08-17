@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { kimiJson, KimiError } from '@/api/kimi'
 import { HOME_DATA_PROMPT, VISA_DATA_PROMPT } from '@/api/prompts'
-import { feeOverview as fallbackFee, progressData as fallbackProgress, destinations as fallbackDestinations } from '@/data/mock'
-import type { FeeCategory, ProgressItem } from '@/types'
+import { destinations as fallbackDestinations } from '@/data/mock'
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 天
 
@@ -39,9 +38,6 @@ function isExpired(entry: CacheEntry<unknown> | null): boolean {
 
 export interface HomeAIData {
   destinations: typeof fallbackDestinations
-  progress: ProgressItem[]
-  feeCategories: FeeCategory[]
-  feeTotal: string
   hero: {
     assistantTitle: string
     assistantDesc: string
@@ -81,14 +77,11 @@ export function useHomeAIData() {
       })
       const merged: HomeAIData = {
         destinations: dests,
-        progress: result.progress?.length ? result.progress : fallbackProgress,
-        feeCategories: fallbackFee.categories,
-        feeTotal: fallbackFee.total,
         hero: {
-          assistantTitle: result.hero?.assistantTitle || '签证申请助手',
-          assistantDesc: result.hero?.assistantDesc || '四步生成专属签证方案，材料、费用、周期一目了然',
-          encyclopediaTitle: result.hero?.encyclopediaTitle || '签证百科',
-          encyclopediaDesc: result.hero?.encyclopediaDesc || '查询全球 7 国签证要求、费用与办理周期',
+          assistantTitle: result.hero?.assistantTitle || '',
+          assistantDesc: result.hero?.assistantDesc || '',
+          encyclopediaTitle: result.hero?.encyclopediaTitle || '',
+          encyclopediaDesc: result.hero?.encyclopediaDesc || '',
         },
       }
       writeCache('visago:ai:home', merged)
@@ -123,14 +116,11 @@ export function useHomeAIData() {
 function fallbackData(): HomeAIData {
   return {
     destinations: fallbackDestinations,
-    progress: fallbackProgress,
-    feeCategories: fallbackFee.categories,
-    feeTotal: fallbackFee.total,
     hero: {
-      assistantTitle: '签证申请助手',
-      assistantDesc: '四步生成专属签证方案，材料、费用、周期一目了然',
-      encyclopediaTitle: '签证百科',
-      encyclopediaDesc: '查询全球 7 国签证要求、费用与办理周期',
+      assistantTitle: '',
+      assistantDesc: '',
+      encyclopediaTitle: '',
+      encyclopediaDesc: '',
     },
   }
 }

@@ -1,25 +1,4 @@
-// data/mock.ts — 首页统计区域 mock 数据
-import type { FeeCategory, ProgressItem } from '@/types'
-
-/** 费用概览 */
-export const feeOverview = {
-  total: '¥12,400',
-  categories: [
-    { label: '签证费', percent: 40, color: '#1460A4' },
-    { label: '服务费', percent: 35, color: '#39A2B8' },
-    { label: '快递费', percent: 15, color: '#4F9E28' },
-    { label: '其他', percent: 10, color: '#E5B454' },
-  ] as FeeCategory[],
-}
-
-/** 办理进度（横向柱状图） */
-export const progressData: ProgressItem[] = [
-  { country: '日本', flag: '🇯🇵', progress: 85, isTop: true },
-  { country: '韩国', flag: '🇰🇷', progress: 60 },
-  { country: '泰国', flag: '🇹🇭', progress: 45 },
-  { country: '申根', flag: '🇪🇺', progress: 30 },
-]
-
+// data/mock.ts — 首页热门目的地静态内容（非统计兜底；统计一律用真实申请记录）
 /**
  * 热门目的地卡片（含原有 7 国中的 6 个 + 申根）。
  * fee 从官方费用数据生成（如 ¥715 起 / €90 起 / 免费）。

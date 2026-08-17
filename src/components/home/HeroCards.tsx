@@ -64,11 +64,11 @@ export interface HeroText {
 export function HeroCards({ hero }: { hero?: HeroText }) {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const text = hero ?? {
-    assistantTitle: t('home.heroAssistantTitle'),
-    assistantDesc: t('home.heroAssistantDesc'),
-    encyclopediaTitle: t('home.heroEncyclopediaTitle'),
-    encyclopediaDesc: t('home.heroEncyclopediaDesc'),
+  const text: HeroText = {
+    assistantTitle: hero?.assistantTitle || t('home.heroAssistantTitle'),
+    assistantDesc: hero?.assistantDesc || t('home.heroAssistantDesc'),
+    encyclopediaTitle: hero?.encyclopediaTitle || t('home.heroEncyclopediaTitle'),
+    encyclopediaDesc: hero?.encyclopediaDesc || t('home.heroEncyclopediaDesc'),
   }
 
   return (

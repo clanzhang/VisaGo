@@ -1,7 +1,10 @@
 // components/home/StatsSection.tsx — 统计区域（费用概览 + 办理进度柱状图）
+// 数据全部来自真实申请记录（useRealStats），不兜底 mock 演示数据；
+// 没有申请时展示空状态 + 「开始第一个申请」CTA。
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
-import { feeOverview, progressData } from '@/data/mock'
+import { VButton } from '@/components/common'
 import type { FeeCategory, ProgressItem } from '@/types'
 
 export interface StatsData {
@@ -24,6 +27,7 @@ const FEE_LABEL_KEYS: Record<string, string> = {
 
 export function StatsSection({ stats }: Props) {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -32,9 +36,37 @@ export function StatsSection({ stats }: Props) {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  const categories = stats?.feeCategories?.length ? stats.feeCategories : feeOverview.categories
-  const feeTotal = stats?.feeTotal || feeOverview.total
-  const progress = stats?.progress?.length ? stats.progress : progressData
+  const categories = stats?.feeCategories ?? []
+  const feeTotal = stats?.feeTotal ?? '¥0'
+  const progress = stats?.progress ?? []
+
+  // 没有任何真实申请记录 → 设计好的空状态（绝不展示 mock 假进度）
+  if (progress.length === 0) {
+    return (
+      <section>
+        <div className="mb-5 flex items-center gap-3">
+          <h2 className="font-display text-xl font-bold tracking-tight text-ink">
+            {t('home.statsTitle')}
+          </h2>
+          <span className="h-1 w-8 rounded-full bg-gradient-to-r from-[#1460A4] to-[#39A2B8]" />
+        </div>
+        <div className="flex flex-col items-center rounded-3xl bg-white px-8 py-14 text-center shadow-card">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E0F7FA]">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1460A4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7h12a3 3 0 013 3v8a3 3 0 01-3 3H3a1 1 0 01-1-1V8a1 1 0 011-1z" />
+              <path d="M3 7a1 1 0 011-1h4l3 3h4l3-3h2a1 1 0 011 1v3H3V7z" />
+            </svg>
+          </div>
+          <h3 className="mt-5 font-display text-lg font-bold text-ink">{t('home.emptyStatsTitle')}</h3>
+          <p className="mt-1.5 max-w-md text-sm leading-relaxed text-ink/60">{t('home.emptyStatsDesc')}</p>
+          <VButton size="lg" className="mt-6" onClick={() => navigate('/assistant')}>
+            {t('home.emptyStatsCta')}
+          </VButton>
+        </div>
+      </section>
+    )
+  }
+
   const max = Math.max(...progress.map((p) => p.progress))
 
   return (
@@ -96,7 +128,7 @@ export function StatsSection({ stats }: Props) {
                       }}
                     />
                   </div>
-                  <span className={`w-8 text-right text-xs font-semibold ${isTop ? 'text-[#1460A4]' : 'text-ink/50'}`}>
+                  <span className={`w-8 text-right text-xs font-semibold ${isTop ? 'text-[#1460A4]' : 'text-ink/60'}`}>
                     {item.progress}%
                   </span>
                 </div>
