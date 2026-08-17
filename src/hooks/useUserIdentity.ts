@@ -3,17 +3,30 @@
 import { useEffect, useState } from 'react'
 import { isTauri, listProfiles, getActiveProfileId } from '@/api/tauri'
 import { loadUserProfile } from '@/lib/user-profile'
+import { CARD_FIELD_SPECS } from '@/components/common/ProfileCardDetailModal'
 
 export interface UserIdentity {
   /** 真实姓名（任一来源）；为空表示未设置 */
   name: string
-  /** 活跃资料卡的自定义名称（如「我的资料」） */
+  /** 活跃资料卡的自定义名称（如「我的资料」）；为内部 ID（profile_XXX）时返回空 */
   cardName: string
+  /** 活跃资料卡已填写的字段数（用于「已保存 N 项资料」展示） */
+  filledCount: number
+}
+
+/** 内部资料卡 ID（如 profile_001）不应直接暴露给用户 */
+function isInternalCardName(raw: string): boolean {
+  return /^profile_\d+$/i.test(raw.trim())
+}
+
+function countFilledFields(fields: Record<string, unknown>): number {
+  return CARD_FIELD_SPECS.filter((f) => String(fields[f.key] ?? '').trim()).length
 }
 
 export function useUserIdentity(): UserIdentity {
   const [name, setName] = useState('')
   const [cardName, setCardName] = useState('')
+  const [filledCount, setFilledCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -28,14 +41,20 @@ export function useUserIdentity(): UserIdentity {
             const card = cards.find((c) => c.id === id)
             if (card) {
               const cardFields = (card.fields ?? {}) as Record<string, unknown>
+              const rawName = card.name ?? ''
+              const publicName = isInternalCardName(rawName) ? '' : rawName
               if (cardFields['name']) {
                 if (!cancelled) {
                   setName(String(cardFields['name']))
-                  setCardName(card.name)
+                  setCardName(publicName)
+                  setFilledCount(countFilledFields(cardFields))
                 }
                 return
               }
-              if (!cancelled) setCardName(card.name)
+              if (!cancelled) {
+                setCardName(publicName)
+                setFilledCount(countFilledFields(cardFields))
+              }
             }
           } catch {
             /* Tauri 不可用则继续走本地来源 */
@@ -65,5 +84,5 @@ export function useUserIdentity(): UserIdentity {
     }
   }, [])
 
-  return { name, cardName }
+  return { name, cardName, filledCount }
 }

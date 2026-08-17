@@ -18,6 +18,7 @@ export default {
     expand: 'Expand sidebar',
     settings: 'Settings',
     settingsHint: 'Settings (⌘,)',
+    savedCount: '{n} fields saved',
     anonymous: 'Welcome back',
     activeCard: 'Active profile card',
     noProfile: 'No profile set',

@@ -18,6 +18,7 @@ export default {
     expand: '展开侧边栏',
     settings: '设置',
     settingsHint: '设置（⌘,）',
+    savedCount: '已保存 {n} 项资料',
     anonymous: '欢迎回来',
     activeCard: '当前资料卡',
     noProfile: '未设置资料',

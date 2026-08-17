@@ -26,7 +26,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
   const { openSettings } = useAppStore()
-  const { name, cardName } = useUserIdentity()
+  const { name, cardName, filledCount } = useUserIdentity()
   const [expanded, setExpanded] = useState(true)
 
   /** 导航点击统一处理：事件 + 移动端关闭抽屉 */
@@ -52,7 +52,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
         collapseTitle={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
         t={t}
       />
-      <SidebarUser name={name} cardName={cardName} expanded={expanded} t={t} onOpenSettings={openSettings} />
+      <SidebarUser name={name} cardName={cardName} filledCount={filledCount} expanded={expanded} t={t} onOpenSettings={openSettings} />
       <NavItems expanded={expanded} onNavigate={handleNavClick} t={t} />
       <SidebarSettings expanded={expanded} t={t} onOpenSettings={openSettings} />
       <SidebarFooter expanded={expanded} lang={lang} setLang={setLang} />
@@ -100,7 +100,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
             </svg>
           </button>
         </div>
-        <SidebarUser name={name} cardName={cardName} expanded t={t} onOpenSettings={openSettings} />
+        <SidebarUser name={name} cardName={cardName} filledCount={filledCount} expanded t={t} onOpenSettings={openSettings} />
         <NavItems expanded onNavigate={handleNavClick} t={t} />
         <SidebarSettings expanded={expanded} t={t} onOpenSettings={openSettings} />
         <SidebarFooter expanded={expanded} lang={lang} setLang={setLang} />
@@ -163,16 +163,20 @@ function SidebarHeader({
 function SidebarUser({
   name,
   cardName,
+  filledCount,
   expanded,
   t,
   onOpenSettings,
 }: {
   name: string
   cardName: string
+  filledCount: number
   expanded: boolean
   t: (key: string, params?: Record<string, string | number>) => string
   onOpenSettings: () => void
 }) {
+  // 副标题：优先资料卡名称；内部 ID 已被 hook 过滤，改显「已保存 N 项资料」
+  const subtitle = cardName || (filledCount > 0 ? t('sidebar.savedCount', { n: filledCount }) : '')
   return (
     <button
       type="button"
@@ -193,7 +197,7 @@ function SidebarUser({
       <div className={`leading-tight transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
         <div className="whitespace-nowrap text-[13px] font-medium">{name || t('sidebar.anonymous')}</div>
         <div className="whitespace-nowrap text-[11px] text-white/55">
-          {cardName || (name ? '' : t('sidebar.noProfile'))}
+          {subtitle || (name ? '' : t('sidebar.noProfile'))}
         </div>
       </div>
     </button>
