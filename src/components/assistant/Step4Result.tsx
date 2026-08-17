@@ -213,7 +213,7 @@ export function Step4Result({
                 ? incompleteIds.length > 0
                   ? t('assistant.materialsMissing', { n: incompleteIds.length, names: incompleteNames.join(isZh ? '、' : ', ') })
                   : t('assistant.materialsNotReady')
-                : `+ ${t('assistant.trackApplication')}`}
+                : t('assistant.trackApplication')}
             </VButton>
             <p className="mt-2 text-center text-xs leading-relaxed text-ink/60">{t('assistant.trackHint')}</p>
           </div>

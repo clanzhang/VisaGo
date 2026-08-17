@@ -79,6 +79,8 @@ export function MaterialChecklist({
   const [currentUploadTarget, setCurrentUploadTarget] = useState<string>('')
   // 已扫描文件记录（用于来源标注与预览）
   const [scannedFiles, setScannedFiles] = useState<ScannedFileRecord[]>([])
+  // 活跃资料卡名（用于来源标注）
+  const [cardName, setCardName] = useState('')
   // 已完成项次级菜单（dots-vertical）
   const [menuFor, setMenuFor] = useState<string | null>(null)
   // 预览弹窗
@@ -112,7 +114,10 @@ export function MaterialChecklist({
         const id = await getActiveProfileId()
         const cards = await listProfiles()
         const card = cards.find((c) => c.id === id)
-        if (card?.fields) return fieldsToProfile(card.fields as Record<string, unknown>)
+        if (card?.fields) {
+          setCardName(card.name)
+          return fieldsToProfile(card.fields as Record<string, unknown>)
+        }
       } catch (e) {
         console.warn('[MaterialChecklist] 读取 Rust 资料卡失败:', e)
       }
@@ -240,11 +245,21 @@ export function MaterialChecklist({
     return { label: t('scan.materialStatus_user'), cls: 'bg-amber-500/10 text-amber-600', icon: 'alert-circle' }
   }
 
-  /** 副文案：只在提供新信息时出现（来源/规格/依据），同质化描述由 C13 去重 */
+  /** 副文案：只在提供新信息时出现——已完成项显示来源（资料卡/已扫描文件/已保存），未完成项显示上传要求与前置规格 */
   const itemAction = (item: MaterialItem) => {
-    if (item.id === 'employment' && item.status === 'auto-generate' && item.progress < 100) {
-      return t('scan.materialHint_employmentPartial')
+    if (item.status === 'ready') {
+      if (item.id === 'photo') return t('scan.sourcePhotoSaved')
+      const cat = item.id === 'bank' ? '银行流水' : TARGET_CATEGORY[item.id]
+      const rec = cat ? scannedFiles.find((f) => f.doc_category === cat) : undefined
+      if (rec) return t('scan.sourceFromScannedName', { name: rec.name })
+      if (cardName) return t('scan.sourceFromCardName', { name: cardName })
+      return t('scan.sourceFromCard')
     }
+    if (item.status === 'auto-generate') {
+      if (item.id === 'employment' && item.progress < 100) return t('scan.materialHint_employmentPartial')
+      return t(`scan.materialHint_${item.id}`)
+    }
+    // 未完成项：上传说明 + 前置规格（C14：先写要求，再让用户传）
     return t(`scan.materialHint_${item.id}`)
   }
 
@@ -383,8 +398,16 @@ export function MaterialChecklist({
   }
 
 
-  const autoDoneCount = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length
   const auto = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate')
+  // 来源构成（自动完成横幅）：已扫描文件 / 资料卡 / 系统生成
+  const catOf = (id: string) => (id === 'bank' ? '银行流水' : TARGET_CATEGORY[id])
+  const scannedCats = new Set(scannedFiles.map((f) => f.doc_category))
+  const fromScanned = items.filter((i) => i.status === 'ready' && catOf(i.id) && scannedCats.has(catOf(i.id))).length
+  const fromCard = items.filter(
+    (i) => i.status === 'ready' && !(catOf(i.id) && scannedCats.has(catOf(i.id))) && ['id', 'passport', 'family', 'employment'].includes(i.id),
+  ).length
+  const generated = items.filter((i) => i.status === 'auto-generate').length
+  const doneCount = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length
   // 自动完成组是否展开：有未完成项时默认折叠，全部完成时始终展开
   const isAutoOpen = !autoCollapsed || incomplete.length === 0
 
@@ -490,9 +513,16 @@ export function MaterialChecklist({
 
   return (
     <div>
-      {/* 自动推进提示 */}
+      {/* 自动完成提示：说明已完成数量与数据来源（去内部术语） */}
       <div className="mb-4 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-2.5 text-xs text-ink/70">
-        {t('scan.autoProgress', { done: autoDoneCount })}
+        {t('scan.autoProgress', { done: doneCount, total: items.length })}
+        {(fromCard > 0 || fromScanned > 0 || generated > 0) && (
+          <span className="text-ink/60">
+            {fromCard > 0 ? ` · ${t('scan.sourceCard', { n: fromCard })}` : ''}
+            {fromScanned > 0 ? ` · ${t('scan.sourceScanned', { n: fromScanned })}` : ''}
+            {generated > 0 ? ` · ${t('scan.sourceGenerated', { n: generated })}` : ''}
+          </span>
+        )}
       </div>
 
       {/* 材料列表（加载中显示骨架，避免空白闪烁；按「需要你处理 / 自动完成」分组） */}
