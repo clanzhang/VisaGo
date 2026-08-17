@@ -5,8 +5,9 @@ import { useI18n } from '@/i18n'
 import { VButton, VBadge, VModal, EmptyState } from '@/components/common'
 import { Timeline } from '@/components/visa'
 import { useTrackerStore } from '@/stores/trackerStore'
+import { useAppStore } from '@/stores/appStore'
 import { countries } from '@/data/countries'
-import { addDaysISO, todayISO, relativeDayLabel } from '@/utils/date'
+import { addDaysISO, todayISO, relativeDayLabel, daysFromNow } from '@/utils/date'
 import type { ApplicationStatus, VisaApplication } from '@/types'
 
 const STATUS_TONE: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'cyan'> = {
@@ -30,6 +31,7 @@ const NEXT_STATUS: Record<ApplicationStatus, ApplicationStatus | null> = {
 export default function Tracker() {
   const { t, pickL } = useI18n()
   const navigate = useNavigate()
+  const { toast } = useAppStore()
   const { applications, addApplication, updateApplication, removeApplication, addTimelineNode } = useTrackerStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<VisaApplication | null>(null)
@@ -45,6 +47,33 @@ export default function Tracker() {
   const visaTypeOptions = useMemo(
     () => countryOptions.find((c) => c.id === countryId)?.visaTypes ?? [],
     [countryId, countryOptions],
+  )
+
+  /** 预计出签日期：用户填写优先，否则用 createdAt + 办理时长推算 */
+  function expectedDateOf(app: VisaApplication): string {
+    const country = countries.find((c) => c.id === app.countryId)
+    const visaType = country?.visaTypes.find((v) => v.id === app.visaTypeId)
+    if (!visaType) return app.expectedIssueDate ?? app.createdAt.slice(0, 10)
+    return app.expectedIssueDate ?? addDaysISO(app.createdAt.slice(0, 10), visaType.processingDays.max)
+  }
+
+  /** 按紧急度排序：逾期/临近的排前面；数据异常（找不到国家/签证类型）排最后 */
+  const sortedApplications = useMemo(
+    () =>
+      [...applications].sort((a, b) => {
+        const isOrphan = (app: VisaApplication) => {
+          const country = countries.find((c) => c.id === app.countryId)
+          return !country || !country.visaTypes.find((v) => v.id === app.visaTypeId)
+        }
+        const oa = isOrphan(a)
+        const ob = isOrphan(b)
+        if (oa !== ob) return oa ? 1 : -1
+        const da = daysFromNow(expectedDateOf(a))
+        const db = daysFromNow(expectedDateOf(b))
+        return da - db
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [applications],
   )
 
   function openCreate() {
@@ -72,9 +101,14 @@ export default function Tracker() {
   function submit() {
     if (!countryId || !visaTypeId) return
     if (editing) {
-      updateApplication(editing.id, { countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
+      // 编辑：先更新基本字段；若状态变了，同时补一条时间线节点（与「推进」行为一致）
+      const statusChanged = status !== editing.status
+      updateApplication(editing.id, { countryId, visaTypeId, notes, submissionDate, expectedIssueDate })
+      if (statusChanged) addTimelineNode(editing.id, { status, date: todayISO() })
+      toast(t('tracker.savedToast'), 'success')
     } else {
       addApplication({ countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
+      toast(t('tracker.savedToast'), 'success')
     }
     setModalOpen(false)
   }
@@ -83,6 +117,19 @@ export default function Tracker() {
     const next = NEXT_STATUS[app.status]
     if (!next) return
     addTimelineNode(app.id, { status: next, date: todayISO() })
+  }
+
+  /** 显式标记拒签（NEXT_STATUS 无此路径，只能手动标记） */
+  function markRejected(app: VisaApplication) {
+    if (app.status === 'rejected') return
+    addTimelineNode(app.id, { status: 'rejected', date: todayISO() })
+    toast(t('tracker.rejectedToast'), 'success')
+  }
+
+  function confirmDelete(app: VisaApplication) {
+    removeApplication(app.id)
+    setDeleteTarget(null)
+    toast(t('tracker.deletedToast'), 'success')
   }
 
   return (
@@ -129,12 +176,42 @@ export default function Tracker() {
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          {applications.map((app, idx) => {
+          {sortedApplications.map((app, idx) => {
             const country = countries.find((c) => c.id === app.countryId)
             const visaType = country?.visaTypes.find((v) => v.id === app.visaTypeId)
-            if (!country || !visaType) return null
-            const expectedDays = visaType.processingDays.max
-            const expectedDate = addDaysISO(app.createdAt.slice(0, 10), expectedDays)
+
+            // 数据异常：国家/签证类型对不上时不再静默消失，渲染降级卡片
+            if (!country || !visaType) {
+              return (
+                <div
+                  key={app.id}
+                  className="anim-card flex flex-col gap-3 rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-6"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                >
+                  <div className="flex items-center gap-2 text-sm font-semibold text-amber-800">
+                    <span className="h-4 w-4 shrink-0 icon-[mdi-light--alert-circle]" />
+                    {t('tracker.degradedTitle')}
+                  </div>
+                  <p className="text-xs leading-relaxed text-amber-700">{t('tracker.degradedDesc')}</p>
+                  <div className="mt-1 flex gap-2">
+                    <VButton variant="secondary" size="sm" onClick={() => openEdit(app)}>
+                      {t('tracker.edit')}
+                    </VButton>
+                    <VButton variant="ghost" size="sm" className="text-amber-700 hover:bg-amber-100" onClick={() => setDeleteTarget(app)}>
+                      {t('tracker.delete')}
+                    </VButton>
+                  </div>
+                </div>
+              )
+            }
+
+            // 日期：用户填写优先，为空才回退到 createdAt/推算值（加「预估」标记）
+            const submitDate = app.submissionDate ?? app.createdAt.slice(0, 10)
+            const submitEstimated = !app.submissionDate
+            const expectedDate = app.expectedIssueDate ?? addDaysISO(app.createdAt.slice(0, 10), visaType.processingDays.max)
+            const expectedEstimated = !app.expectedIssueDate
+            const diff = daysFromNow(expectedDate)
+            const urgencyCls = diff < 0 ? 'text-red-600' : diff <= 3 ? 'text-amber-600' : 'text-ink'
             return (
               <div
                 key={app.id}
@@ -152,18 +229,25 @@ export default function Tracker() {
                   <VBadge tone={STATUS_TONE[app.status]}>{t(`tracker.status.${app.status}`)}</VBadge>
                 </div>
 
-                <div className="mb-4 grid grid-cols-3 gap-3 rounded-xl bg-[#F9F9F6] p-3 text-center">
+                {/* 日期区：预计出签 + 剩余天数最醒目，递签日期弱化 */}
+                <div className="mb-4 grid grid-cols-3 items-center gap-3 rounded-xl bg-[#F9F9F6] p-3 text-center">
                   <div>
-                    <div className="text-xs text-ink/60">{t('tracker.submitDate')}</div>
-                    <div className="mt-0.5 text-sm font-semibold">{app.createdAt.slice(0, 10)}</div>
+                    <div className="text-xs text-ink/60">{t('tracker.submissionDate')}</div>
+                    <div className="mt-0.5 text-xs text-ink/50">{submitDate}</div>
+                    {submitEstimated && (
+                      <div className="text-[10px] text-ink/40">{t('tracker.estimated')}</div>
+                    )}
                   </div>
                   <div>
                     <div className="text-xs text-ink/60">{t('tracker.expectedDate')}</div>
-                    <div className="mt-0.5 text-sm font-semibold text-primary">{expectedDate}</div>
+                    <div className="mt-0.5 text-sm font-bold text-primary">{expectedDate}</div>
+                    {expectedEstimated && (
+                      <div className="text-[10px] text-ink/40">{t('tracker.estimated')}</div>
+                    )}
                   </div>
                   <div>
                     <div className="text-xs text-ink/60">{t('tracker.reminder')}</div>
-                    <div className="mt-0.5 text-sm font-semibold">{relativeDayLabel(expectedDate)}</div>
+                    <div className={`mt-0.5 text-sm font-bold ${urgencyCls}`}>{relativeDayLabel(expectedDate)}</div>
                   </div>
                 </div>
 
@@ -178,17 +262,33 @@ export default function Tracker() {
                 )}
 
                 <div className="mt-4 flex items-center justify-between border-t border-ink/5 pt-4">
-                  <div className="flex gap-2">
-                    <VButton variant="secondary" size="sm" onClick={() => openEdit(app)}>
+                  <div className="flex items-center gap-1">
+                    <VButton variant="ghost" size="sm" onClick={() => openEdit(app)}>
                       {t('tracker.edit')}
                     </VButton>
-                    <VButton variant="danger" size="sm" onClick={() => setDeleteTarget(app)}>
-                      {t('tracker.delete')}
+                    {/* 删除降级：ghost 图标，hover 才显红 */}
+                    <button
+                      onClick={() => setDeleteTarget(app)}
+                      title={t('tracker.delete')}
+                      aria-label={t('tracker.delete')}
+                      className="rounded-lg p-2 text-ink/40 transition-colors hover:bg-red-50 hover:text-red-600"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {app.status !== 'rejected' && app.status !== 'approved' && (
+                      <VButton variant="ghost" size="sm" className="text-ink/50 hover:text-red-600" onClick={() => markRejected(app)}>
+                        {t('tracker.markRejected')}
+                      </VButton>
+                    )}
+                    <VButton size="sm" disabled={!NEXT_STATUS[app.status]} onClick={() => advance(app)}>
+                      {t('tracker.nextStep')} →
                     </VButton>
                   </div>
-                  <VButton size="sm" disabled={!NEXT_STATUS[app.status]} onClick={() => advance(app)}>
-                    {t('tracker.nextStep')} →
-                  </VButton>
                 </div>
               </div>
             )
@@ -290,13 +390,7 @@ export default function Tracker() {
         footer={
           <>
             <VButton variant="secondary" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</VButton>
-            <VButton
-              variant="danger"
-              onClick={() => {
-                if (deleteTarget) removeApplication(deleteTarget.id)
-                setDeleteTarget(null)
-              }}
-            >
+            <VButton variant="danger" onClick={() => deleteTarget && confirmDelete(deleteTarget)}>
               {t('common.delete')}
             </VButton>
           </>
