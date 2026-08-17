@@ -341,6 +341,7 @@ export default {
     fee: '费用',
     feeStart: '¥{n} 起',
     selectCountries: '选择 2-3 个国家进行对比',
+    maxCompare: '最多对比 3 个国家',
     clearCompare: '清空',
     backToList: '返回列表',
     materialsCount: '材料数量',

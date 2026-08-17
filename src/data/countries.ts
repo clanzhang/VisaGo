@@ -147,6 +147,15 @@ export const DIFFICULTY_LABELS: Record<'easy' | 'medium' | 'hard', Localized> = 
   hard: { zh: '困难', en: 'Hard' },
 }
 
+/** 签证类型标签文案 key（chip 与分组标题共用同一来源，避免同义不同名） */
+export const VISA_TYPE_LABEL_KEYS: Record<Country['visaType'], string> = {
+  互免签证: 'encyclopedia.visaTypeMutual',
+  单方面免签: 'encyclopedia.visaTypeUnilateral',
+  落地签: 'encyclopedia.visaTypeOnArrival',
+  电子签: 'encyclopedia.visaTypeEvisa',
+  需通行证: 'encyclopedia.visaTypePermit',
+}
+
 /** 签证类型标签配色 */
 export const VISA_TYPE_STYLE: Record<Country['visaType'], { label: string; cls: string }> = {
   互免签证: { label: '互免签证', cls: 'bg-green-700/10 text-green-800' },

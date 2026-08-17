@@ -2,34 +2,40 @@
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VBadge } from '@/components/common'
-import { DIFFICULTY_LABELS, VISA_TYPE_STYLE } from '@/data/countries'
+import { DIFFICULTY_LABELS, VISA_TYPE_STYLE, VISA_TYPE_LABEL_KEYS } from '@/data/countries'
 import type { Country } from '@/types'
-
-const VISA_TYPE_LABEL_KEYS: Record<Country['visaType'], string> = {
-  互免签证: 'encyclopedia.visaTypeMutual',
-  单方面免签: 'encyclopedia.visaTypeUnilateral',
-  落地签: 'encyclopedia.visaTypeOnArrival',
-  电子签: 'encyclopedia.visaTypeEvisa',
-  需通行证: 'encyclopedia.visaTypePermit',
-}
 
 interface Props {
   country: Country
   index?: number
   /** 隐藏签证类型标签（当顶部已按签证类型筛选/分组时，避免重复） */
   hideVisaType?: boolean
+  /** 对比模式：点卡片=选中/取消（不再跳转详情） */
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: () => void
 }
 
-export function CountryCard({ country, index = 0, hideVisaType = false }: Props) {
+export function CountryCard({ country, index = 0, hideVisaType = false, selectable = false, selected = false, onToggleSelect }: Props) {
   const navigate = useNavigate()
   const { t, isZh, pickL } = useI18n()
   const vt = VISA_TYPE_STYLE[country.visaType]
 
+  function handleActivate() {
+    if (selectable) {
+      onToggleSelect?.()
+      return
+    }
+    navigate(`/encyclopedia/${country.id}`)
+  }
+
   return (
     <div
-      className="anim-card group relative cursor-pointer rounded-2xl bg-white p-6 shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg"
+      className={`anim-card group relative cursor-pointer rounded-2xl bg-white p-6 shadow-card transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-card-lg ${
+        selected ? 'ring-2 ring-primary/40' : ''
+      }`}
       style={{ animationDelay: `${index * 60}ms` }}
-      onClick={() => navigate(`/encyclopedia/${country.id}`)}
+      onClick={handleActivate}
     >
       {/* 签证类型标签（左上角）；选中具体分类时隐藏，避免与顶部筛选重复 */}
       {!hideVisaType && (

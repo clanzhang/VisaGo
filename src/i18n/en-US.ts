@@ -341,6 +341,7 @@ export default {
     fee: 'Fee',
     feeStart: 'From ¥{n}',
     selectCountries: 'Select 2-3 countries to compare',
+    maxCompare: 'You can compare up to 3 countries',
     clearCompare: 'Clear',
     backToList: 'Back to list',
     materialsCount: 'Materials',

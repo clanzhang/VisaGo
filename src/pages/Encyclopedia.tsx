@@ -4,11 +4,14 @@ import { useI18n } from '@/i18n'
 import { CountryCard, AIAssistant } from '@/components/visa'
 import { VButton, VModal } from '@/components/common'
 import { ComparisonTable } from '@/components/visa'
-import { countries, searchCountries } from '@/data/countries'
+import { countries, searchCountries, VISA_TYPE_LABEL_KEYS } from '@/data/countries'
 import { VISA_TYPE_ORDER, REGION_ORDER } from '@/data/country-list'
+import { useAppStore } from '@/stores/appStore'
+import type { Country } from '@/types'
 
-// 筛选：全部 / 免签 / 落地签 / 电子签 / 需签证
-type VisaFilter = 'all' | '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证'
+// 筛选：全部 / 互免签证 / 单方面免签 / 落地签 / 电子签 / 需通行证
+// （与数据实际值一致，避免「需签证」恒空）
+type VisaFilter = 'all' | Country['visaType']
 
 const FILTERS: { key: VisaFilter; labelKey: string }[] = [
   { key: 'all', labelKey: 'encyclopedia.filterAll' },
@@ -16,11 +19,12 @@ const FILTERS: { key: VisaFilter; labelKey: string }[] = [
   { key: '单方面免签', labelKey: 'encyclopedia.filterUnilateral' },
   { key: '落地签', labelKey: 'encyclopedia.filterOnArrival' },
   { key: '电子签', labelKey: 'encyclopedia.filterEvisa' },
-  { key: '需签证', labelKey: 'encyclopedia.filterVisaRequired' },
+  { key: '需通行证', labelKey: 'encyclopedia.filterVisaRequired' },
 ]
 
 export default function Encyclopedia() {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
+  const { toast } = useAppStore()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<VisaFilter>('all')
   const [aiOpen, setAiOpen] = useState(false)
@@ -36,7 +40,7 @@ export default function Encyclopedia() {
     return result
   }, [query, filter])
 
-  // 按签证类型分组（互免 → 单免 → 落地 → 电子）
+  // 按签证类型分组（互免 → 单免 → 落地 → 电子 → 通行证）
   const grouped = useMemo(() => {
     const map = new Map<string, typeof list>()
     for (const c of list) {
@@ -74,7 +78,10 @@ export default function Encyclopedia() {
   const toggleCompare = (id: string) => {
     setCompareIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
-      if (prev.length >= 3) return prev
+      if (prev.length >= 3) {
+        toast(t('encyclopedia.maxCompare'), 'warning')
+        return prev
+      }
       return [...prev, id]
     })
   }
@@ -97,13 +104,16 @@ export default function Encyclopedia() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('encyclopedia.searchPlaceholder')}
+            aria-label={t('encyclopedia.searchPlaceholder')}
             className="w-full rounded-full border border-ink/8 bg-white py-2.5 pl-11 pr-4 text-sm shadow-card outline-none placeholder:text-ink/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" role="radiogroup" aria-label={t('encyclopedia.filterRegion')}>
           {FILTERS.map((f) => (
             <button
               key={f.key}
+              role="radio"
+              aria-checked={filter === f.key}
               onClick={() => setFilter(f.key)}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
                 filter === f.key
@@ -117,12 +127,14 @@ export default function Encyclopedia() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <VButton variant="secondary" size="sm" onClick={() => setAiOpen(true)}>
-            <span className="text-sm">🤖</span> {t('encyclopedia.askAI')}
+            <span className="h-4 w-4 icon-[mdi-light--message]" aria-hidden="true" />
+            {t('encyclopedia.askAI')}
           </VButton>
           <VButton
             variant={compareMode ? 'primary' : 'secondary'}
             size="sm"
             onClick={() => setCompareMode((v) => !v)}
+            aria-pressed={compareMode}
           >
             {t('encyclopedia.compareMode')}
           </VButton>
@@ -143,34 +155,36 @@ export default function Encyclopedia() {
       {grouped.map((group) => (
         <section key={group.group}>
           <div className="mb-4 flex items-center gap-3">
-            <h2 className="font-display text-base font-bold tracking-tight text-ink">{group.group}</h2>
+            <h2 className="font-display text-base font-bold tracking-tight text-ink">
+              {t(VISA_TYPE_LABEL_KEYS[group.group as Country['visaType']])}
+            </h2>
             <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/60">{t('encyclopedia.groupCount', { n: group.items.length })}</span>
             <div className="h-px flex-1 bg-ink/8" />
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {group.items.map((c, i) => {
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {group.items.map((c) => {
               const selected = compareIds.includes(c.id)
               return (
-                <div key={c.id} className="group relative">
-                  <CountryCard country={c} index={i} hideVisaType={filter !== 'all'} />
+                <div key={c.id} className="relative">
+                  <CountryCard
+                    country={c}
+                    hideVisaType={filter !== 'all'}
+                    selectable={compareMode}
+                    selected={selected}
+                    onToggleSelect={() => toggleCompare(c.id)}
+                  />
                   {compareMode && (
-                    <label
-                      onClick={(e) => e.stopPropagation()}
-                      className={`absolute right-4 top-4 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 bg-white shadow-sm transition-opacity duration-150 ${
-                        selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    <button
+                      type="button"
+                      onClick={() => toggleCompare(c.id)}
+                      aria-label={selected ? t('encyclopedia.removeFromCompare') : t('encyclopedia.addToCompare')}
+                      aria-pressed={selected}
+                      className={`absolute right-4 top-4 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-white shadow-sm transition-colors ${
+                        selected ? 'border-primary bg-primary' : 'border-ink/20 bg-white'
                       }`}
-                      style={{
-                        borderColor: selected ? '#1460A4' : '#d1d5db',
-                      }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleCompare(c.id)}
-                        className="h-4 w-4 accent-[#1460A4]"
-                        aria-label={t('encyclopedia.addToCompare')}
-                      />
-                    </label>
+                      {selected && <span className="h-3 w-3 icon-[mdi-light--check]" aria-hidden="true" />}
+                    </button>
                   )}
                 </div>
               )
@@ -211,8 +225,42 @@ export default function Encyclopedia() {
         )}
       </VModal>
 
+      {/* 常驻对比条（对比模式下有已选项时显示） */}
+      {compareMode && compareIds.length > 0 && (
+        <div className="sticky bottom-0 -mx-4 rounded-t-2xl border border-ink/5 border-b-0 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(16,24,40,0.08)] sm:-mx-8 sm:px-8">
+          <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-ink/70">
+              {t('encyclopedia.selectedCount', { n: compareIds.length })}
+            </span>
+            {compareCountries.map((c) => (
+              <span key={c.id} className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-[#FBFCFD] px-2.5 py-1 text-xs text-ink">
+                <span>{c.flag}</span>
+                {pickL(c.name)}
+                <button
+                  type="button"
+                  onClick={() => toggleCompare(c.id)}
+                  aria-label={t('encyclopedia.removeFromCompare')}
+                  className="flex h-4 w-4 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-ink/10 hover:text-ink"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <div className="ml-auto flex items-center gap-2">
+              <VButton variant="secondary" size="sm" onClick={() => setCompareMode(false)}>
+                {t('encyclopedia.clearCompare')}
+              </VButton>
+              <VButton size="sm" disabled={compareIds.length < 2} onClick={() => setCompareOpen(true)}>
+                {t('encyclopedia.compare')} ({compareIds.length})
+              </VButton>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI 助手 */}
       <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   )
+
 }
