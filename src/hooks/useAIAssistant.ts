@@ -8,6 +8,8 @@ import type { Country } from '@/types'
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  /** 该回答来自本地知识库兜底（非 AI 实时回答） */
+  offline?: boolean
 }
 
 /** 根据问题和国家数据检索答案（纯函数，保留自旧版） */

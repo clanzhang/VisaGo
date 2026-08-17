@@ -10,12 +10,18 @@ export interface ChatMessage {
   content: string
 }
 
+export interface AIAnswer {
+  content: string
+  /** true 表示 Kimi 不可用，回答来自本地知识库 */
+  offline: boolean
+}
+
 /**
  * 请求 AI 问答。
  * - Kimi 在线：返回真实 AI 回答（带 30s 超时）
  * - 失败/离线：回退到本地知识库引擎
  */
-export async function requestAIAnswer(question: string, country?: Country): Promise<string> {
+export async function requestAIAnswer(question: string, country?: Country): Promise<AIAnswer> {
   try {
     const system = aiChatPrompt(country?.name.zh)
     const ctx = country
@@ -28,9 +34,9 @@ export async function requestAIAnswer(question: string, country?: Country): Prom
       ],
       { temperature: 0.4, maxTokens: 2000 },
     )
-    return answer
+    return { content: answer, offline: false }
   } catch {
-    // 离线兜底：本地知识库
-    return generateAnswer(question, country)
+    // 离线兜底：本地知识库（告知用户这不是 AI 实时回答）
+    return { content: generateAnswer(question, country), offline: true }
   }
 }

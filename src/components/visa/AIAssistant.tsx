@@ -42,8 +42,8 @@ export function AIAssistant({ open, onClose, country }: Props) {
     setMessages((m) => [...m, { role: 'user', content: question }])
     setInput('')
     const answer = await requestAIAnswer(question, country)
-    streamAnswer(answer, () => {
-      setMessages((m) => [...m, { role: 'assistant', content: answer }])
+    streamAnswer(answer.content, () => {
+      setMessages((m) => [...m, { role: 'assistant', content: answer.content, offline: answer.offline }])
     })
   }
 
@@ -89,6 +89,9 @@ export function AIAssistant({ open, onClose, country }: Props) {
                 }`}
               >
                 {m.content}
+                {m.offline && (
+                  <div className="mt-1 text-[10px] text-ink/60">ℹ️ {t('ai.offlineNote')}</div>
+                )}
               </div>
             </div>
           ))}

@@ -22,7 +22,7 @@ export default function CountryDetail() {
   const navigate = useNavigate()
   const { t, isZh, pickL } = useI18n()
   const country = countries.find((c) => c.id === id)
-  const { data: aiData, loading: aiLoading, refresh: aiRefresh } = useCountryAIData(id)
+  const { data: aiData, loading: aiLoading, error: aiError, refresh: aiRefresh } = useCountryAIData(id)
 
   const [visaTypeId, setVisaTypeId] = useState(country?.visaTypes[0]?.id ?? '')
   const [tab, setTab] = useState<'materials' | 'fee' | 'districts' | 'faq'>('materials')
@@ -145,15 +145,25 @@ export default function CountryDetail() {
           </div>
         </div>
 
-        {/* 隐藏 AI 数据加载报错横幅（仅静默失败，保留静态数据展示） */}
-        {/* {aiError && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-            {aiError}
-            <button onClick={() => aiRefresh()} className="ml-3 font-medium underline underline-offset-2">
-              点击重试
+        {/* AI 降级提示（克制式）：AI 数据不可用时保留静态数据，但明确告知用户 */}
+        {aiError && !aiLoading && (
+          <div
+            role="status"
+            className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-amber-800">{t('home.aiOfflineTitle')}</div>
+              <div className="mt-0.5 text-xs leading-relaxed text-amber-700">{t('home.aiOfflineDesc')}</div>
+            </div>
+            <button
+              onClick={() => aiRefresh()}
+              disabled={aiLoading}
+              className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-60"
+            >
+              {t('home.aiRetry')}
             </button>
           </div>
-        )} */}
+        )}
 
         {aiLoading && !ai ? (
           <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/50">
