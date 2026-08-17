@@ -105,11 +105,11 @@ export default function Scan() {
     })()
   }, [tauriEnv])
 
-  // 保存核对资料到当前活跃资料卡
-  async function handleSaveToCard(cardName?: string) {
+  // 保存核对资料到当前活跃资料卡（返回是否成功，供表单显示保存态）
+  async function handleSaveToCard(cardName?: string): Promise<boolean> {
     if (!tauriEnv) {
       toast(t('scan.tauriOnly'), 'warning')
-      return
+      return false
     }
     try {
       // 若没有活跃卡，自动新建一张
@@ -125,7 +125,7 @@ export default function Scan() {
       }
       // 更新卡片字段（snake_case，与 Rust UserProfile 一致）
       const target = cardsNow.find((c) => c.id === id)
-      if (!target) return
+      if (!target) return false
       // 规范化字段：确保 key 统一为英文 snake_case（中文 key / 别名 → 英文）
       const fields: Record<string, unknown> = {}
       const normMap: Record<string, string> = {
@@ -173,9 +173,11 @@ export default function Scan() {
       // 同步更新列表
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, fields, updated_at: new Date().toISOString() } : c)))
       toast(t('scan.savedToCard'), 'success')
+      return true
     } catch (e) {
       console.error('[Scan] 保存资料卡失败:', e)
       toast(e instanceof Error ? e.message : t('scan.saveFailed'), 'error')
+      return false
     }
   }
 
@@ -601,15 +603,14 @@ export default function Scan() {
     setStep(3)
   }
 
-  async function handleSaveProfile() {
-    try {
-      console.log('[Scan] handleSaveProfile 被调用，profile=', profile)
-      await handleSaveToCard()
-    } catch (e) {
-      console.error('[Scan] 保存失败:', e)
-      const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
-      toast(`${t('scan.saveFailed')}: ${msg}`, 'error')
+  async function handleSaveProfile(): Promise<boolean> {
+    console.log('[Scan] handleSaveProfile 被调用，profile=', profile)
+    const ok = await handleSaveToCard()
+    if (ok) {
+      // P1-10：保存成功后更新脏状态基准
+      setProfileBaseline({ ...profile })
     }
+    return ok
   }
 
   // ===== 第三步：生成 =====
@@ -754,6 +755,7 @@ export default function Scan() {
             source={profileSource}
             occupationSuggestion={occupationSuggestion}
             missingFields={missingFields}
+            items={items}
             onSave={handleSaveProfile}
             onBack={() => setStep(2)}
             onFieldChange={(key, value) => setProfile((prev) => ({ ...prev, [key]: value }))}

@@ -19,28 +19,28 @@ export interface FieldSpec {
 }
 
 export const FIELD_SPECS: FieldSpec[] = [
-  { key: 'name', label: '姓名', required: true, type: 'text', group: 'identity', sourceHint: '身份证 / 护照' },
-  { key: 'passport_number', label: '护照号', required: true, type: 'text', group: 'identity', sourceHint: '护照资料页' },
-  { key: 'id_number', label: '身份证号', required: true, type: 'text', group: 'identity', sourceHint: '身份证正面' },
-  { key: 'nationality', label: '国籍', required: true, type: 'text', group: 'identity', sourceHint: '护照资料页' },
-  { key: 'birth_date', label: '出生日期', required: true, type: 'date', group: 'identity', sourceHint: '身份证 / 护照' },
+  { key: 'name', label: '姓名', required: true, type: 'text', group: 'identity', sourceHint: 'scan.sourceHintName' },
+  { key: 'passport_number', label: '护照号', required: true, type: 'text', group: 'identity', sourceHint: 'scan.sourceHintPassportNumber' },
+  { key: 'id_number', label: '身份证号', required: true, type: 'text', group: 'identity', sourceHint: 'scan.sourceHintIdNumber' },
+  { key: 'nationality', label: '国籍', required: true, type: 'text', group: 'identity', sourceHint: 'scan.sourceHintNationality' },
+  { key: 'birth_date', label: '出生日期', required: true, type: 'date', group: 'identity', sourceHint: 'scan.sourceHintBirthDate' },
   { key: 'gender', label: '性别', required: false, type: 'enum', group: 'identity', options: [
     { value: '男', labelKey: 'scan.genderMale' },
     { value: '女', labelKey: 'scan.genderFemale' },
   ] },
-  { key: 'phone', label: '手机号', required: false, type: 'phone', group: 'contact', sourceHint: '手动填写' },
-  { key: 'address', label: '家庭住址', required: false, type: 'text', group: 'contact', sourceHint: '身份证背面' },
-  { key: 'home_province', label: '户籍省份', required: true, type: 'text', group: 'contact', sourceHint: '户口本 / 身份证' },
-  { key: 'passport_issued_in', label: '护照签发地', required: false, type: 'text', group: 'identity', sourceHint: '护照资料页' },
+  { key: 'phone', label: '手机号', required: false, type: 'phone', group: 'contact', sourceHint: 'scan.sourceHintPhone' },
+  { key: 'address', label: '家庭住址', required: false, type: 'text', group: 'contact', sourceHint: 'scan.sourceHintAddress' },
+  { key: 'home_province', label: '户籍省份', required: true, type: 'text', group: 'contact', sourceHint: 'scan.sourceHintHomeProvince' },
+  { key: 'passport_issued_in', label: '护照签发地', required: false, type: 'text', group: 'identity', sourceHint: 'scan.sourceHintIssuedIn' },
   { key: 'occupation', label: '职业', required: true, type: 'enum', group: 'occupation', options: [
     { value: 'employed', labelKey: 'documents.occupationEmployed' },
     { value: 'student', labelKey: 'documents.occupationStudent' },
     { value: 'retired', labelKey: 'documents.occupationRetired' },
     { value: 'freelance', labelKey: 'documents.occupationFreelance' },
   ] },
-  { key: 'company', label: '工作单位', required: false, type: 'text', group: 'occupation', sourceHint: '在职证明' },
-  { key: 'position', label: '职位', required: false, type: 'text', group: 'occupation', sourceHint: '在职证明' },
-  { key: 'salary', label: '月薪', required: false, type: 'money', group: 'occupation', sourceHint: '在职证明' },
+  { key: 'company', label: '工作单位', required: false, type: 'text', group: 'occupation', sourceHint: 'scan.sourceHintCompany' },
+  { key: 'position', label: '职位', required: false, type: 'text', group: 'occupation', sourceHint: 'scan.sourceHintPosition' },
+  { key: 'salary', label: '月薪', required: false, type: 'money', group: 'occupation', sourceHint: 'scan.sourceHintSalary' },
 ]
 
 export const OCCUPATION_VALUES = ['employed', 'student', 'retired', 'freelance'] as const
