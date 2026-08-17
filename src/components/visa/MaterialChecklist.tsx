@@ -83,6 +83,8 @@ export function MaterialChecklist({
   const [cardName, setCardName] = useState('')
   // 已完成项次级菜单（dots-vertical）
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  // 上传文件类型不符 → VModal 确认（不再用 window.confirm）
+  const [categoryConfirm, setCategoryConfirm] = useState<{ targetId: string; got: string; expected: string } | null>(null)
   // 预览弹窗
   const [previewItem, setPreviewItem] = useState<MaterialItem | null>(null)
   const [previewState, setPreviewState] = useState<{ loading: boolean; content: string; kind: 'photo' | 'text' | 'none' }>({
@@ -199,6 +201,16 @@ export function MaterialChecklist({
 
   // 待处理组展开/折叠（有未完成项时默认折叠「自动完成」组，减少视觉噪音）
   const [autoCollapsed, setAutoCollapsed] = useState(true)
+
+  // Esc 关闭次级菜单
+  useEffect(() => {
+    if (!menuFor) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuFor(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuFor])
 
   // 高亮第一个未完成项（Step 4 CTA 引导）：仅在高亮信号变化时滚动一次
   useEffect(() => {
@@ -385,10 +397,10 @@ export function MaterialChecklist({
       const res = await recognizeFile(filePath, file.name)
       const expected = TARGET_CATEGORY[targetId]
       const got = res.category || ''
-      // 类型不符 → 弹确认
+      // 类型不符 → VModal 确认（说明检测到 X、你选的是 Y、继续会怎样）
       if (expected && got && !got.includes(expected) && !expected.includes(got)) {
-        const ok = window.confirm(`${t('scan.confirmCategory', { got, expected })}`)
-        if (!ok) return
+        setCategoryConfirm({ targetId, got, expected })
+        return
       }
       updateItem(targetId, { status: 'ready', progress: 100 })
     } catch (e) {
@@ -445,7 +457,7 @@ export function MaterialChecklist({
             <button
               type="button"
               onClick={() => openPreview(item)}
-              className="rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/5 hover:text-[#0e4a80]"
+              className="rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/5 hover:text-[#0e4a80] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {t('scan.preview')}
             </button>
@@ -455,7 +467,7 @@ export function MaterialChecklist({
                 onClick={() => setMenuFor(menuFor === item.id ? null : item.id)}
                 aria-label={t('scan.moreActions')}
                 aria-expanded={menuFor === item.id}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 <span className="h-4 w-4 icon-[mdi-light--dots-vertical]" aria-hidden="true" />
               </button>
@@ -515,13 +527,22 @@ export function MaterialChecklist({
     <div>
       {/* 自动完成提示：说明已完成数量与数据来源（去内部术语） */}
       <div className="mb-4 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-2.5 text-xs text-ink/70">
-        {t('scan.autoProgress', { done: doneCount, total: items.length })}
-        {(fromCard > 0 || fromScanned > 0 || generated > 0) && (
-          <span className="text-ink/60">
-            {fromCard > 0 ? ` · ${t('scan.sourceCard', { n: fromCard })}` : ''}
-            {fromScanned > 0 ? ` · ${t('scan.sourceScanned', { n: fromScanned })}` : ''}
-            {generated > 0 ? ` · ${t('scan.sourceGenerated', { n: generated })}` : ''}
+        {generating && !loading ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3.5 w-3.5 animate-spin icon-[mdi-light--refresh]" aria-hidden="true" />
+            {t('scan.autoGenerating')}
           </span>
+        ) : (
+          <>
+            {t('scan.autoProgress', { done: doneCount, total: items.length })}
+            {(fromCard > 0 || fromScanned > 0 || generated > 0) && (
+              <span className="text-ink/60">
+                {fromCard > 0 ? ` · ${t('scan.sourceCard', { n: fromCard })}` : ''}
+                {fromScanned > 0 ? ` · ${t('scan.sourceScanned', { n: fromScanned })}` : ''}
+                {generated > 0 ? ` · ${t('scan.sourceGenerated', { n: generated })}` : ''}
+              </span>
+            )}
+          </>
         )}
       </div>
 
@@ -569,7 +590,7 @@ export function MaterialChecklist({
                       onClick={() => setAutoCollapsed((v) => !v)}
                       aria-expanded={isAutoOpen}
                       aria-controls="material-auto-group-body"
-                      className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+                      className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       {isAutoOpen ? t('assistant.collapse') : t('assistant.expand')}
                       <span className={`h-3.5 w-3.5 transition-transform ${isAutoOpen ? '' : 'rotate-180'} icon-[mdi-light--chevron-down]`} aria-hidden="true" />
@@ -643,6 +664,35 @@ export function MaterialChecklist({
           )}
         </div>
       )}
+      {/* 上传文件类型不符 → 确认（VModal，说明继续会怎样） */}
+      <VModal
+        open={!!categoryConfirm}
+        onClose={() => setCategoryConfirm(null)}
+        title={t('scan.confirmCategoryTitle')}
+        footer={
+          <>
+            <VButton variant="secondary" onClick={() => setCategoryConfirm(null)}>
+              {t('common.cancel')}
+            </VButton>
+            <VButton
+              onClick={() => {
+                if (categoryConfirm) {
+                  updateItem(categoryConfirm.targetId, { status: 'ready', progress: 100 })
+                }
+                setCategoryConfirm(null)
+              }}
+            >
+              {t('scan.uploadAnyway', { expected: categoryConfirm?.expected ?? '' })}
+            </VButton>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink/70">
+          {categoryConfirm ? t('scan.confirmCategory', { got: categoryConfirm.got, expected: categoryConfirm.expected }) : ''}
+        </p>
+        <p className="mt-2 text-xs text-ink/60">{t('scan.confirmCategoryHint')}</p>
+      </VModal>
+
       {/* 预览弹窗：真实内容（照片/已扫描文件/实时生成文档），无内容时说明原因 */}
       <VModal
         open={!!previewItem}
