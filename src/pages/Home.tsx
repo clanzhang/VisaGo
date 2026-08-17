@@ -18,50 +18,18 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-start justify-between">
-        <Header />
-        <button
-          onClick={() => {
-            if (loading || refreshing) return
-            refresh()
-            toast(t('home.refreshDone'), 'info')
-          }}
-          disabled={loading || refreshing}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-ink/60 shadow-card transition-all duration-150 hover:text-[#1460A4] hover:shadow-card-lg disabled:opacity-60"
-          title={t('home.refresh')}
-          aria-label={t('home.refresh')}
-        >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={refreshing ? 'animate-spin' : ''}
-          >
-            <path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6" />
-          </svg>
-        </button>
-      </div>
+      {/* 刷新按钮已并入 Header：标题 shrink-0 不换行，搜索框 min-w-0 可伸缩 */}
+      <Header
+        onRefresh={() => {
+          if (loading || refreshing) return
+          refresh()
+          toast(t('home.refreshDone'), 'info')
+        }}
+        refreshing={loading || refreshing}
+      />
 
       {/* 顶部提醒横幅（今天有递签/出签安排的申请） */}
       <ReminderBanner />
-
-      {/* 隐藏 AI 数据加载报错横幅（仅静默失败，数据回退静态） */}
-      {/* {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-          <button
-            onClick={refresh}
-            className="ml-3 font-medium underline underline-offset-2"
-          >
-            点击重试
-          </button>
-        </div>
-      )} */}
 
       <HeroCards hero={data.hero} />
       <StatsSection

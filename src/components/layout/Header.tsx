@@ -1,4 +1,4 @@
-// components/layout/Header.tsx — 顶部 Header（问候 + 新建申请按钮 + 搜索）
+// components/layout/Header.tsx — 顶部 Header（问候 + 搜索 + 刷新）
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
@@ -6,7 +6,14 @@ import { useTrackerStore } from '@/stores/trackerStore'
 import { countries } from '@/data/countries'
 import type { Country } from '@/types'
 
-export function Header() {
+interface Props {
+  /** 点击刷新数据（由页面传入） */
+  onRefresh?: () => void
+  /** 是否正在加载/刷新（图标旋转 + 禁用） */
+  refreshing?: boolean
+}
+
+export function Header({ onRefresh, refreshing = false }: Props) {
   const { t, pickL } = useI18n()
   const navigate = useNavigate()
   const { applications } = useTrackerStore()
@@ -22,22 +29,21 @@ export function Header() {
     : []
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-6">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-            {t('home.greetingAnonymous')}
-          </h1>
-          <p className="mt-1 text-base font-medium text-subtle">
-            {t('home.greetingSub', { count: inProgress })}
-          </p>
-        </div>
+    <div className="flex items-center justify-between gap-4">
+      {/* 标题区：不参与宽度竞争，任何窗口宽度都保持单行 */}
+      <div className="shrink-0">
+        <h1 className="whitespace-nowrap font-display text-2xl font-bold tracking-tight text-ink">
+          {t('home.greetingAnonymous')}
+        </h1>
+        <p className="whitespace-nowrap mt-1 text-base font-medium text-subtle">
+          {t('home.greetingSub', { count: inProgress })}
+        </p>
+      </div>
 
-        {/* 搜索框 */}
-        <div className="relative w-full max-w-xl">
-          <i
-            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6B7280] transition-colors duration-150 icon-[mdi-light--magnify]"
-          />
+      {/* 搜索 + 刷新：可伸缩（min-w-0），窄窗口时收缩而不是挤压标题 */}
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        <div className="relative min-w-0 max-w-xl flex-1">
+          <i className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6B7280] transition-colors duration-150 icon-[mdi-light--magnify]" />
           <input
             value={query}
             onChange={(e) => {
@@ -76,6 +82,30 @@ export function Header() {
             </div>
           )}
         </div>
+
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-ink/60 shadow-card transition-all duration-150 hover:text-[#1460A4] hover:shadow-card-lg disabled:opacity-60"
+            title={t('home.refresh')}
+            aria-label={t('home.refresh')}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={refreshing ? 'animate-spin' : ''}
+            >
+              <path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   )
