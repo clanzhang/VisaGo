@@ -615,6 +615,7 @@ export default {
     warnDate: '无法识别的日期「{value}」，请按 YYYY-MM-DD 填写',
     warnSalaryInvalid: '月薪格式不正确，请填数字（单位：元/月）',
     warnSalaryRange: '月薪 {value} 元？请确认是否应填年薪',
+    warnInvalid: '需要修正',
     docMissingFor: '生成{doc}需要：{fields}（当前缺失），结果可能含占位符',
     sourceFrom: '来源：{file}',
     reviewConfirmed: '已确认 {n} / {m} 项关键信息',

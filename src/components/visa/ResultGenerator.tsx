@@ -169,16 +169,18 @@ export function ResultGenerator({
               <p className="mb-2 text-[11px] text-ink/60">{t('scan.tripEditableHint')}</p>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="mb-1 block text-[11px] text-ink/60">{t('scan.tripDest')}</label>
+                  <label htmlFor="gen-trip-dest" className="mb-1 block text-[11px] text-ink/60">{t('scan.tripDest')}</label>
                   <input
+                    id="gen-trip-dest"
                     value={tripData.destination ?? ''}
                     onChange={(e) => onTripDataChange({ ...tripData, destination: e.target.value })}
                     className="w-full rounded-lg border border-ink/10 bg-white px-2 py-1.5 text-sm outline-none focus:border-primary/40"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] text-ink/60">{t('scan.tripDepart')}</label>
+                  <label htmlFor="gen-trip-depart" className="mb-1 block text-[11px] text-ink/60">{t('scan.tripDepart')}</label>
                   <input
+                    id="gen-trip-depart"
                     type="date"
                     value={tripData.start_date ?? ''}
                     onChange={(e) => onTripDataChange({ ...tripData, start_date: e.target.value })}
@@ -186,8 +188,9 @@ export function ResultGenerator({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] text-ink/60">{t('scan.tripReturn')}</label>
+                  <label htmlFor="gen-trip-return" className="mb-1 block text-[11px] text-ink/60">{t('scan.tripReturn')}</label>
                   <input
+                    id="gen-trip-return"
                     type="date"
                     value={tripData.end_date ?? ''}
                     onChange={(e) => onTripDataChange({ ...tripData, end_date: e.target.value })}
@@ -309,7 +312,7 @@ export function ResultGenerator({
                 const f = FIELD_SPECS.find((x) => x.key === k)
                 const filled = !!(profile?.[k] ?? '').trim()
                 return (
-                  <li key={k} className="flex items-center gap-2 text-xs">
+                  <li key={k} className="flex min-w-0 items-center gap-2 text-xs">
                     {filled ? (
                       <span className="h-4 w-4 shrink-0 text-success icon-[mdi-light--check-circle]" aria-hidden="true" />
                     ) : (

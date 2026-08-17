@@ -615,6 +615,7 @@ export default {
     warnDate: 'Unrecognized date "{value}" — use YYYY-MM-DD',
     warnSalaryInvalid: 'Salary format invalid — enter a number (CNY/month)',
     warnSalaryRange: 'Monthly salary {value} CNY? Confirm it is not an annual figure',
+    warnInvalid: 'Needs fixing',
     docMissingFor: 'Generating {doc} requires: {fields} (currently missing) — the result may contain placeholders',
     sourceFrom: 'Source: {file}',
     reviewConfirmed: 'Confirmed {n} / {m} key fields',

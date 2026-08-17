@@ -283,9 +283,20 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
 
     return (
       <div key={f.key} className={`rounded-xl border p-4 ${stateCls}`}>
-        <div className="mb-1.5 flex items-center gap-2">
-          <span className={`h-4 w-4 shrink-0 ${stateIcon}`} aria-hidden="true" />
-          <label htmlFor={id} className="text-sm font-medium text-ink">
+        <div className="mb-1.5 flex min-w-0 items-center gap-2">
+          <span
+            className={`h-4 w-4 shrink-0 ${stateIcon}`}
+            aria-label={
+              state === 'invalid'
+                ? t('scan.warnInvalid')
+                : state === 'missing'
+                  ? t('scan.pendingReview')
+                  : state === 'confirmed'
+                    ? t('scan.savedOk')
+                    : t('scan.pendingReview')
+            }
+          />
+          <label htmlFor={id} className="min-w-0 text-sm font-medium text-ink">
             {label(f)} {f.required && <span className="text-red-500">*</span>}
           </label>
           <span className="ml-auto" />
@@ -315,7 +326,7 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
           <p className="mt-1 text-[11px] text-ink/60">{t('scan.positionHint')}</p>
         )}
         {note && (
-          <p id={`${id}-note`} className={`mt-1 text-[13px] ${note.kind === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
+          <p id={`${id}-note`} className={`mt-1 break-words text-[13px] leading-relaxed ${note.kind === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
             {note.text}
             {source[f.key] ? ` · ${t('scan.sourceFrom', { file: source[f.key] })}` : ''}
           </p>
