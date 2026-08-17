@@ -41,6 +41,8 @@ interface Props {
   items: ScannedFileItem[]
   onSave: () => Promise<boolean>
   onBack: () => void
+  /** 保存成功后进入下一步（P2-14：核对 → 生成） */
+  onContinue: () => void
   onFieldChange: (key: string, value: string) => void
 }
 
@@ -74,7 +76,7 @@ function formatNum(n: number): string {
   return n.toLocaleString('zh-CN')
 }
 
-export function ReviewForm({ profile, baseline, source, occupationSuggestion, missingFields, items, onSave, onBack, onFieldChange }: Props) {
+export function ReviewForm({ profile, baseline, source, occupationSuggestion, missingFields, items, onSave, onBack, onContinue, onFieldChange }: Props) {
   const { t, pickL } = useI18n()
   // P1-6：已确认的高风险字段
   const [confirmedKeys, setConfirmedKeys] = useState<Set<string>>(() => new Set())
@@ -135,7 +137,11 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
     setSaving(true)
     try {
       const ok = await onSave()
-      if (ok) setSaved(true)
+      if (ok) {
+        setSaved(true)
+        // P2-14：保存成功 → 进入生成材料步骤
+        onContinue()
+      }
     } finally {
       setSaving(false)
     }
@@ -444,7 +450,7 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
               {t('scan.backToList')}
             </VButton>
             <VButton type="button" size="lg" onClick={handleSave} disabled={saving}>
-              {saving ? t('scan.saving') : `💾 ${t('common.save')}`}
+              {saving ? t('scan.saving') : `💾 ${t('scan.saveAndContinue')}`}
             </VButton>
           </div>
         </div>

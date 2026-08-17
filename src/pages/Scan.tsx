@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { VBadge, ProfileCardManager, StepIndicator } from '@/components/common'
 import { ScanEmptyState, ScannedFileList, ReviewForm, ResultGenerator, type ScannedFileItem } from '@/components/visa'
 import { FIELD_SPECS, OCCUPATION_VALUES } from '@/data/field-specs'
+import { countries } from '@/data/countries'
 import type { TripData } from '@/types'
 import { useAppStore } from '@/stores/appStore'
 import { useI18n } from '@/i18n'
@@ -24,7 +25,24 @@ import {
   type ProfileCard,
 } from '@/api/tauri'
 
-type Step = 1 | 2 | 3
+type Step = 1 | 2 | 3 | 4
+
+/** P2-15：生成目标默认值 —— 优先沿用「申请签证」草稿里的目的地，否则回退日本 */
+function loadTargetDefaults(): { countryId: string; visaTypeId: string } {
+  const japan = countries.find((c) => c.id === 'japan')
+  const fallback = { countryId: japan?.id ?? '', visaTypeId: japan?.visaTypes[0]?.id ?? '' }
+  try {
+    const raw = localStorage.getItem('visago:assistant:draft')
+    if (!raw) return fallback
+    const d = JSON.parse(raw) as { selectedCountryId?: string; selectedVisaTypeId?: string }
+    const c = countries.find((x) => x.id === d.selectedCountryId)
+    if (!c) return fallback
+    const v = c.visaTypes.find((x) => x.id === d.selectedVisaTypeId)
+    return { countryId: c.id, visaTypeId: v?.id ?? c.visaTypes[0]?.id ?? '' }
+  } catch {
+    return fallback
+  }
+}
 
 /** D20：已扫描文件持久化 key（切页/刷新后可恢复，识别结果不丢） */
 const SCAN_ITEMS_KEY = 'visago:scan-items'
@@ -76,13 +94,20 @@ export default function Scan() {
   // 从识别结果提取的行程数据（用于生成行程单）
   const [tripData, setTripData] = useState<TripData | null>(null)
 
-  // 出结果：选国家/签证类型
-  const [country, setCountry] = useState('日本')
-  const [visaType, setVisaType] = useState('旅游签证')
+  // 出结果：选国家/签证类型（P2-15：id 取值，复用 countries.ts；默认沿用申请流程草稿目的地）
+  const targetDefaults = useMemo(loadTargetDefaults, [])
+  const [countryId, setCountryId] = useState(targetDefaults.countryId)
+  const [visaTypeId, setVisaTypeId] = useState(targetDefaults.visaTypeId)
   const [docType, setDocType] = useState<'itinerary' | 'employment' | 'cover'>('itinerary')
   const [generated, setGenerated] = useState('')
   const [generating, setGenerating] = useState(false)
   const [exporting, setExporting] = useState(false)
+  // P2-17：生成分阶段反馈 + 已耗时 + 取消
+  const [genPhase, setGenPhase] = useState<'preparing' | 'writing' | 'polishing' | null>(null)
+  const [genElapsed, setGenElapsed] = useState(0)
+  const cancelGenerateRef = useRef(false)
+  // P2-19：导出结果（可读提示 + 路径展示）
+  const [exportResult, setExportResult] = useState<string | null>(null)
 
   const tauriEnv = isTauri()
 
@@ -613,13 +638,26 @@ export default function Scan() {
     return ok
   }
 
-  // ===== 第三步：生成 =====
-  async function handleGenerate() {
+  // ===== 第四步：生成 =====
+  async function handleGenerate(reviseNote?: string) {
+    if (generating) return
+    cancelGenerateRef.current = false
     setGenerating(true)
     setGenerated('')
+    setExportResult(null)
+    setGenPhase('preparing')
+    setGenElapsed(0)
+    const start = Date.now()
+    const elapsedTimer = setInterval(() => setGenElapsed(Math.floor((Date.now() - start) / 1000)), 1000)
+    const phaseTimer = setTimeout(() => setGenPhase('writing'), 4000)
+    const phaseTimer2 = setTimeout(() => setGenPhase('polishing'), 20000)
     try {
+      const c = countries.find((x) => x.id === countryId)
+      const v = c?.visaTypes.find((x) => x.id === visaTypeId)
+      const countryName = c?.name.zh ?? countryId
+      const visaTypeName = v?.name.zh ?? ''
       const info = Object.entries(profile)
-        .map(([k, v]) => `${FIELD_SPECS.find((f) => f.key === k)?.label ?? k}: ${v}`)
+        .map(([k, val]) => `${FIELD_SPECS.find((f) => f.key === k)?.label ?? k}: ${val}`)
         .join('\n')
       const docName = docType === 'itinerary' ? '行程单' : docType === 'employment' ? '在职证明' : '解释信'
 
@@ -633,7 +671,7 @@ export default function Scan() {
           tripSection = `\n\n已从用户上传的行程文件提取到的真实行程数据（务必使用这些数据，不要用占位符或编造）：\n`
             + `出发日期：${tripData.start_date ?? '未知'}\n`
             + `返回日期：${tripData.end_date ?? '未知'}\n`
-            + `目的地：${tripData.destination ?? country}\n`
+            + `目的地：${tripData.destination ?? countryName}\n`
             + `天数：${tripData.days ?? (tripData.daily_plan?.length ?? '未知')}\n`
             + `城市：${(tripData.cities ?? []).join('、') || '未知'}\n`
             + `每日安排：\n${daysText || '（文件中无每日明细）'}`
@@ -642,28 +680,52 @@ export default function Scan() {
         }
       }
 
-      console.log('[Scan] handleGenerate tripData=', tripData)
-      const prompt = `根据以下用户信息，生成${docName}。要求：正式、符合签证申请规范、中英文各一版。\n\n用户信息：\n${info}\n\n申请：${country} ${visaType}${tripSection}`
-      // 调试日志：打印生成参数与 prompt 长度
-      console.log('[Scan] 生成参数:', { country, visaType, docType, userProfile: profile, tripData })
+      let prompt = `根据以下用户信息，生成${docName}。要求：正式、符合签证申请规范、中英文各一版。\n\n用户信息：\n${info}\n\n申请：${countryName} ${visaTypeName}${tripSection}`
+      // P2-18：重新生成可带修改要求
+      if (reviseNote?.trim()) {
+        prompt += `\n\n用户修改要求：${reviseNote.trim()}`
+      }
       console.log('[Scan] 生成 prompt 长度:', prompt.length, '字符')
       // 生成材料（尤其含行程明细）用 32k 模型，避免 8k token 超限
       const content = await kimiChat(prompt, 'moonshot-v1-32k')
-      console.log('[Scan] 生成完成，长度:', content.length)
-      setGenerated(content)
+      if (cancelGenerateRef.current) {
+        toast(t('scan.generateCancelled'), 'info')
+      } else {
+        setGenerated(content)
+      }
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('scan.generateFailed'), 'error')
+      if (!cancelGenerateRef.current) {
+        toast(e instanceof Error ? e.message : t('scan.generateFailed'), 'error')
+      }
     } finally {
+      clearInterval(elapsedTimer)
+      clearTimeout(phaseTimer)
+      clearTimeout(phaseTimer2)
       setGenerating(false)
+      setGenPhase(null)
+      setGenElapsed(0)
     }
   }
 
-  async function handleExport() {
+  // P2-17：取消生成（放弃等待，丢弃结果）
+  function handleCancelGenerate() {
+    cancelGenerateRef.current = true
+    setGenerating(false)
+    setGenPhase(null)
+    toast(t('scan.generateCancelled'), 'info')
+  }
+
+
+  async function handleExport(content: string) {
     if (exporting) return
     setExporting(true)
     try {
-      const path = await exportPdf(`<html><body><pre>${generated}</pre></body></html>`, `${country}-${docType}`)
-      toast(t('scan.exportDone', { path }), 'success')
+      const c = countries.find((x) => x.id === countryId)
+      const v = c?.visaTypes.find((x) => x.id === visaTypeId)
+      const base = `${c?.name.zh ?? countryId}-${v?.name.zh ?? docType}`
+      const path = await exportPdf(`<html><body><pre>${content}</pre></body></html>`, base)
+      setExportResult(path)
+      toast(t('scan.exportOk'), 'success')
     } catch (e) {
       toast(e instanceof Error ? e.message : t('scan.exportFailed'), 'error')
     } finally {
@@ -746,39 +808,46 @@ export default function Scan() {
         />
       )}
 
-      {/* ===== 第三步：出结果（核对表单 + 生成） ===== */}
+      {/* ===== 第三步：核对信息（P2-14：与生成材料拆为两步） ===== */}
       {step === 3 && (
-        <div className="flex flex-col gap-6">
-          <ReviewForm
-            profile={profile}
-            baseline={profileBaseline}
-            source={profileSource}
-            occupationSuggestion={occupationSuggestion}
-            missingFields={missingFields}
-            items={items}
-            onSave={handleSaveProfile}
-            onBack={() => setStep(2)}
-            onFieldChange={(key, value) => setProfile((prev) => ({ ...prev, [key]: value }))}
-          />
+        <ReviewForm
+          profile={profile}
+          baseline={profileBaseline}
+          source={profileSource}
+          occupationSuggestion={occupationSuggestion}
+          missingFields={missingFields}
+          items={items}
+          onSave={handleSaveProfile}
+          onBack={() => setStep(2)}
+          onContinue={() => setStep(4)}
+          onFieldChange={(key, value) => setProfile((prev) => ({ ...prev, [key]: value }))}
+        />
+      )}
 
-          {/* 生成材料 */}
-          <ResultGenerator
-            profile={profile}
-            tripSource={tripSource}
-            country={country}
-            visaType={visaType}
-            docType={docType}
-            tripData={tripData}
-            generated={generated}
-            generating={generating}
-            exporting={exporting}
-            onCountryChange={setCountry}
-            onVisaTypeChange={setVisaType}
-            onDocTypeChange={setDocType}
-            onGenerate={handleGenerate}
-            onExport={handleExport}
-          />
-        </div>
+      {/* ===== 第四步：生成材料 ===== */}
+      {step === 4 && (
+        <ResultGenerator
+          profile={profile}
+          tripSource={tripSource}
+          countryId={countryId}
+          visaTypeId={visaTypeId}
+          docType={docType}
+          tripData={tripData}
+          generated={generated}
+          generating={generating}
+          genPhase={genPhase}
+          genElapsed={genElapsed}
+          exporting={exporting}
+          exportResult={exportResult}
+          onCountryIdChange={setCountryId}
+          onVisaTypeIdChange={setVisaTypeId}
+          onDocTypeChange={setDocType}
+          onTripDataChange={setTripData}
+          onGenerate={(note) => handleGenerate(note)}
+          onCancelGenerate={handleCancelGenerate}
+          onExport={handleExport}
+          onBack={() => setStep(3)}
+        />
       )}
     </div>
   )
