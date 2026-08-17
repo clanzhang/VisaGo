@@ -1,5 +1,5 @@
 // pages/Tracker.tsx — 进度追踪
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { VButton, VBadge, VModal, EmptyState } from '@/components/common'
@@ -42,6 +42,21 @@ export default function Tracker() {
   const [submissionDate, setSubmissionDate] = useState('')
   const [expectedIssueDate, setExpectedIssueDate] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<VisaApplication | null>(null)
+  /** 有未保存修改时，遮罩/Escape 需二次确认 */
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  /** 刚新建的申请 id（列表短暂高亮） */
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** 打开弹窗时的表单快照，用于判断是否有改动 */
+  const initialForm = useRef({ countryId: '', visaTypeId: '', status: 'preparing' as ApplicationStatus, notes: '', submissionDate: '', expectedIssueDate: '' })
+
+  const isDirty =
+    countryId !== initialForm.current.countryId ||
+    visaTypeId !== initialForm.current.visaTypeId ||
+    status !== initialForm.current.status ||
+    notes !== initialForm.current.notes ||
+    submissionDate !== initialForm.current.submissionDate ||
+    expectedIssueDate !== initialForm.current.expectedIssueDate
 
   /** 递签日期不能晚于今天（未来日期明显错误） */
   const dateInFuture = !!submissionDate && submissionDate > todayISO()
@@ -103,6 +118,7 @@ export default function Tracker() {
   )
 
   function openCreate() {
+    initialForm.current = { countryId: '', visaTypeId: '', status: 'preparing', notes: '', submissionDate: '', expectedIssueDate: '' }
     setEditing(null)
     setCountryId('')
     setVisaTypeId('')
@@ -110,10 +126,19 @@ export default function Tracker() {
     setNotes('')
     setSubmissionDate('')
     setExpectedIssueDate('')
+    setConfirmDiscard(false)
     setModalOpen(true)
   }
 
   function openEdit(app: VisaApplication) {
+    initialForm.current = {
+      countryId: app.countryId,
+      visaTypeId: app.visaTypeId,
+      status: app.status,
+      notes: app.notes,
+      submissionDate: app.submissionDate ?? '',
+      expectedIssueDate: app.expectedIssueDate ?? '',
+    }
     setEditing(app)
     setCountryId(app.countryId)
     setVisaTypeId(app.visaTypeId)
@@ -121,10 +146,26 @@ export default function Tracker() {
     setNotes(app.notes)
     setSubmissionDate(app.submissionDate ?? '')
     setExpectedIssueDate(app.expectedIssueDate ?? '')
+    setConfirmDiscard(false)
     setModalOpen(true)
   }
 
-  function submit() {
+  /** 关闭弹窗：有未保存修改时先弹二次确认，确认后才真正关闭 */
+  function requestClose() {
+    if (isDirty) {
+      setConfirmDiscard(true)
+      return
+    }
+    setModalOpen(false)
+  }
+
+  function confirmDiscardAndClose() {
+    setConfirmDiscard(false)
+    setModalOpen(false)
+  }
+
+  function submit(e?: React.FormEvent) {
+    e?.preventDefault()
     if (!countryId || !visaTypeId) return
     if (dateError) return
     if (editing) {
@@ -134,8 +175,12 @@ export default function Tracker() {
       if (statusChanged) addTimelineNode(editing.id, { status, date: todayISO() })
       toast(t('tracker.savedToast'), 'success')
     } else {
-      addApplication({ countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
+      const created = addApplication({ countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
       toast(t('tracker.savedToast'), 'success')
+      // 新建卡片短暂高亮（2s 后清除）
+      setHighlightId(created.id)
+      if (highlightTimer.current) clearTimeout(highlightTimer.current)
+      highlightTimer.current = setTimeout(() => setHighlightId(null), 2000)
     }
     setModalOpen(false)
   }
@@ -242,7 +287,9 @@ export default function Tracker() {
             return (
               <div
                 key={app.id}
-                className="anim-card rounded-2xl bg-white p-6 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-lg"
+                className={`anim-card rounded-2xl bg-white p-6 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-card-lg ${
+                  highlightId === app.id ? 'ring-2 ring-primary/50' : ''
+                }`}
                 style={{ animationDelay: `${idx * 60}ms` }}
               >
                 <div className="mb-4 flex items-start justify-between">
@@ -326,22 +373,25 @@ export default function Tracker() {
       {/* 新建/编辑弹窗 */}
       <VModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={requestClose}
         title={editing ? t('tracker.editApplication') : t('tracker.newApplication')}
         footer={
           <>
-            <div className="flex flex-1 items-center text-xs text-ink/60">
-              {dateOrderInvalid
-                ? t('tracker.dateOrderError')
+            <div id="tracker-save-hint" className="flex flex-1 items-center text-xs text-ink/60">
+              {dateError
+                ? dateError === 'future'
+                  ? t('tracker.dateInFutureError')
+                  : t('tracker.dateOrderError')
                 : !countryId || !visaTypeId
                   ? t('tracker.missingRequired')
                   : null}
             </div>
-            <VButton variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</VButton>
-            <VButton onClick={submit} disabled={!countryId || !visaTypeId || dateOrderInvalid}>{t('common.save')}</VButton>
+            <VButton variant="secondary" onClick={requestClose}>{t('common.cancel')}</VButton>
+            <VButton type="submit" form="tracker-form" disabled={!countryId || !visaTypeId || !!dateError}>{t('common.save')}</VButton>
           </>
         }
       >
+        <form id="tracker-form" onSubmit={submit} noValidate>
         <div className="space-y-4">
           <div>
             <label htmlFor="tracker-country" className="mb-1.5 block text-sm font-medium text-ink/60">
@@ -372,7 +422,7 @@ export default function Tracker() {
               value={visaTypeId}
               onChange={(e) => setVisaTypeId(e.target.value)}
               disabled={!countryId}
-              aria-describedby={!countryId ? 'tracker-visa-type-hint' : undefined}
+              aria-describedby={!countryId ? 'tracker-save-hint' : undefined}
               className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:bg-ink/5 disabled:text-ink/40"
             >
               <option value="">{t('common.select')}</option>
@@ -380,9 +430,7 @@ export default function Tracker() {
                 <option key={v.id} value={v.id}>{pickL(v.name)}</option>
               ))}
             </select>
-            {!countryId ? (
-              <p id="tracker-visa-type-hint" className="mt-1 text-xs text-ink/50">{t('tracker.selectCountryFirst')}</p>
-            ) : (
+            {countryId && (
               <p className="mt-1 text-xs text-ink/50">
                 {t('tracker.visaTypeInfo', {
                   days: `${selectedVisaType?.processingDays.min ?? '?'}-${selectedVisaType?.processingDays.max ?? '?'}`,
@@ -483,6 +531,22 @@ export default function Tracker() {
             />
           </div>
         </div>
+        </form>
+      </VModal>
+
+      {/* 未保存修改二次确认 */}
+      <VModal
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        title={t('tracker.confirmDiscardTitle')}
+        footer={
+          <>
+            <VButton variant="secondary" onClick={() => setConfirmDiscard(false)}>{t('tracker.keepEditing')}</VButton>
+            <VButton variant="danger" onClick={confirmDiscardAndClose}>{t('tracker.discardChanges')}</VButton>
+          </>
+        }
+      >
+        <p className="text-sm text-ink/60">{t('tracker.confirmDiscardDesc')}</p>
       </VModal>
 
       {/* 删除确认 */}
