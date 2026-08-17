@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useTrackerStore } from '@/stores/trackerStore'
+import { useUserIdentity } from '@/hooks/useUserIdentity'
 import { countries } from '@/data/countries'
 import type { Country } from '@/types'
 
@@ -17,6 +18,7 @@ export function Header({ onRefresh, refreshing = false }: Props) {
   const { t, pickL } = useI18n()
   const navigate = useNavigate()
   const { applications } = useTrackerStore()
+  const { name } = useUserIdentity()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -32,8 +34,8 @@ export function Header({ onRefresh, refreshing = false }: Props) {
     <div className="flex items-center justify-between gap-4">
       {/* 标题区：不参与宽度竞争，任何窗口宽度都保持单行 */}
       <div className="shrink-0">
-        <h1 className="whitespace-nowrap font-display text-2xl font-bold tracking-tight text-ink">
-          {t('home.greetingAnonymous')}
+        <h1 className="max-w-[min(60vw,560px)] truncate whitespace-nowrap font-display text-2xl font-bold tracking-tight text-ink">
+          {name ? t('home.greeting', { name }) : t('home.greetingAnonymous')}
         </h1>
         <p className="whitespace-nowrap mt-1 text-base font-medium text-subtle">
           {t('home.greetingSub', { count: inProgress })}

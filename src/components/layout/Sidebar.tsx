@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useVisaStore } from '@/stores/visaStore'
+import { useUserIdentity } from '@/hooks/useUserIdentity'
 
 const NAV_ITEMS = [
   { to: '/', key: 'home', icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
+  const { name, cardName } = useUserIdentity()
   const [expanded, setExpanded] = useState(true)
 
   return (
@@ -50,16 +52,20 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* 用户信息 */}
+      {/* 用户信息（真实来源，不编造身份） */}
       <div className={`mb-6 flex items-center rounded-xl bg-white/5 py-2.5 transition-all duration-[390ms] ${expanded ? 'mx-4 gap-3 px-3' : 'mx-2 justify-center'}`}>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />
-          </svg>
+          {name ? name.slice(0, 1) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />
+            </svg>
+          )}
         </div>
         <div className={`leading-tight transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
-          <div className="whitespace-nowrap text-[13px] font-medium">{t('sidebar.anonymous')}</div>
-          <div className="whitespace-nowrap text-[11px] text-white/55">{t('sidebar.noProfile')}</div>
+          <div className="whitespace-nowrap text-[13px] font-medium">{name || t('sidebar.anonymous')}</div>
+          <div className="whitespace-nowrap text-[11px] text-white/55">
+            {cardName || (name ? '' : t('sidebar.noProfile'))}
+          </div>
         </div>
       </div>
 
