@@ -72,6 +72,21 @@ body {
   animation: fadeInUp 0.18s ease forwards;
 }
 
+/* AI 助手抽屉：右侧滑入（非阻塞浮层） */
+@keyframes slideInRight {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.anim-drawer {
+  animation: slideInRight 0.2s ease-out;
+}
+
 /* 柱状图生长 */
 .bar-anim {
   animation: growBar 0.6s ease-out forwards;

@@ -756,6 +756,7 @@ export default {
     close: '关闭',
     open: '打开 AI 助手',
     submit: '发送',
+    contextLabel: '当前查看',
     offlineNote: '本地知识库回答（AI 服务不可用）',
   },
   common: {

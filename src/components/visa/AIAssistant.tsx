@@ -9,11 +9,15 @@ interface Props {
   open: boolean
   onClose: () => void
   country?: Country
+  /** modal（默认，详情页全屏遮罩）| drawer（列表页右侧抽屉，非阻塞，可边看边问） */
+  variant?: 'modal' | 'drawer'
+  /** 列表页上下文（如当前筛选），drawer 模式下显示在标题下 */
+  context?: string
 }
 
 const QUICK_ACTIONS = ['quickMaterials', 'quickFee', 'quickTime', 'quickReject']
 
-export function AIAssistant({ open, onClose, country }: Props) {
+export function AIAssistant({ open, onClose, country, variant = 'modal', context }: Props) {
   const { t, pickL } = useI18n()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -34,6 +38,16 @@ export function AIAssistant({ open, onClose, country }: Props) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, text, thinking])
 
+  // Esc 关闭
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
 
   async function ask(q: string) {
@@ -47,10 +61,8 @@ export function AIAssistant({ open, onClose, country }: Props) {
     })
   }
 
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-end p-6">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-card-lg animate-[fadeInUp_0.2s_ease]">
+  const panel = (
+    <div className="flex h-full flex-col overflow-hidden bg-white">
         {/* header */}
         <div className="flex items-center justify-between border-b border-ink/5 px-5 py-4">
           <div className="flex items-center gap-2.5">
@@ -59,7 +71,12 @@ export function AIAssistant({ open, onClose, country }: Props) {
             </div>
             <div>
               <div className="text-sm font-semibold">{t('ai.title')}</div>
-              {country && (
+              {context && (
+                <div className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-primary/5 px-2 py-0.5 text-[11px] text-primary">
+                  {t('ai.contextLabel')}：{context}
+                </div>
+              )}
+              {!context && country && (
                 <div className="text-xs text-ink/60">
                   {country.flag} {pickL(country.name)}
                 </div>
@@ -139,6 +156,23 @@ export function AIAssistant({ open, onClose, country }: Props) {
             </button>
           </div>
         </div>
+    </div>
+  )
+
+  // drawer：右侧抽屉、无遮罩（列表可继续交互）、Esc/关闭按钮退出
+  if (variant === 'drawer') {
+    return (
+      <div className="fixed inset-y-0 right-0 z-40" role="complementary" aria-label={t('ai.title')}>
+        <div className="anim-drawer h-full w-[380px] max-w-[92vw] rounded-l-2xl border-l border-ink/5 shadow-float">{panel}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-end p-6">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative flex h-[520px] w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-card-lg animate-[fadeInUp_0.2s_ease]">
+        {panel}
       </div>
     </div>
   )

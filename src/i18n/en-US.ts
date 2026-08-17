@@ -756,6 +756,7 @@ export default {
     close: 'Close',
     open: 'Open AI Assistant',
     submit: 'Send',
+    contextLabel: 'Viewing',
     offlineNote: 'Answered from local knowledge base (AI unavailable)',
   },
   common: {

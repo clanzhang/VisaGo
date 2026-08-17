@@ -174,6 +174,13 @@ export default function Encyclopedia() {
   }
 
   const filtering = q !== '' || type !== 'all' || region !== 'all' || sort !== 'default'
+  // AI 抽屉上下文：当前类型/区域筛选
+  const aiContext =
+    type !== 'all'
+      ? t(FILTERS.find((f) => f.key === type)?.labelKey ?? 'encyclopedia.filterAll')
+      : region !== 'all'
+        ? t(REGION_LABEL_KEYS[region] ?? 'regions.asia')
+        : ''
 
   return (
     <div className="flex flex-col gap-8">
@@ -415,8 +422,8 @@ export default function Encyclopedia() {
         </div>
       )}
 
-      {/* AI 助手（Step5 改抽屉） */}
-      <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} />
+      {/* AI 助手：右侧抽屉、非阻塞（可一边看列表一边问），带当前筛选上下文 */}
+      <AIAssistant open={aiOpen} onClose={() => setAiOpen(false)} variant="drawer" context={aiContext} />
 
       {/* 回到顶部 */}
       {showTop && (
