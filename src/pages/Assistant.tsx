@@ -11,8 +11,9 @@ import { useVisaStore } from '@/stores/visaStore'
 import { useTrackerStore } from '@/stores/trackerStore'
 import { useAppStore } from '@/stores/appStore'
 import { listProfiles, getActiveProfileId, isTauri } from '@/api/tauri'
-import { countries } from '@/data/countries'
+import { countries, PROVINCES } from '@/data/countries'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
+import { normalizeProvince, isKnownProvince } from '@/utils/province'
 import type { UserProfile } from '@/types'
 
 const STEPS = ['step1', 'step2', 'step3', 'step4']
@@ -21,7 +22,8 @@ const STEPS = ['step1', 'step2', 'step3', 'step4']
 function cardFieldsToProfile(fields: Record<string, unknown>): UserProfile {
   const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
   const occ = str(fields['occupation']).toLowerCase()
-  const occupation = (['employed', 'student', 'retired', 'freelance'].includes(occ) ? occ : 'employed') as UserProfile['occupation']
+  // 职业：只接受已知枚举，未知值留空由用户手选（不许悄悄猜成 employed）
+  const occupation = (['employed', 'student', 'retired', 'freelance'].includes(occ) ? occ : '') as UserProfile['occupation']
   return {
     name: str(fields['name']),
     passportNumber: str(fields['passport_number']),
@@ -31,7 +33,8 @@ function cardFieldsToProfile(fields: Record<string, unknown>): UserProfile {
     company: str(fields['company']) || undefined,
     position: str(fields['position']) || undefined,
     salary: str(fields['salary']) || undefined,
-    homeProvince: str(fields['home_province']),
+    // 户籍：OCR 常给「北京市」「广西壮族自治区」，归一化为标准短名
+    homeProvince: normalizeProvince(str(fields['home_province'])),
     passportIssuedIn: str(fields['passport_issued_in']),
     hasHistoryVisa: Boolean(fields['has_history_visa']),
   }
@@ -56,6 +59,9 @@ export default function Assistant() {
   // 活跃资料卡（从材料扫描保存，自动读取）
   const [activeCard, setActiveCard] = useState<UserProfile | null>(null)
   const [activeCardName, setActiveCardName] = useState('')
+  // 资料卡识别结果无法匹配标准枚举时，在对应字段下方给提示（不让用户看到矛盾界面）
+  const [unrecognizedProvince, setUnrecognizedProvince] = useState(false)
+  const [unrecognizedOccupation, setUnrecognizedOccupation] = useState(false)
 
   // 挂载时读取活跃资料卡（仅当没有已恢复的草稿时自动填入，避免覆盖用户已填内容）
   useEffect(() => {
@@ -72,6 +78,17 @@ export default function Assistant() {
         const card = cards.find((c) => c.id === id)
         if (card) {
           const p = cardFieldsToProfile(card.fields ?? {})
+          const rawFields = (card.fields ?? {}) as Record<string, unknown>
+          const rawOcc = String(rawFields['occupation'] ?? '').trim()
+          const rawProvince = String(rawFields['home_province'] ?? '').trim()
+          // 户籍/职业归一化后的兜底校验：仍不在标准列表 → 不写入，改由用户手动选择并提示
+          if (rawProvince && !isKnownProvince(p.homeProvince, PROVINCES)) {
+            setUnrecognizedProvince(true)
+            p.homeProvince = ''
+          }
+          if (rawOcc && !p.occupation) {
+            setUnrecognizedOccupation(true)
+          }
           setActiveCard(p)
           setActiveCardName(card.name)
           // 自动填入申请流程（草稿已存在则保留草稿）
@@ -162,6 +179,8 @@ export default function Assistant() {
           setProfile={setProfile}
           activeCard={activeCard}
           activeCardName={activeCardName}
+          unrecognizedProvince={unrecognizedProvince}
+          unrecognizedOccupation={unrecognizedOccupation}
           onBack={() => setStep(1)}
           onNext={(p) => {
             saveProfile(p)

@@ -165,6 +165,10 @@ export default {
     lockedStep: '尚未解锁，请按顺序完成',
     trackAdded: '已添加到进度追踪',
     resetConfirm: '确定要重新开始吗？当前已选择的国家和填写的信息将被清空。',
+    passportFormatHint: '护照号通常为 1-2 位字母 + 7-8 位数字，如 E12345678',
+    provinceUnrecognized: '未能识别你的户籍，请手动选择',
+    occupationUnrecognized: '未能识别你的职业，请手动选择',
+    remainingSummary: '还有 {n} 项需要补全',
   },
   tracker: {
     title: '进度追踪',

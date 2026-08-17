@@ -165,6 +165,10 @@ export default {
     lockedStep: 'Locked — complete previous steps first',
     trackAdded: 'Added to Progress Tracker',
     resetConfirm: 'Restart from scratch? Your selected country and entered info will be cleared.',
+    passportFormatHint: 'Passport numbers are usually 1-2 letters + 7-8 digits, e.g. E12345678',
+    provinceUnrecognized: 'Could not detect your province — please select it manually',
+    occupationUnrecognized: 'Could not detect your occupation — please select it manually',
+    remainingSummary: '{n} item(s) still need to be completed',
   },
   tracker: {
     title: 'Progress Tracker',
