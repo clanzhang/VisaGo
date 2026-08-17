@@ -263,6 +263,7 @@ export default {
     editStatusNote: 'Changing the status appends a progress record',
     requiredMark: 'Required',
     optionalMark: 'Optional',
+    visaTypeInfo: 'Processing time {days} days — used for auto-calculation when dates are empty',
     addTimeline: 'Add Node',
     date: 'Date',
     note: 'Note',

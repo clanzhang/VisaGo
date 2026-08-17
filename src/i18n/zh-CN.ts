@@ -263,6 +263,7 @@ export default {
     editStatusNote: '修改状态会追加一条进度记录',
     requiredMark: '必填',
     optionalMark: '选填',
+    visaTypeInfo: '办理周期 {days} 天，留空日期时按此自动推算',
     addTimeline: '添加节点',
     date: '日期',
     note: '备注',

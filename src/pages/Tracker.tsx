@@ -344,13 +344,16 @@ export default function Tracker() {
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="tracker-country" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.country')}</label>
+            <label htmlFor="tracker-country" className="mb-1.5 block text-sm font-medium text-ink/60">
+              {t('tracker.country')} <span className="text-red-500">*</span>
+            </label>
             <select
               id="tracker-country"
               value={countryId}
               onChange={(e) => {
                 setCountryId(e.target.value)
                 setVisaTypeId('')
+                setExpectedIssueDate('') // 国家/类型变了，旧的估算值不再适用
               }}
               className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
             >
@@ -361,7 +364,9 @@ export default function Tracker() {
             </select>
           </div>
           <div>
-            <label htmlFor="tracker-visa-type" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.visaType')}</label>
+            <label htmlFor="tracker-visa-type" className="mb-1.5 block text-sm font-medium text-ink/60">
+              {t('tracker.visaType')} <span className="text-red-500">*</span>
+            </label>
             <select
               id="tracker-visa-type"
               value={visaTypeId}
@@ -375,33 +380,43 @@ export default function Tracker() {
                 <option key={v.id} value={v.id}>{pickL(v.name)}</option>
               ))}
             </select>
-            {!countryId && (
+            {!countryId ? (
               <p id="tracker-visa-type-hint" className="mt-1 text-xs text-ink/50">{t('tracker.selectCountryFirst')}</p>
+            ) : (
+              <p className="mt-1 text-xs text-ink/50">
+                {t('tracker.visaTypeInfo', {
+                  days: `${selectedVisaType?.processingDays.min ?? '?'}-${selectedVisaType?.processingDays.max ?? '?'}`,
+                })}
+              </p>
             )}
           </div>
+
+          {/* 当前状态：分段按钮组（radiogroup 语义），一眼看全流程 */}
           <div>
-            <label htmlFor="tracker-status" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.statusLabel')}</label>
-            <select
-              id="tracker-status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
-              className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-            >
+            <div className="mb-1.5 text-sm font-medium text-ink/60">
+              {t('tracker.statusLabel')} <span className="text-xs font-normal text-ink/40">{t('tracker.optionalMark')}</span>
+            </div>
+            <div role="radiogroup" aria-label={t('tracker.statusLabel')} className="flex flex-wrap gap-1.5">
               {(Object.keys(STATUS_TONE) as ApplicationStatus[]).map((s) => (
-                <option key={s} value={s}>{t(`tracker.status.${s}`)}</option>
+                <button
+                  key={s}
+                  type="button"
+                  role="radio"
+                  aria-checked={status === s}
+                  onClick={() => setStatus(s)}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ${
+                    status === s
+                      ? 'border-primary bg-primary text-white shadow-sm'
+                      : 'border-ink/10 bg-white text-ink/60 hover:border-primary/25 hover:text-ink'
+                  }`}
+                >
+                  {t(`tracker.status.${s}`)}
+                </button>
               ))}
-            </select>
+            </div>
+            {editing && <p className="mt-1 text-xs text-ink/50">{t('tracker.editStatusNote')}</p>}
           </div>
-          <div>
-            <label htmlFor="tracker-notes" className="mb-1.5 block text-sm font-medium text-ink/60">{t('tracker.notes')}</label>
-            <textarea
-              id="tracker-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
-            />
-          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="mb-1.5 flex items-center justify-between">
@@ -453,6 +468,20 @@ export default function Tracker() {
             </p>
           )}
           <p className="text-xs text-ink/50">{t('tracker.dateHint')}</p>
+
+          {/* 备注：最不重要的可选字段，移到最后并缩小 */}
+          <div>
+            <label htmlFor="tracker-notes" className="mb-1.5 block text-sm font-medium text-ink/60">
+              {t('tracker.notes')} <span className="text-xs font-normal text-ink/40">{t('tracker.optionalMark')}</span>
+            </label>
+            <textarea
+              id="tracker-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full resize-none rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+            />
+          </div>
         </div>
       </VModal>
 
