@@ -1,9 +1,14 @@
 // components/visa/ResultGenerator.tsx — 第三步：生成材料（选择申请目标 + 生成结果）
 import { VButton } from '@/components/common'
 import { useI18n } from '@/i18n'
+import { DOC_REQUIRED_FIELDS, FIELD_SPECS } from '@/data/field-specs'
 import type { TripData } from '@/types'
 
 interface Props {
+  /** 核对后的资料字段（P0-4：生成前检测缺失字段） */
+  profile?: Record<string, string>
+  /** 行程数据的来源文件（P2-21） */
+  tripSource?: string | null
   country: string
   visaType: string
   docType: 'itinerary' | 'employment' | 'cover'
@@ -36,6 +41,8 @@ const DOC_TYPES = [
 ] as const
 
 export function ResultGenerator({
+  profile,
+  tripSource,
   country,
   visaType,
   docType,
@@ -49,9 +56,18 @@ export function ResultGenerator({
   onGenerate,
   onExport,
 }: Props) {
-  const { t, isZh } = useI18n()
+  const { t, isZh, pickL } = useI18n()
   const countryLabel = (v: string) => (isZh ? v : COUNTRY_EN[v] ?? v)
   const visaTypeLabel = (v: string) => (isZh ? v : VISA_TYPE_EN[v] ?? v)
+  // P0-4：生成当前文档所必需但缺失的字段（避免带占位符的残缺文档）
+  const docLabelKey = DOC_TYPES.find((d) => d.id === docType)?.labelKey ?? 'scan.docItinerary'
+  const missingForDoc = profile
+    ? DOC_REQUIRED_FIELDS[docType].filter((k) => !(profile[k] ?? '').trim())
+    : []
+  const missingLabels = missingForDoc.map((k) => {
+    const f = FIELD_SPECS.find((x) => x.key === k)
+    return f ? pickL({ zh: f.label, en: f.label }) : k
+  })
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-2xl bg-white p-6 shadow-card">
@@ -102,7 +118,9 @@ export function ResultGenerator({
           {docType === 'itinerary' && tripData && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
-                <span>🗺️</span> {t('scan.tripExtracted')}
+                <span className="h-4 w-4 icon-[mdi-light--map-marker]" aria-hidden="true" />
+                {t('scan.tripExtracted')}
+                {tripSource && <span className="text-[11px] font-normal text-ink/60">({t('scan.sourceFrom', { file: tripSource })})</span>}
               </div>
               <dl className="space-y-1 text-xs text-ink/70">
                 <div className="flex justify-between"><dt className="text-ink/60">{t('scan.tripDest')}</dt><dd className="font-medium">{tripData.destination || country}</dd></div>
@@ -121,6 +139,12 @@ export function ResultGenerator({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {missingForDoc.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-700" role="status">
+              {t('scan.docMissingFor', { doc: t(docLabelKey), fields: missingLabels.join(isZh ? '、' : ', ') })}
             </div>
           )}
 

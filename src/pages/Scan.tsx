@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { VBadge, ProfileCardManager, StepIndicator } from '@/components/common'
 import { ScanEmptyState, ScannedFileList, ReviewForm, ResultGenerator, type ScannedFileItem } from '@/components/visa'
-import { FIELD_SPECS } from '@/data/field-specs'
+import { FIELD_SPECS, OCCUPATION_VALUES } from '@/data/field-specs'
 import type { TripData } from '@/types'
 import { useAppStore } from '@/stores/appStore'
 import { useI18n } from '@/i18n'
@@ -64,6 +64,14 @@ export default function Scan() {
 
   // 核对表单（从识别结果汇总）
   const [profile, setProfile] = useState<Record<string, string>>({})
+  // P0/P1：进入核对时的聚合快照（脏状态对比基准）
+  const [profileBaseline, setProfileBaseline] = useState<Record<string, string>>({})
+  // P1-7：每个字段的来源文件（key → 文件名）
+  const [profileSource, setProfileSource] = useState<Record<string, string>>({})
+  // P0-1：occupation 无法映射到枚举时的建议值（更像职位）
+  const [occupationSuggestion, setOccupationSuggestion] = useState<string | null>(null)
+  // P2-21：行程数据的来源文件
+  const [tripSource, setTripSource] = useState<string | null>(null)
 
   // 从识别结果提取的行程数据（用于生成行程单）
   const [tripData, setTripData] = useState<TripData | null>(null)
@@ -518,6 +526,9 @@ export default function Scan() {
       issued_in: 'passport_issued_in',
     }
     let trip: TripData | null = null
+    let tripSrc: string | null = null
+    // P1-7：记录每个字段首次被填充时来自哪个文件（不改变聚合规则）
+    const source: Record<string, string> = {}
     for (const item of items) {
       if (item.status !== 'done') continue
       const fields = (item.fields ?? {}) as Record<string, unknown>
@@ -528,6 +539,7 @@ export default function Scan() {
       const rawTrip = fields['trip']
       if (rawTrip && typeof rawTrip === 'object' && !Array.isArray(rawTrip)) {
         trip = rawTrip as TripData
+        tripSrc = item.name
         console.log('[Scan] 识别到行程数据:', trip)
       }
       // 先按别名归一化，再按 FIELD_SPECS 取 key
@@ -545,10 +557,46 @@ export default function Scan() {
         const clean = String(v).trim()
         if (clean && clean !== 'null' && clean !== '暂无' && !merged[k]) {
           merged[k] = clean
+          source[k] = item.name
         }
       }
     }
+
+    // P0-1：occupation 归一化为枚举；无法映射时不静默丢弃，提示并建议填入职位
+    const occRaw = (merged['occupation'] ?? '').trim()
+    if (occRaw) {
+      const occZh: Record<string, string> = {
+        在职: 'employed', 在职人员: 'employed',
+        学生: 'student', 学生身份: 'student',
+        退休: 'retired', 退休人员: 'retired',
+        自由职业: 'freelance', 自由职业者: 'freelance',
+      }
+      const mapped = occZh[occRaw] ?? (OCCUPATION_VALUES.includes(occRaw.toLowerCase() as (typeof OCCUPATION_VALUES)[number]) ? occRaw.toLowerCase() : null)
+      if (mapped) {
+        merged['occupation'] = mapped
+      } else {
+        // 识别到「软件工程师」这类岗位名 → 不写入枚举，建议填入职位
+        merged['occupation'] = ''
+        if (!merged['position']) merged['position'] = occRaw
+        setOccupationSuggestion(occRaw)
+      }
+    }
+
+    // P0-2：salary 归一化为数字串（支持「38万」类写法）
+    const rawSal = (merged['salary'] ?? '').trim()
+    if (rawSal) {
+      if (rawSal.includes('万')) {
+        const n = parseFloat(rawSal.replace(/[^\d.]/g, ''))
+        merged['salary'] = Number.isFinite(n) ? String(Math.round(n * 10000)) : ''
+      } else {
+        merged['salary'] = rawSal.replace(/[^\d]/g, '')
+      }
+    }
+
     setProfile(merged)
+    setProfileBaseline({ ...merged })
+    setProfileSource(source)
+    setTripSource(tripSrc)
     setTripData(trip)
     setStep(3)
   }
@@ -702,6 +750,9 @@ export default function Scan() {
         <div className="flex flex-col gap-6">
           <ReviewForm
             profile={profile}
+            baseline={profileBaseline}
+            source={profileSource}
+            occupationSuggestion={occupationSuggestion}
             missingFields={missingFields}
             onSave={handleSaveProfile}
             onBack={() => setStep(2)}
@@ -710,6 +761,8 @@ export default function Scan() {
 
           {/* 生成材料 */}
           <ResultGenerator
+            profile={profile}
+            tripSource={tripSource}
             country={country}
             visaType={visaType}
             docType={docType}
