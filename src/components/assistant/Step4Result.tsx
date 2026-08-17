@@ -1,4 +1,5 @@
 // components/assistant/Step4Result.tsx — 第四步：方案结果（材料 + 费用 + 周期 + 追踪）
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { VButton } from '@/components/common'
 import { MaterialChecklist } from '@/components/visa'
@@ -31,8 +32,37 @@ export function Step4Result({
   onBack,
   onTrack,
 }: Props) {
-  const { t, pickL } = useI18n()
+  const { t, isZh, pickL } = useI18n()
   const extra = getVisaExtra(country.id, visaType.id)
+  // 未完成材料（P1-6：CTA 可点击，点击后高亮第一个未完成项）
+  const [incompleteIds, setIncompleteIds] = useState<string[]>([])
+  const [highlightPending, setHighlightPending] = useState(false)
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 材料就绪后清除高亮
+  useEffect(() => {
+    if (materialsReady) {
+      setHighlightPending(false)
+      if (highlightTimer.current) clearTimeout(highlightTimer.current)
+    }
+  }, [materialsReady])
+
+  useEffect(() => () => {
+    if (highlightTimer.current) clearTimeout(highlightTimer.current)
+  }, [])
+
+  function handleTrackClick() {
+    if (added) return
+    if (!materialsReady) {
+      setHighlightPending(true)
+      if (highlightTimer.current) clearTimeout(highlightTimer.current)
+      highlightTimer.current = setTimeout(() => setHighlightPending(false), 3000)
+      return
+    }
+    onTrack()
+  }
+
+  const incompleteNames = incompleteIds.map((id) => t(`scan.materialName_${id}`))
 
   const matchedDistrict = profile?.homeProvince
     ? visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))
@@ -49,7 +79,7 @@ export function Step4Result({
             {t('assistant.reset')}
           </VButton>
           <VButton variant="secondary" size="sm" onClick={onBack}>
-            {t('assistant.back')}
+            {t('assistant.backStep3')}
           </VButton>
         </div>
       </div>
@@ -66,7 +96,7 @@ export function Step4Result({
         {/* 材料（自动检测/上传/生成） */}
         <div>
           <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.materials')}</h3>
-          <div className="max-h-[640px] overflow-y-auto rounded-xl border border-ink/5 p-4">
+          <div className="rounded-xl border border-ink/5 p-4">
             <MaterialChecklist
               countryName={pickL(country.name)}
               tripDates={{
@@ -74,6 +104,8 @@ export function Step4Result({
                 end: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
               }}
               onAllReady={onMaterialsReadyChange}
+              onIncompleteChange={setIncompleteIds}
+              pendingHighlight={highlightPending}
             />
           </div>
         </div>
@@ -127,9 +159,9 @@ export function Step4Result({
                     </div>
                     {(official.effectiveFrom || official.note || official.freeNote) && (
                       <div className="mt-3 space-y-1 text-xs text-ink/60">
-                        {official.effectiveFrom && <p>📅 {t('encyclopedia.effectiveFrom')}: {official.effectiveFrom}</p>}
+                        {official.effectiveFrom && <p className="inline-flex items-start gap-1"><span className="mt-0.5 h-4 w-4 shrink-0 icon-[mdi-light--calendar]" />{t('encyclopedia.effectiveFrom')}: {official.effectiveFrom}</p>}
                         {official.freeNote && <p>{pickL(official.freeNote)}</p>}
-                        {official.note && <p>ℹ️ {pickL(official.note)}</p>}
+                        {official.note && <p className="inline-flex items-start gap-1"><span className="mt-0.5 h-4 w-4 shrink-0 icon-[mdi-light--information]" />{pickL(official.note)}</p>}
                       </div>
                     )}
                   </>
@@ -166,8 +198,12 @@ export function Step4Result({
               {visaType.processingDays.min}-{visaType.processingDays.max}
               <span className="ml-1 text-sm font-normal text-ink/60">{t('assistant.days')}</span>
             </div>
-            <div className="mt-2 text-xs text-ink/60">
-              {visaType.needInterview ? '🔴 ' : '🟢 '}
+            <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink/60">
+              {visaType.needInterview ? (
+                <span className="h-4 w-4 shrink-0 text-red-500 icon-[mdi-light--alert-circle]" />
+              ) : (
+                <span className="h-4 w-4 shrink-0 text-success icon-[mdi-light--check-circle]" />
+              )}
               {visaType.needInterview ? `${t('encyclopedia.needInterview')}: ${t('common.yes')}` : `${t('encyclopedia.needInterview')}: ${t('common.no')}`}
             </div>
           </div>
@@ -177,9 +213,13 @@ export function Step4Result({
             <p className="text-sm leading-relaxed text-ink/70">{pickL(visaType.tips)}</p>
           </div>
 
-          <VButton size="lg" className="w-full" onClick={onTrack} disabled={added || !materialsReady}>
-            {added ? '✓ ' : ''}
-            {!materialsReady ? t('assistant.materialsNotReady') : `+ ${t('assistant.trackApplication')}`}
+          <VButton size="lg" className="w-full" onClick={handleTrackClick} disabled={added}>
+            {added ? <span className="h-4 w-4 icon-[mdi-light--check]" /> : null}
+            {!materialsReady
+              ? incompleteIds.length > 0
+                ? t('assistant.materialsMissing', { n: incompleteIds.length, names: incompleteNames.join(isZh ? '、' : ', ') })
+                : t('assistant.materialsNotReady')
+              : `+ ${t('assistant.trackApplication')}`}
           </VButton>
         </div>
       </div>

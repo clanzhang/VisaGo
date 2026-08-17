@@ -240,7 +240,7 @@ export default function CountryDetail() {
                       <summary className="cursor-pointer list-none text-sm font-medium text-ink">
                         <span className="mr-2 text-[#39A2B8]">Q.</span>
                         {f.question}
-                        <span className="float-right text-ink/55 transition-transform group-open:rotate-45">+</span>
+                        <span className="float-right text-ink/60 transition-transform group-open:rotate-45">+</span>
                       </summary>
                       <p className="mt-2 pl-6 text-[13px] leading-relaxed text-ink/60">{f.answer}</p>
                     </details>
@@ -393,7 +393,7 @@ export default function CountryDetail() {
                 <summary className="cursor-pointer list-none text-sm font-medium text-ink">
                   <span className="mr-2 text-primary">Q.</span>
                   {pickL(f.question)}
-                  <span className="float-right text-ink/55 transition-transform group-open:rotate-45">+</span>
+                  <span className="float-right text-ink/60 transition-transform group-open:rotate-45">+</span>
                 </summary>
                 <p className="mt-3 pl-6 text-sm leading-relaxed text-ink/60">{pickL(f.answer)}</p>
               </details>

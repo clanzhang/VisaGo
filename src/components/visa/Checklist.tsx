@@ -53,7 +53,7 @@ export function Checklist({ requirements }: Props) {
             >
               {r.name.zh}
             </span>
-            <span className="shrink-0 text-xs text-ink/55">
+            <span className="shrink-0 text-xs text-ink/60">
               {r.required ? t('encyclopedia.required') : t('encyclopedia.optional')}
             </span>
           </label>

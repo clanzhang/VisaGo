@@ -34,7 +34,7 @@ export function VButton({
 }: Props) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:bg-ink/5 disabled:text-ink/40 disabled:shadow-none disabled:hover:bg-ink/5 ${variants[variant]} ${sizes[size]} ${className}`}
       {...rest}
     >
       {children}

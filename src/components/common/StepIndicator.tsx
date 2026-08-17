@@ -41,7 +41,11 @@ export function StepIndicator({
           {mobileText}
         </p>
       )}
-      <ol role="list" className="flex items-center gap-2" aria-label={ariaLabel}>
+      <ol
+        role="list"
+        className={`flex items-center gap-2 ${mobileText ? 'hidden sm:flex' : 'flex'}`}
+        aria-label={ariaLabel}
+      >
         {steps.map((label, i) => {
           const done = i < current
           const active = i === current

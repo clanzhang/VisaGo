@@ -15,6 +15,10 @@ interface Props {
   tripDates?: { start: string; end: string }
   /** 所有材料是否全部就绪（全部 ready / auto-generate）的变化回调 */
   onAllReady?: (ready: boolean) => void
+  /** 未完成材料 id 变化回调（用于「还差 N 项材料」提示） */
+  onIncompleteChange?: (ids: string[]) => void
+  /** 高亮第一个未完成项（Step 4 CTA 点击后短暂闪烁引导） */
+  pendingHighlight?: boolean
 }
 
 /** 把 Rust 资料卡扁平 snake_case 字段 → checkMaterials 期望的嵌套 UserProfile */
@@ -57,7 +61,13 @@ function fieldsToProfile(fields: Record<string, unknown>): UserProfile {
   }
 }
 
-export function MaterialChecklist({ countryName = '目标国家', tripDates, onAllReady }: Props) {
+export function MaterialChecklist({
+  countryName = '目标国家',
+  tripDates,
+  onAllReady,
+  onIncompleteChange,
+  pendingHighlight = false,
+}: Props) {
   const { t } = useI18n()
   const [items, setItems] = useState<MaterialItem[]>([])
   const [photoResult, setPhotoResult] = useState<PhotoCheckResult | null>(null)
@@ -163,6 +173,25 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
     onAllReady?.(allDone)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allDone])
+
+  // 通知父组件：未完成材料（用于「还差 N 项材料」提示）
+  const incomplete = items.filter((i) => i.status === 'need-photo' || i.status === 'need-user')
+  const incompleteIds = incomplete.map((i) => i.id)
+  useEffect(() => {
+    onIncompleteChange?.(incompleteIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incompleteIds.join(',')])
+
+  // 待处理组展开/折叠（有未完成项时默认折叠「自动完成」组，减少视觉噪音）
+  const [autoCollapsed, setAutoCollapsed] = useState(true)
+
+  // 高亮第一个未完成项（Step 4 CTA 引导）：仅在高亮信号变化时滚动一次
+  useEffect(() => {
+    if (pendingHighlight && incomplete.length > 0) {
+      document.getElementById(`material-${incomplete[0].id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingHighlight])
 
   const updateItem = (id: string, patch: Partial<MaterialItem>) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)))
@@ -329,6 +358,47 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
   }
 
   const autoDoneCount = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length
+  const auto = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate')
+
+  /** 单行材料项 */
+  function renderItemRow(item: MaterialItem, highlight: boolean) {
+    return (
+      <div
+        key={item.id}
+        className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all ${
+          highlight ? 'border-amber-400 ring-2 ring-amber-300/60' : 'border-ink/5'
+        }`}
+        id={`material-${item.id}`}
+      >
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5F7FA] text-ink/60 ${
+            item.id === 'photo' ? 'icon-[mdi-light--camera]' : item.id === 'bank' ? 'icon-[mdi-light--bank]' : 'icon-[mdi-light--file]'
+          }`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-ink">{itemName(item)}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              item.status === 'ready' || item.status === 'auto-generate'
+                ? 'bg-success/10 text-success'
+                : 'bg-amber-500/10 text-amber-600'
+            }`}>
+              {itemStatusLabel(item)}
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-ink/60">{itemAction(item)}</div>
+          {/* 进度 */}
+          <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-[#F3F4F6]">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${item.status === 'need-photo' || item.status === 'need-user' ? 'bg-amber-400' : 'bg-[#39A2B8]'}`}
+              style={{ width: `${item.progress}%` }}
+            />
+          </div>
+        </div>
+        {renderAction(item)}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -351,13 +421,15 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       {/* 一键生成（长任务：显示分阶段进度文案） */}
       <div className="mb-5">
         <VButton onClick={handleGenerateAll} disabled={generating} className="w-full">
-          {generating && generatingLabel ? `⏳ ${generatingLabel}` : generating ? t('scan.generating') : t('scan.oneClickGenerate')}
+          {generating && generatingLabel ? (
+          <span className="inline-flex items-center gap-2"><span className="h-4 w-4 animate-spin icon-[mdi-light--refresh]" />{generatingLabel}</span>
+        ) : generating ? t('scan.generating') : t('scan.oneClickGenerate')}
         </VButton>
       </div>
 
-      {/* 材料列表（加载中显示骨架，避免空白闪烁） */}
-      <div className="space-y-2" aria-busy={loading}>
-        {loading && items.length === 0 && (
+      {/* 材料列表（加载中显示骨架，避免空白闪烁；按「需要你处理 / 自动完成」分组） */}
+      <div aria-busy={loading}>
+        {loading && items.length === 0 ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
@@ -370,33 +442,43 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
               </div>
             ))}
           </div>
-        )}
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 rounded-xl border border-ink/5 px-4 py-3">
-            <span className="text-base">{item.id === 'photo' ? '📸' : item.id === 'bank' ? '🏦' : '📄'}</span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-ink">{itemName(item)}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  item.status === 'ready' || item.status === 'auto-generate'
-                    ? 'bg-success/10 text-success'
-                    : 'bg-amber-500/10 text-amber-600'
-                }`}>
-                  {itemStatusLabel(item)}
-                </span>
-              </div>
-              <div className="mt-1 text-xs text-ink/60">{itemAction(item)}</div>
-              {/* 进度 */}
-              <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-[#F3F4F6]">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${item.status === 'need-photo' || item.status === 'need-user' ? 'bg-amber-400' : 'bg-[#39A2B8]'}`}
-                  style={{ width: `${item.progress}%` }}
-                />
-              </div>
-            </div>
-            {renderAction(item)}
+        ) : (
+          <div className="space-y-2">
+            {/* 待处理组：始终展开 */}
+            {incomplete.length > 0 && (
+              <>
+                <p className="pt-1 text-xs font-semibold text-ink/60">
+                  {t('scan.materialsGroupPending')}（{incomplete.length}）
+                </p>
+                {incomplete.map((item, idx) => renderItemRow(item, pendingHighlight && idx === 0))}
+              </>
+            )}
+
+            {/* 自动完成组：有未完成项时默认折叠 */}
+            {auto.length > 0 && (
+              <>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs font-semibold text-ink/60">
+                    {t('scan.materialsGroupAuto')}（{auto.length}）
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setAutoCollapsed((v) => !v)}
+                    aria-expanded={!autoCollapsed || incomplete.length === 0}
+                    className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+                  >
+                    {t('scan.materialsGroupToggle')}
+                    <span
+                      className={`h-3.5 w-3.5 transition-transform ${!autoCollapsed || incomplete.length === 0 ? 'rotate-180' : ''} icon-[mdi-light--chevron-down]`}
+                    />
+                  </button>
+                </div>
+                {(!autoCollapsed || incomplete.length === 0) &&
+                  auto.map((item) => renderItemRow(item, false))}
+              </>
+            )}
           </div>
-        ))}
+        )}
       </div>
 
       {/* 隐藏文件输入（用于拍照/上传） */}

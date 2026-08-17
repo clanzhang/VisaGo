@@ -49,7 +49,7 @@ body {
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -66,10 +66,10 @@ body {
   }
 }
 
-/* 卡片入场：配合 stagger 延迟 */
+/* 卡片入场：配合 stagger 延迟；步骤切换只做轻微淡入（150-200ms），减少整块闪动感 */
 .anim-card {
   opacity: 0;
-  animation: fadeInUp 0.5s ease forwards;
+  animation: fadeInUp 0.18s ease forwards;
 }
 
 /* 柱状图生长 */

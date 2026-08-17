@@ -1,7 +1,8 @@
 // components/assistant/Step3Identity.tsx — 第三步：填写身份信息
 // 校验：onBlur 首次校验 + 提交时全量校验；已报错字段输入时实时清除；不替用户编造默认值
 // 溯源：自动填充字段标注「来自资料卡」/「已修改」，可单字段恢复或全部恢复
-import { useRef, useState } from 'react'
+// 布局：护照信息 / 个人与居住 两组；短字段限宽；select 统一外观
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { VButton } from '@/components/common'
 import { PROVINCES, OCCUPATIONS } from '@/data/countries'
@@ -52,6 +53,12 @@ const CARD_FIELDS: (keyof UserProfile)[] = [
 
 /** 中国普通护照：1-2 位字母 + 7-8 位数字 */
 const PASSPORT_RE = /^[A-Z]{1,2}[0-9]{7,8}$/
+
+/** 输入框宽度分档：短字段（护照号/日期/国籍）不该和姓名一样占半屏 */
+const WIDTH_TIERS: Record<string, string> = {
+  short: 'max-w-[200px]',
+  medium: 'max-w-[300px]',
+}
 
 export function Step3Identity({
   profile,
@@ -169,10 +176,10 @@ export function Step3Identity({
   const blockingCount = Object.keys(errors).length
 
   const inputCls = (hasError: boolean) =>
-    `w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 ${
+    `w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:ring-4 ${
       hasError
         ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
-        : 'border-ink/10 focus:border-primary/40 focus:ring-primary/10'
+        : 'border-ink/10 focus:border-primary/40 focus:ring-primary/5'
     }`
 
   // ===== 溯源标记（P0-4） =====
@@ -265,13 +272,30 @@ export function Step3Identity({
     return has ? `identity-${key}-error` : undefined
   }
 
+  // 进入本步时自动聚焦第一个空的必填字段（已填好就不打扰）
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      for (const f of REQUIRED_FIELDS) {
+        if (!fieldValue(f.key)) {
+          inputRefs.current[f.key]?.focus()
+          break
+        }
+      }
+    })
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const birthDateValue = /^\d{4}-\d{2}-\d{2}$/.test(p.birthDate ?? '') ? p.birthDate : ''
+
   return (
     <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
-      <h2 className="mb-5 text-lg font-bold text-ink">{t('assistant.identityTitle')}</h2>
+      <h2 className="text-lg font-bold text-ink">{t('assistant.identityTitle')}</h2>
+      <p className="mt-0.5 text-sm text-ink/60">{t('assistant.identitySubtitle')}</p>
 
       {/* 身份来源条（P0-3）：只说明来源，不再罗列字段值（字段值由表单负责展示） */}
       {hasCard && activeCard ? (
-        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-success/25 bg-success/5 px-4 py-3">
+        <div className="mb-6 mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-success/25 bg-success/5 px-4 py-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
             {(activeCard.name || '?').slice(0, 1)}
           </div>
@@ -300,13 +324,14 @@ export function Step3Identity({
           </VButton>
         </div>
       ) : (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <span className="h-5 w-5 shrink-0 text-amber-600 icon-[mdi-light--alert]" />
+        // P1-8 非阻断双路径提示：可手填，也可扫描自动填充
+        <div className="mb-6 mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-3">
+          <span className="h-5 w-5 shrink-0 text-cyan icon-[mdi-light--account]" />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-amber-700">{t('assistant.scanFirstTitle')}</div>
-            <div className="mt-0.5 text-xs text-amber-700">{t('assistant.scanFirstDesc')}</div>
+            <div className="text-sm font-semibold text-ink">{t('assistant.fillManually')}</div>
+            <div className="mt-0.5 text-xs text-ink/60">{t('assistant.scanFirstDesc')}</div>
           </div>
-          <VButton size="sm" onClick={onManageCards}>
+          <VButton type="button" variant="secondary" size="sm" onClick={onManageCards}>
             <span className="h-4 w-4 icon-[mdi-light--folder]" />
             {t('assistant.goScan')}
           </VButton>
@@ -320,132 +345,180 @@ export function Step3Identity({
         }}
         noValidate
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            {labelRow('name', t('documents.name'), true)}
-            <input
-              id="identity-name"
-              ref={(el) => { inputRefs.current['name'] = el }}
-              value={p.name ?? ''}
-              onChange={(e) => {
-                setProfile({ ...p, name: e.target.value })
-                clearFieldState('name')
-              }}
-              onBlur={() => handleBlur('name')}
-              required
-              aria-required="true"
-              aria-invalid={!!errors.name}
-              aria-describedby={describedBy('name')}
-              className={inputCls(!!errors.name)}
-            />
-            {fieldErrorBlock('name')}
-          </div>
-          <div>
-            {labelRow('passportNumber', t('documents.passportNumber'), true)}
-            <input
-              id="identity-passportNumber"
-              ref={(el) => { inputRefs.current['passportNumber'] = el }}
-              value={p.passportNumber ?? ''}
-              onChange={(e) => {
-                // 自动转大写、去空格（格式不符走提示，不硬拦）
-                setProfile({ ...p, passportNumber: e.target.value.toUpperCase().replace(/\s+/g, '') })
-                clearFieldState('passportNumber')
-              }}
-              onBlur={() => handleBlur('passportNumber')}
-              required
-              aria-required="true"
-              aria-invalid={!!errors.passportNumber}
-              aria-describedby={describedBy('passportNumber')}
-              autoComplete="off"
-              spellCheck={false}
-              inputMode="text"
-              className={inputCls(!!errors.passportNumber)}
-            />
-            {fieldErrorBlock('passportNumber')}
-          </div>
-          <div>
-            {labelRow('nationality', t('documents.nationality'), true)}
-            <input
-              id="identity-nationality"
-              ref={(el) => { inputRefs.current['nationality'] = el }}
-              value={p.nationality ?? ''}
-              onChange={(e) => {
-                setProfile({ ...p, nationality: e.target.value })
-                clearFieldState('nationality')
-              }}
-              onBlur={() => handleBlur('nationality')}
-              required
-              aria-required="true"
-              aria-invalid={!!errors.nationality}
-              aria-describedby={describedBy('nationality')}
-              placeholder={t('assistant.nationalityPlaceholder')}
-              autoComplete="country-name"
-              className={inputCls(!!errors.nationality)}
-            />
-            {fieldErrorBlock('nationality')}
-          </div>
-          <div>
-            {labelRow('occupation', t('documents.occupation'), true)}
-            <select
-              id="identity-occupation"
-              ref={(el) => { inputRefs.current['occupation'] = el }}
-              value={p.occupation ?? ''}
-              onChange={(e) => {
-                setProfile({ ...p, occupation: e.target.value as UserProfile['occupation'] })
-                clearFieldState('occupation')
-              }}
-              onBlur={() => handleBlur('occupation')}
-              required
-              aria-required="true"
-              aria-invalid={!!errors.occupation}
-              aria-describedby={describedBy('occupation')}
-              className={inputCls(!!errors.occupation)}
-            >
-              <option value="">{t('common.select')}</option>
-              {OCCUPATIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {t(`documents.occupation${o.value.charAt(0).toUpperCase() + o.value.slice(1)}`)}
-                </option>
-              ))}
-            </select>
-            {fieldErrorBlock('occupation')}
-          </div>
-          <div>
-            {labelRow('passportIssuedIn', t('assistant.passportIssuedIn'), false)}
-            <input
-              id="identity-passportIssuedIn"
-              value={p.passportIssuedIn ?? ''}
-              onChange={(e) => setProfile({ ...p, passportIssuedIn: e.target.value })}
-              className={inputCls(false)}
-            />
-          </div>
-          <div>
-            {labelRow('homeProvince', t('assistant.homeProvince'), true)}
-            <select
-              id="identity-homeProvince"
-              ref={(el) => { inputRefs.current['homeProvince'] = el }}
-              value={p.homeProvince ?? ''}
-              onChange={(e) => {
-                setProfile({ ...p, homeProvince: e.target.value })
-                clearFieldState('homeProvince')
-              }}
-              onBlur={() => handleBlur('homeProvince')}
-              required
-              aria-required="true"
-              aria-invalid={!!errors.homeProvince}
-              aria-describedby={describedBy('homeProvince')}
-              className={inputCls(!!errors.homeProvince)}
-            >
-              <option value="">{t('common.select')}</option>
-              {PROVINCES.map((pr) => (
-                <option key={pr} value={pr}>{pr}</option>
-              ))}
-            </select>
-            {fieldErrorBlock('homeProvince')}
+        {/* 必填说明 */}
+        <p className="mb-4 text-xs text-ink/60">{t('assistant.requiredLegend')}</p>
+
+        {/* 组 1：护照信息 */}
+        <div className="mb-6">
+          <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.groupPassport')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              {labelRow('passportNumber', t('documents.passportNumber'), true)}
+              <input
+                id="identity-passportNumber"
+                ref={(el) => { inputRefs.current['passportNumber'] = el }}
+                value={p.passportNumber ?? ''}
+                onChange={(e) => {
+                  // 自动转大写、去空格（格式不符走提示，不硬拦）
+                  setProfile({ ...p, passportNumber: e.target.value.toUpperCase().replace(/\s+/g, '') })
+                  clearFieldState('passportNumber')
+                }}
+                onBlur={() => handleBlur('passportNumber')}
+                required
+                aria-required="true"
+                aria-invalid={!!errors.passportNumber}
+                aria-describedby={describedBy('passportNumber')}
+                autoComplete="off"
+                spellCheck={false}
+                inputMode="text"
+                className={`${inputCls(!!errors.passportNumber)} ${WIDTH_TIERS.short}`}
+              />
+              {fieldErrorBlock('passportNumber')}
+            </div>
+            <div>
+              {labelRow('birthDate', t('documents.birthDate'), false)}
+              <input
+                id="identity-birthDate"
+                type="date"
+                value={birthDateValue}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setProfile({ ...p, birthDate: e.target.value })}
+                className={`${inputCls(false)} ${WIDTH_TIERS.short}`}
+              />
+            </div>
+            <div>
+              {labelRow('passportIssuedIn', t('assistant.passportIssuedIn'), false)}
+              <input
+                id="identity-passportIssuedIn"
+                value={p.passportIssuedIn ?? ''}
+                onChange={(e) => setProfile({ ...p, passportIssuedIn: e.target.value })}
+                autoComplete="off"
+                className={`${inputCls(false)} ${WIDTH_TIERS.medium}`}
+              />
+              <p className="mt-1 text-xs text-ink/60">{t('assistant.passportIssuedInHelper')}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <p className="inline-flex items-center gap-1.5 text-xs text-ink/60">
+                <span className="h-4 w-4 text-ink/60 icon-[mdi-light--information]" />
+                {t('assistant.expiryCheckedAtMaterials')}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex items-center justify-between gap-3 border-t border-ink/5 bg-white px-6 py-4">
+        {/* 组 2：个人与居住 */}
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.groupPersonal')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              {labelRow('name', t('documents.name'), true)}
+              <input
+                id="identity-name"
+                ref={(el) => { inputRefs.current['name'] = el }}
+                value={p.name ?? ''}
+                onChange={(e) => {
+                  setProfile({ ...p, name: e.target.value })
+                  clearFieldState('name')
+                }}
+                onBlur={() => handleBlur('name')}
+                required
+                aria-required="true"
+                aria-invalid={!!errors.name}
+                aria-describedby={describedBy('name')}
+                autoComplete="name"
+                className={`${inputCls(!!errors.name)} ${WIDTH_TIERS.medium}`}
+              />
+              {fieldErrorBlock('name')}
+            </div>
+            <div>
+              {labelRow('nationality', t('documents.nationality'), true)}
+              <input
+                id="identity-nationality"
+                ref={(el) => { inputRefs.current['nationality'] = el }}
+                value={p.nationality ?? ''}
+                onChange={(e) => {
+                  setProfile({ ...p, nationality: e.target.value })
+                  clearFieldState('nationality')
+                }}
+                onBlur={() => handleBlur('nationality')}
+                required
+                aria-required="true"
+                aria-invalid={!!errors.nationality}
+                aria-describedby={describedBy('nationality')}
+                placeholder={t('assistant.nationalityPlaceholder')}
+                autoComplete="country-name"
+                className={`${inputCls(!!errors.nationality)} ${WIDTH_TIERS.short}`}
+              />
+              {fieldErrorBlock('nationality')}
+            </div>
+            <div>
+              {labelRow('occupation', t('documents.occupation'), true)}
+              <div className="relative">
+                <select
+                  id="identity-occupation"
+                  ref={(el) => { inputRefs.current['occupation'] = el }}
+                  value={p.occupation ?? ''}
+                  onChange={(e) => {
+                    setProfile({ ...p, occupation: e.target.value as UserProfile['occupation'] })
+                    clearFieldState('occupation')
+                  }}
+                  onBlur={() => handleBlur('occupation')}
+                  required
+                  aria-required="true"
+                  aria-invalid={!!errors.occupation}
+                  aria-describedby={describedBy('occupation')}
+                  className={`${inputCls(!!errors.occupation)} appearance-none pr-9 ${WIDTH_TIERS.medium}`}
+                >
+                  <option value="">{t('common.select')}</option>
+                  {OCCUPATIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {t(`documents.occupation${o.value.charAt(0).toUpperCase() + o.value.slice(1)}`)}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/60 icon-[mdi-light--chevron-down]" />
+              </div>
+              {fieldErrorBlock('occupation')}
+            </div>
+            <div>
+              {labelRow('homeProvince', t('assistant.homeProvince'), true)}
+              <div className="relative">
+                <select
+                  id="identity-homeProvince"
+                  ref={(el) => { inputRefs.current['homeProvince'] = el }}
+                  value={p.homeProvince ?? ''}
+                  onChange={(e) => {
+                    setProfile({ ...p, homeProvince: e.target.value })
+                    clearFieldState('homeProvince')
+                  }}
+                  onBlur={() => handleBlur('homeProvince')}
+                  required
+                  aria-required="true"
+                  aria-invalid={!!errors.homeProvince}
+                  aria-describedby={describedBy('homeProvince')}
+                  className={`${inputCls(!!errors.homeProvince)} appearance-none pr-9 ${WIDTH_TIERS.medium}`}
+                >
+                  <option value="">{t('common.select')}</option>
+                  {PROVINCES.map((pr) => (
+                    <option key={pr} value={pr}>{pr}</option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/60 icon-[mdi-light--chevron-down]" />
+              </div>
+              {fieldErrorBlock('homeProvince')}
+              <p className="mt-1 text-xs text-ink/60">{t('assistant.homeProvinceHelper')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* P1-9 隐私安抚微文案（诚实说明 OCR 云端传输） */}
+        <p className="mt-6 inline-flex items-start gap-1.5 text-xs leading-relaxed text-ink/60">
+          <span className="mt-0.5 h-4 w-4 shrink-0 icon-[mdi-light--lock]" />
+          {t('assistant.privacyNote')}
+        </p>
+
+        {/* 底部按钮：sticky + 分隔线 + 带预期的文案 */}
+        <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink/5 bg-white px-6 py-4">
           <div className="min-w-0">
             {submitted && blockingCount > 0 && (
               <p className="text-sm font-medium text-red-600" role="alert">
@@ -455,10 +528,10 @@ export function Step3Identity({
           </div>
           <div className="flex shrink-0 gap-3">
             <VButton type="button" variant="secondary" size="lg" onClick={onBack}>
-              {t('assistant.back')}
+              {t('assistant.backStep2')}
             </VButton>
             <VButton type="submit" size="lg">
-              {t('assistant.next')}
+              {t('assistant.nextStep3')}
             </VButton>
           </div>
         </div>

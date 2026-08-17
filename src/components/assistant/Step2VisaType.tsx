@@ -85,7 +85,7 @@ export function Step2VisaType({ country, selectedVisaTypeId, onSelect, onBack, o
       </div>
       <div className="mt-6 flex justify-between">
         <VButton variant="secondary" size="lg" onClick={onBack}>
-          {t('assistant.back')}
+          {t('assistant.backStep1')}
         </VButton>
         <VButton size="lg" disabled={!selectedVisaTypeId} onClick={onNext}>
           {t('assistant.next')}

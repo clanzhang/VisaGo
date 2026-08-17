@@ -129,12 +129,12 @@ export function RequirementList({ countryName, requirements, translationBanner }
               >
                 <span className="text-sm text-ink/60">{CATEGORY_ICON[g.cat]}</span>
                 <span className="text-sm font-semibold text-ink">{g.label}</span>
-                <span className="ml-1 text-xs text-ink/55">
+                <span className="ml-1 text-xs text-ink/60">
                   {required.length > 0 && <span className="text-red-500">{t('encyclopedia.requiredCount', { n: required.length })}</span>}
                   {required.length > 0 && optional.length > 0 && ' / '}
                   {optional.length > 0 && <span>{t('encyclopedia.optionalCount', { n: optional.length })}</span>}
                 </span>
-                <span className={`ml-auto text-xs text-ink/55 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>▾</span>
+                <span className={`ml-auto text-xs text-ink/60 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>▾</span>
               </button>
               {/* 材料列表（默认折叠） */}
               {!isCollapsed && (
