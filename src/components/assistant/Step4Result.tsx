@@ -7,6 +7,7 @@ import { MaterialChecklist } from '@/components/visa'
 import { MATERIAL_TEMPLATE } from '@/lib/material-check'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
 import { getVisaOfficialFee, formatFee } from '@/data/visa-fees'
+import { KIND_KEYS, DISTRICT_NO_NEED_KEYS, districtNoNeedType } from '@/utils/districts'
 import type { Country, UserProfile, VisaType } from '@/types'
 
 interface Props {
@@ -81,6 +82,10 @@ export function Step4Result({
   const matchedDistrict = profile?.homeProvince
     ? visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))
     : undefined
+  const hasDistrictData = visaType.consularDistricts.length > 0
+  const noNeedType = districtNoNeedType(country.visaType)
+  const noNeedKey = noNeedType ? DISTRICT_NO_NEED_KEYS[noNeedType] : null
+  const officialSource = visaType.consularDistricts.find((o) => o.source)?.source
 
   // 费用明细行（官方多档位优先）
   const feeRows = (() => {
@@ -112,11 +117,77 @@ export function Step4Result({
 
   return (
     <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
-      {/* 领区 */}
-      {matchedDistrict && (
+      {/* 领区（三态，不再静默） */}
+      {matchedDistrict ? (
         <div className="mb-6 rounded-xl bg-[#E0F7FA] px-5 py-4">
           <div className="text-xs text-ink/60">{t('assistant.yourDistrict')}</div>
           <div className="mt-1 text-sm font-semibold text-primary">{pickL(matchedDistrict.name)}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink/60">
+            {matchedDistrict.city && (
+              <span className="inline-flex items-center gap-1">
+                <span className="h-3.5 w-3.5 icon-[mdi-light--map-marker]" />
+                {t('encyclopedia.districtCity')}: {matchedDistrict.city}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <span className="h-3.5 w-3.5 icon-[mdi-light--office-building]" />
+              {t(KIND_KEYS[matchedDistrict.kind ?? 'consulate'])}
+            </span>
+            {visaType.acceptPersonal ? (
+              <span className="inline-flex items-center gap-1 text-success">
+                <span className="h-3.5 w-3.5 icon-[mdi-light--check-circle]" />
+                {t('encyclopedia.acceptPersonalBadge')}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-amber-600">
+                <span className="h-3.5 w-3.5 icon-[mdi-light--alert-circle]" />
+                {t('encyclopedia.notAcceptPersonalBadge')}
+              </span>
+            )}
+            {matchedDistrict.verifiedAt && (
+              <span>{t('encyclopedia.districtSourceStatic', { date: matchedDistrict.verifiedAt })}</span>
+            )}
+          </div>
+          {matchedDistrict.source && (
+            <a
+              href={matchedDistrict.source}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
+            >
+              {t('encyclopedia.districtOfficial')}
+              <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+            </a>
+          )}
+        </div>
+      ) : hasDistrictData ? (
+        profile?.homeProvince ? (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            {t('encyclopedia.districtNotFound', { province: profile.homeProvince })}
+            {officialSource && (
+              <a
+                href={officialSource}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-2 inline-flex items-center gap-1 font-medium text-amber-900 underline underline-offset-2"
+              >
+                {t('encyclopedia.districtOfficial')}
+                <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="mb-6 rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-4 text-sm text-ink/60">
+            {t('assistant.districtFillProvince')}
+          </div>
+        )
+      ) : noNeedKey ? (
+        <div className="mb-6 rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-4 text-sm text-ink/70">
+          ✈️ {t(noNeedKey)}
+        </div>
+      ) : (
+        <div className="mb-6 rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-4 text-sm text-ink/70">
+          🌐 {t('encyclopedia.districtNotCollected')}
         </div>
       )}
 

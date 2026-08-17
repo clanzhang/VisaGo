@@ -4,6 +4,7 @@
 import type { Country, Localized, VisaType, Requirement, FAQ } from '../types'
 import { COUNTRY_LIST, type CountryMeta } from './country-list'
 import { NEW_ZEALAND_REQUIREMENTS, SCHENGEN_REQUIREMENTS } from './encyclopedia-materials'
+import { getVisaExtra } from './encyclopedia-extra'
 import { getConsularOffices, validateDistrictCoverage } from './consular-districts'
 
 // 居住地省份（仅中国大陆省级行政区）。
@@ -91,6 +92,8 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
           ] as Requirement[])
   // 费用映射：优先查表，未列出则免签 0 / 其他 300+200
   const feeData = VISA_FEES[meta.id] || { fee: isVisaFree ? 0 : 300, serviceFee: isVisaFree ? 0 : 200 }
+  // 是否接受个人递签：优先用百科扩展数据（如日本须经指定代办机构），未配置默认 true
+  const acceptPersonal = getVisaExtra(meta.id, `${meta.id}-tourist`)?.flags.acceptPersonal ?? true
   return {
     id: `${meta.id}-tourist`,
     name: { zh: name, en: `${meta.en} Tourist Visa` },
@@ -110,7 +113,7 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
         },
     needInterview,
     canApplyOnline,
-    acceptPersonal: true,
+    acceptPersonal,
     targetAudience: { zh: `赴${meta.zh}旅游的申请人`, en: `Travelers to ${meta.en}` },
     tips: { zh: `请以${meta.zh}驻华使领馆最新要求为准。`, en: `Refer to ${meta.en} embassy for latest requirements.` },
     rejectionReasons: [{ zh: '材料不齐全', en: 'Incomplete documents' }],

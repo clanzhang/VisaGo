@@ -429,15 +429,17 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
   const noNeedType = districtNoNeedType(country.visaType)
   const noNeedKey = noNeedType ? DISTRICT_NO_NEED_KEYS[noNeedType] : null
 
-  // AI 兜底：仅对「可能仍需递签」的电子签国家、且静态无数据时启用（免签/落地签/通行证绝不展示伪造领区）
-  const showAiFallback = !hasStatic && !noNeedKey && aiOffices.length > 0
+  // 硬性无领区概念：互免/单方面免签/落地签/通行证 — 绝不展示任何领区（含 AI）
+  // 电子签类（如日/美）可能仍需国内递签：静态缺失时允许 AI 兜底
+  const hardNoNeed = ['互免签证', '单方面免签', '落地签', '需通行证'].includes(country.visaType)
+  const showAiFallback = !hasStatic && !hardNoNeed && aiOffices.length > 0
 
   const matchedStatic = province ? staticOffices.find((d) => d.provinces.includes(province)) : undefined
   const matchedAi =
     province && showAiFallback ? aiOffices.find((d) => d.provinces.includes(province)) : undefined
   const officialSource = staticOffices.find((o) => o.source)?.source
 
-  // ③ 静态无数据：免签/落地签/通行证 → 「无需在国内递签」；电子签 → AI 有则兜底，无则电子签说明；其他 → 暂未收录
+  // ③ 静态无数据且无 AI 兜底：按签证类型给「无需在国内递签」文案；未知类型 → 暂未收录
   function renderEmptyNote() {
     if (noNeedKey) {
       return (
@@ -447,18 +449,10 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
         </div>
       )
     }
-    if (showAiFallback) {
-      return (
-        <div className="rounded-xl border border-dashed border-violet-300 bg-violet-50/60 px-5 py-6 text-center">
-          <span className="mb-2 block text-2xl">🤖</span>
-          <p className="text-sm text-ink/70">{t('encyclopedia.districtNotCollected')}</p>
-        </div>
-      )
-    }
     return (
       <div className="rounded-xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-6 text-center">
         <span className="mb-2 block text-2xl">🌐</span>
-        <p className="text-sm text-ink/70">{t('encyclopedia.districtNoNeedEvisa')}</p>
+        <p className="text-sm text-ink/70">{t('encyclopedia.districtNotCollected')}</p>
       </div>
     )
   }
@@ -475,7 +469,8 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
         </div>
       ) : null}
 
-      {/* 匹配结果（三态，不再静默） */}      {province && matchedStatic && (
+      {/* 匹配结果（三态，不再静默） */}
+      {province && matchedStatic && (
         <div className="mb-5 rounded-xl bg-[#E0F7FA] px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-primary">{t('encyclopedia.currentDistrict')}</span>
