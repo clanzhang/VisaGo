@@ -127,14 +127,14 @@ export function RequirementList({ countryName, requirements, translationBanner }
                 onClick={() => setCollapsed((prev) => ({ ...prev, [g.cat]: !prev[g.cat] }))}
                 className="flex w-full items-center gap-2 bg-[#F9F9F6] px-4 py-2.5 text-left"
               >
-                <span className="text-sm text-ink/55">{CATEGORY_ICON[g.cat]}</span>
+                <span className="text-sm text-ink/60">{CATEGORY_ICON[g.cat]}</span>
                 <span className="text-sm font-semibold text-ink">{g.label}</span>
-                <span className="ml-1 text-xs text-ink/35">
+                <span className="ml-1 text-xs text-ink/55">
                   {required.length > 0 && <span className="text-red-500">{t('encyclopedia.requiredCount', { n: required.length })}</span>}
                   {required.length > 0 && optional.length > 0 && ' / '}
                   {optional.length > 0 && <span>{t('encyclopedia.optionalCount', { n: optional.length })}</span>}
                 </span>
-                <span className={`ml-auto text-xs text-ink/30 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>▾</span>
+                <span className={`ml-auto text-xs text-ink/55 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>▾</span>
               </button>
               {/* 材料列表（默认折叠） */}
               {!isCollapsed && (
@@ -150,7 +150,7 @@ export function RequirementList({ countryName, requirements, translationBanner }
                           <span className="text-sm font-medium text-ink">{pickL(r.name)}</span>
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                              r.required ? 'bg-red-500/10 text-red-500' : 'bg-ink/5 text-ink/45'
+                              r.required ? 'bg-red-500/10 text-red-500' : 'bg-ink/5 text-ink/60'
                             }`}
                           >
                             {r.required ? t('encyclopedia.required') : t('encyclopedia.optional')}

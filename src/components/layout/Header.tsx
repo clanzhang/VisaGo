@@ -1,5 +1,5 @@
 // components/layout/Header.tsx — 顶部 Header（问候 + 搜索 + 刷新）
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { useTrackerStore } from '@/stores/trackerStore'
@@ -21,6 +21,8 @@ export function Header({ onRefresh, refreshing = false }: Props) {
   const { name } = useUserIdentity()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  // 键盘导航：当前高亮的结果索引
+  const [activeIndex, setActiveIndex] = useState(-1)
 
   const inProgress = applications.filter((a) =>
     ['preparing', 'appointment_booked', 'submitted', 'under_review'].includes(a.status),
@@ -29,6 +31,35 @@ export function Header({ onRefresh, refreshing = false }: Props) {
   const results: Country[] = query
     ? countries.filter((c) => c.name.zh.includes(query) || c.name.en.toLowerCase().includes(query.toLowerCase()))
     : []
+
+  // 查询变化时重置高亮
+  useEffect(() => {
+    setActiveIndex(-1)
+  }, [query])
+
+  function selectCountry(c: Country) {
+    setOpen(false)
+    setQuery('')
+    navigate(`/encyclopedia/${c.id}`)
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || !query) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex((i) => (results.length === 0 ? -1 : (i + 1) % results.length))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((i) => (results.length === 0 ? -1 : (i - 1 + results.length) % results.length))
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && results[activeIndex]) {
+        e.preventDefault()
+        selectCountry(results[activeIndex])
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+    }
+  }
 
   return (
     <div className="flex items-center justify-between gap-4">
@@ -52,26 +83,41 @@ export function Header({ onRefresh, refreshing = false }: Props) {
               setQuery(e.target.value)
               setOpen(true)
             }}
+            onKeyDown={onKeyDown}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             onFocus={() => setOpen(true)}
             placeholder={t('home.searchPlaceholder')}
             aria-label={t('home.searchAria')}
+            role="combobox"
+            aria-expanded={open && query.length > 0}
+            aria-controls={open && query ? 'header-search-listbox' : undefined}
+            aria-activedescendant={
+              activeIndex >= 0 && results[activeIndex] ? `header-search-option-${results[activeIndex].id}` : undefined
+            }
+            aria-autocomplete="list"
             className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-7 pr-4 text-sm outline-none transition-colors placeholder:text-ink/60 focus:border-[#1460A4]"
           />
           {open && query && (
-            <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-card-lg">
+            <div
+              id="header-search-listbox"
+              role="listbox"
+              aria-label={t('home.searchAria')}
+              className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-card-lg"
+            >
               {results.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-ink/60">{t('home.searchNoResults')}</div>
               ) : (
-                results.map((c) => (
+                results.map((c, i) => (
                   <button
                     key={c.id}
-                    onMouseDown={() => {
-                      setOpen(false)
-                      setQuery('')
-                      navigate(`/encyclopedia/${c.id}`)
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[#F9F9F6]"
+                    id={`header-search-option-${c.id}`}
+                    role="option"
+                    aria-selected={i === activeIndex}
+                    onMouseDown={() => selectCountry(c)}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
+                      i === activeIndex ? 'bg-[#F0F4F8]' : 'hover:bg-[#F9F9F6]'
+                    }`}
                   >
                     <span className="text-lg">{c.flag}</span>
                     <span className="font-medium">{pickL(c.name)}</span>

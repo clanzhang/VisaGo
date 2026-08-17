@@ -1,8 +1,9 @@
 // components/common/ProfileCardDetailModal.tsx — 资料卡详情弹窗（双栏：已填/未填）
 // 点击资料卡时展示已填写字段与缺失字段明细，缺失字段带补充提示
-import { useEffect } from 'react'
+import { useId } from 'react'
 import { VButton } from './VButton'
 import { useI18n } from '@/i18n'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import type { ProfileCard } from '@/api/tauri'
 
 interface Props {
@@ -70,18 +71,8 @@ const FIX_HINT_KEYS: Record<string, string> = {
 
 export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
   const { t, isZh } = useI18n()
-  useEffect(() => {
-    if (!card) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [card, onClose])
+  const titleId = useId()
+  const dialogRef = useModalA11y(!!card, onClose, titleId)
 
   if (!card) return null
 
@@ -100,7 +91,13 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink/55 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-float animate-[fadeInUp_0.25s_ease]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative flex max-h-[86vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-float animate-[fadeInUp_0.25s_ease]"
+      >
         <div className="relative h-40 shrink-0 bg-[linear-gradient(135deg,#1460A4_0%,#39A2B8_48%,#D8F4F7_100%)]">
           <div className="absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,.7)_0,transparent_28%),radial-gradient(circle_at_85%_10%,rgba(255,255,255,.45)_0,transparent_24%)]" />
           <button
@@ -120,7 +117,7 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
               </div>
               <div className="min-w-0 pt-8">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="truncate text-2xl font-bold leading-tight text-ink">{name}</h3>
+                  <h3 id={titleId} className="truncate text-2xl font-bold leading-tight text-ink">{name}</h3>
                   <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
                     {t('profile.completionPercent', { progress })}
                   </span>

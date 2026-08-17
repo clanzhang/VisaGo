@@ -44,7 +44,7 @@ export function Timeline({ nodes, current }: Props) {
             />
             <div className="text-sm font-medium">{t(`tracker.status.${node.status}`)}</div>
             {node.date && (
-              <div className="text-xs text-ink/40">
+              <div className="text-xs text-ink/60">
                 {node.date} {node.note && `· ${node.note}`}
               </div>
             )}

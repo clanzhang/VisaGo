@@ -49,11 +49,11 @@ export function Checklist({ requirements }: Props) {
               className="h-4 w-4 accent-[#39A2B8]"
             />
             <span
-              className={`flex-1 text-sm ${checked.has(r.id) ? 'text-ink/40 line-through' : 'text-ink'}`}
+              className={`flex-1 text-sm ${checked.has(r.id) ? 'text-ink/60 line-through' : 'text-ink'}`}
             >
               {r.name.zh}
             </span>
-            <span className="shrink-0 text-xs text-ink/35">
+            <span className="shrink-0 text-xs text-ink/55">
               {r.required ? t('encyclopedia.required') : t('encyclopedia.optional')}
             </span>
           </label>

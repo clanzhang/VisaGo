@@ -101,7 +101,7 @@ export default function Tracker() {
       {applications.length === 0 ? (
         <div className="flex flex-col items-center rounded-2xl bg-white p-16 text-center shadow-card">
           <div className="mb-4 text-5xl">🗂️</div>
-          <p className="text-sm text-ink/50">{t('tracker.noApplications')}</p>
+          <p className="text-sm text-ink/60">{t('tracker.noApplications')}</p>
           <VButton className="mt-6" onClick={openCreate}>
             {t('tracker.newApplication')}
           </VButton>
@@ -125,7 +125,7 @@ export default function Tracker() {
                     <span className="text-3xl">{country.flag}</span>
                     <div>
                       <div className="text-base font-semibold text-ink">{pickL(country.name)}</div>
-                      <div className="text-xs text-ink/55">{pickL(visaType.name)}</div>
+                      <div className="text-xs text-ink/60">{pickL(visaType.name)}</div>
                     </div>
                   </div>
                   <VBadge tone={STATUS_TONE[app.status]}>{t(`tracker.status.${app.status}`)}</VBadge>
@@ -133,15 +133,15 @@ export default function Tracker() {
 
                 <div className="mb-4 grid grid-cols-3 gap-3 rounded-xl bg-[#F9F9F6] p-3 text-center">
                   <div>
-                    <div className="text-xs text-ink/40">{t('tracker.submitDate')}</div>
+                    <div className="text-xs text-ink/60">{t('tracker.submitDate')}</div>
                     <div className="mt-0.5 text-sm font-semibold">{app.createdAt.slice(0, 10)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-ink/40">{t('tracker.expectedDate')}</div>
+                    <div className="text-xs text-ink/60">{t('tracker.expectedDate')}</div>
                     <div className="mt-0.5 text-sm font-semibold text-primary">{expectedDate}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-ink/40">{t('tracker.reminder')}</div>
+                    <div className="text-xs text-ink/60">{t('tracker.reminder')}</div>
                     <div className="mt-0.5 text-sm font-semibold">{relativeDayLabel(expectedDate)}</div>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export default function Tracker() {
                 </div>
 
                 {app.notes && (
-                  <p className="mt-3 rounded-lg bg-amber-50/70 px-3 py-2 text-xs text-ink/55">
+                  <p className="mt-3 rounded-lg bg-amber-50/70 px-3 py-2 text-xs text-ink/60">
                     📝 {app.notes}
                   </p>
                 )}

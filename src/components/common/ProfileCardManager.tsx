@@ -5,6 +5,7 @@ import { VButton } from './VButton'
 import { CARD_FIELD_SPECS, ProfileCardDetailModal } from './ProfileCardDetailModal'
 import { useAppStore } from '@/stores/appStore'
 import { useI18n } from '@/i18n'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import { createProfile, deleteProfile, setActiveProfileId, type ProfileCard } from '@/api/tauri'
 
 interface Props {
@@ -35,6 +36,7 @@ export function ProfileCardManager({
   const [showNameDialog, setShowNameDialog] = useState(false)
   const [newCardName, setNewCardName] = useState('')
   const [detailCard, setDetailCard] = useState<ProfileCard | null>(null)
+  const nameDialogRef = useModalA11y(showNameDialog, () => setShowNameDialog(false))
 
   // 新建资料卡
   async function handleCreateProfile() {
@@ -150,7 +152,7 @@ export function ProfileCardManager({
                         e.stopPropagation()
                         handleDeleteCard(card)
                       }}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink/40 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink/60 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                       title={t('profile.deleteCard')}
                       aria-label={t('profile.deleteCard')}
                     >
@@ -168,7 +170,7 @@ export function ProfileCardManager({
                     </div>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-ink/55">
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-ink/60">
                     <span className="truncate">{updated}</span>
                     <span className="flex shrink-0 items-center gap-0.5 font-medium text-primary">
                       {t('profile.details')}
@@ -185,8 +187,15 @@ export function ProfileCardManager({
       {/* 新建资料卡命名弹窗 */}
       {showNameDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4" onClick={() => setShowNameDialog(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-ink">{t('profile.nameDialogTitle')}</h3>
+          <div
+            ref={nameDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-name-dialog-title"
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="profile-name-dialog-title" className="text-base font-bold text-ink">{t('profile.nameDialogTitle')}</h3>
             <p className="mt-1 text-xs text-ink/60">{t('profile.nameDialogDesc')}</p>
             <input
               autoFocus

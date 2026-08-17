@@ -81,7 +81,7 @@ export function Step1Country({ selectedCountryId, onSelect, onNext }: Props) {
             <p className="mt-1 text-sm text-ink/60">{t('assistant.step1Hint')}</p>
           </div>
           <div className="relative w-full xl:max-w-md">
-            <span className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/55 icon-[mdi-light--magnify]" />
+            <span className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/60 icon-[mdi-light--magnify]" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -105,7 +105,7 @@ export function Step1Country({ selectedCountryId, onSelect, onNext }: Props) {
                 }`}
               >
                 <div className="text-sm font-semibold">{tab.label}</div>
-                <div className={regionTab === tab.key ? 'text-xs text-white/70' : 'text-xs text-ink/55'}>
+                <div className={regionTab === tab.key ? 'text-xs text-white/70' : 'text-xs text-ink/60'}>
                   {t('assistant.destCount', { count: tab.count })}
                 </div>
               </button>

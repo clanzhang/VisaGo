@@ -11,7 +11,7 @@ export function LangSwitch() {
           key={l}
           onClick={() => setLang(l)}
           className={`rounded-md px-2 py-1 transition-colors duration-150 ${
-            lang === l ? 'bg-white font-semibold text-ink shadow-sm' : 'text-ink/50 hover:text-ink'
+            lang === l ? 'bg-white font-semibold text-ink shadow-sm' : 'text-ink/60 hover:text-ink'
           }`}
         >
           {l === 'zh-CN' ? '中' : 'EN'}

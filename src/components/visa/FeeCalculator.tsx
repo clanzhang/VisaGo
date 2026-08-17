@@ -35,19 +35,19 @@ export function FeeCalculator({ countryId, visaType }: Props) {
           {/* 服务费/快递费/照片费 */}
           {official.serviceFee > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ink/55">{t('encyclopedia.serviceFee')}</span>
+              <span className="text-ink/60">{t('encyclopedia.serviceFee')}</span>
               <span className="font-medium text-ink">¥{official.serviceFee}</span>
             </div>
           )}
           {official.courierFee > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ink/55">{t('encyclopedia.courierFee')}</span>
+              <span className="text-ink/60">{t('encyclopedia.courierFee')}</span>
               <span className="font-medium text-ink">¥{official.courierFee}</span>
             </div>
           )}
           {official.photoFee > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ink/55">{t('encyclopedia.photoFee')}</span>
+              <span className="text-ink/60">{t('encyclopedia.photoFee')}</span>
               <span className="font-medium text-ink">¥{official.photoFee}</span>
             </div>
           )}
@@ -94,7 +94,7 @@ export function FeeCalculator({ countryId, visaType }: Props) {
           <span className="font-display text-lg font-bold text-primary">¥{total}</span>
         </div>
       </div>
-      <p className="mt-4 text-xs text-ink/40">{t('encyclopedia.feeNote')}</p>
+      <p className="mt-4 text-xs text-ink/60">{t('encyclopedia.feeNote')}</p>
     </div>
   )
 }

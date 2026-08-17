@@ -1,7 +1,8 @@
 // components/common/SettingsModal.tsx — 设置弹窗（通用/通知/关于，左右分栏）
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { useAppStore } from '@/stores/appStore'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import { loadSettings, saveSettings, requestNotificationPermission, isTauri, type AppSettings } from '@/api/tauri'
 
 type Section = 'general' | 'notify' | 'about'
@@ -37,6 +38,8 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 export function SettingsModal() {
   const { t, setLang } = useI18n()
   const { toast, settingsOpen, openSettings, closeSettings } = useAppStore()
+  const titleId = useId()
+  const dialogRef = useModalA11y(settingsOpen, closeSettings, titleId)
   const [section, setSection] = useState<Section>('general')
   const [settings, setSettings] = useState<AppSettings>({
     desktop_notification: false,
@@ -78,18 +81,7 @@ export function SettingsModal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsOpen])
 
-  useEffect(() => {
-    if (!settingsOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeSettings()
-    }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [settingsOpen, closeSettings])
+
 
   // 注意：所有 hooks 必须在条件 return 之前调用（React Hooks 规则）
   const notifyItems = useMemo(
@@ -130,7 +122,16 @@ export function SettingsModal() {
       <div className="absolute inset-0 bg-black/40 animate-[fadeIn_0.15s_ease]" onClick={closeSettings} />
 
       {/* 弹窗主体：640x420 白底圆角16 shadow-2xl */}
-      <div className="relative flex h-[420px] w-[640px] max-w-full overflow-hidden rounded-2xl bg-white shadow-2xl animate-[fadeInUp_0.25s_ease]">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative flex h-[420px] w-[640px] max-w-full overflow-hidden rounded-2xl bg-white shadow-2xl animate-[fadeInUp_0.25s_ease]"
+      >
+        {/* 隐藏标题（供 aria-labelledby 使用） */}
+        <h2 id={titleId} className="sr-only">{t('app.name')} — {t('settings.general')}</h2>
+
         {/* 左侧分类栏（160px 浅灰 #F3F4F6） */}
         <div className="w-[160px] shrink-0 space-y-1 bg-[#F3F4F6] p-3">
           {SECTIONS.map((s) => (

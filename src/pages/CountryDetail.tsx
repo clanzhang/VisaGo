@@ -44,7 +44,7 @@ export default function CountryDetail() {
 
   if (!country || !visaType) {
     return (
-      <div className="rounded-2xl bg-white p-12 text-center text-sm text-ink/40 shadow-card">
+      <div className="rounded-2xl bg-white p-12 text-center text-sm text-ink/60 shadow-card">
         {t('common.noData')}
       </div>
     )
@@ -59,7 +59,7 @@ export default function CountryDetail() {
       <div>
         <button
           onClick={() => navigate('/encyclopedia')}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink/50 transition-colors hover:text-ink"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink/60 transition-colors hover:text-ink"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M19 12H5M11 18l-6-6 6-6" />
@@ -118,7 +118,7 @@ export default function CountryDetail() {
             { label: t('encyclopedia.processingTime'), value: `${visaType.processingDays.min}-${visaType.processingDays.max} ${t('assistant.days')}` },
           ].map((item) => (
             <div key={item.label} className="rounded-xl bg-[#F9F9F6] px-4 py-3">
-              <div className="text-xs text-ink/40">{item.label}</div>
+              <div className="text-xs text-ink/60">{item.label}</div>
               <div className="mt-0.5 text-sm font-semibold text-ink">{item.value}</div>
             </div>
           ))}
@@ -166,7 +166,7 @@ export default function CountryDetail() {
         )}
 
         {aiLoading && !ai ? (
-          <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/50">
+          <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/60">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
             {t('encyclopedia.aiLoading', { country: country ? pickL(country.name) : '' })}
           </div>
@@ -189,7 +189,7 @@ export default function CountryDetail() {
                             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#39A2B8]" />
                             <span>
                               {r.name}
-                              {r.details && <span className="ml-1 text-xs text-ink/40">· {r.details}</span>}
+                              {r.details && <span className="ml-1 text-xs text-ink/60">· {r.details}</span>}
                             </span>
                           </li>
                         ))}
@@ -219,7 +219,7 @@ export default function CountryDetail() {
                             <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${r.required ? 'bg-primary' : 'bg-ink/25'}`} />
                             <span>
                               {r.name}
-                              {r.details && <span className="ml-1 text-xs text-ink/40">· {r.details}</span>}
+                              {r.details && <span className="ml-1 text-xs text-ink/60">· {r.details}</span>}
                             </span>
                           </li>
                         ))}
@@ -240,7 +240,7 @@ export default function CountryDetail() {
                       <summary className="cursor-pointer list-none text-sm font-medium text-ink">
                         <span className="mr-2 text-[#39A2B8]">Q.</span>
                         {f.question}
-                        <span className="float-right text-ink/30 transition-transform group-open:rotate-45">+</span>
+                        <span className="float-right text-ink/55 transition-transform group-open:rotate-45">+</span>
                       </summary>
                       <p className="mt-2 pl-6 text-[13px] leading-relaxed text-ink/60">{f.answer}</p>
                     </details>
@@ -271,7 +271,7 @@ export default function CountryDetail() {
               key={key}
               onClick={() => setTab(key)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 ${
-                tab === key ? 'bg-ink text-white' : 'text-ink/55 hover:bg-ink/5 hover:text-ink'
+                tab === key ? 'bg-ink text-white' : 'text-ink/60 hover:bg-ink/5 hover:text-ink'
               }`}
             >
               {label}
@@ -310,7 +310,7 @@ export default function CountryDetail() {
               <div className="mt-6 flex items-center justify-between rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-4">
                 <div>
                   <div className="text-sm font-bold text-ink">{t('encyclopedia.goApply')}</div>
-                  <div className="mt-0.5 text-xs text-ink/50">
+                  <div className="mt-0.5 text-xs text-ink/60">
                     {t('encyclopedia.viewMaterialsDesc')}
                   </div>
                 </div>
@@ -393,7 +393,7 @@ export default function CountryDetail() {
                 <summary className="cursor-pointer list-none text-sm font-medium text-ink">
                   <span className="mr-2 text-primary">Q.</span>
                   {pickL(f.question)}
-                  <span className="float-right text-ink/30 transition-transform group-open:rotate-45">+</span>
+                  <span className="float-right text-ink/55 transition-transform group-open:rotate-45">+</span>
                 </summary>
                 <p className="mt-3 pl-6 text-sm leading-relaxed text-ink/60">{pickL(f.answer)}</p>
               </details>
@@ -424,7 +424,7 @@ export default function CountryDetail() {
           <div className="space-y-3">
             {country.announcements.map((a, i) => (
               <div key={i} className="flex gap-3 rounded-xl border border-ink/5 p-4">
-                <span className="shrink-0 text-xs font-medium text-ink/55">{a.date}</span>
+                <span className="shrink-0 text-xs font-medium text-ink/60">{a.date}</span>
                 <div>
                   <div className="text-sm font-semibold text-ink">{pickL(a.title)}</div>
                   <p className="mt-0.5 text-[13px] text-ink/60">{pickL(a.content)}</p>

@@ -1,7 +1,7 @@
-// components/common/VModal.tsx — 模态框
-import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+// components/common/VModal.tsx — 模态框（焦点陷阱 + Esc + 焦点归还 + aria）
+import { useId, type ReactNode } from 'react'
 import { useI18n } from '@/i18n'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 interface Props {
   open: boolean
@@ -14,18 +14,8 @@ interface Props {
 
 export function VModal({ open, onClose, title, children, footer, width = 'max-w-lg' }: Props) {
   const { t } = useI18n()
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [open, onClose])
+  const titleId = useId()
+  const dialogRef = useModalA11y(open, onClose, title ? titleId : undefined)
 
   if (!open) return null
 
@@ -36,11 +26,15 @@ export function VModal({ open, onClose, title, children, footer, width = 'max-w-
         onClick={onClose}
       />
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
         className={`relative w-full ${width} bg-white rounded-2xl shadow-lg animate-[fadeInUp_0.25s_ease]`}
       >
         {title && (
           <div className="flex items-center justify-between border-b border-ink/5 px-6 py-4">
-            <h3 className="text-base font-semibold">{title}</h3>
+            <h3 id={titleId} className="text-base font-semibold">{title}</h3>
             <button
               onClick={onClose}
               className="rounded-lg p-1 text-ink/60 hover:bg-ink/5 hover:text-ink"

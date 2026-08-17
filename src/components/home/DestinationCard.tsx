@@ -65,7 +65,7 @@ export function DestinationCard({ item, index }: Props) {
       <div className="p-5">
         <div className="flex items-center justify-between">
           <h3 className="font-display text-[15px] font-bold text-ink">{name}</h3>
-          <span className="text-xs text-ink/55">
+          <span className="text-xs text-ink/60">
             {t('home.stayDays', { days })}
           </span>
         </div>

@@ -69,7 +69,7 @@ export function ScannedFileList({
               <span className="text-lg">📄</span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink">{item.name}</div>
-                <div className="text-xs text-ink/40">
+                <div className="text-xs text-ink/60">
                   {item.fileType.toUpperCase()} · {item.category || t('scan.unrecognized')}
                 </div>
               </div>

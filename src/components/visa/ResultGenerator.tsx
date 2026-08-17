@@ -79,7 +79,7 @@ export function ResultGenerator({
                   key={dt.id}
                   onClick={() => onDocTypeChange(dt.id)}
                   className={`rounded-lg border-2 px-2 py-2 text-xs font-medium transition-all ${
-                    docType === dt.id ? 'border-primary bg-primary/5 text-primary' : 'border-ink/10 text-ink/55'
+                    docType === dt.id ? 'border-primary bg-primary/5 text-primary' : 'border-ink/10 text-ink/60'
                   }`}
                 >
                   {t(dt.labelKey)}

@@ -426,7 +426,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
             <span className="text-xs text-ink/60">{t('scan.photoScore', { score: photoResult.score })}</span>
           </div>
           {!photoResult.passed && (
-            <ul className="mt-2 space-y-1 text-xs text-red-600/80">
+            <ul className="mt-2 space-y-1 text-xs text-red-700">
               {photoResult.issues.map((iss, i) => (
                 <li key={i}>· {iss}</li>
               ))}

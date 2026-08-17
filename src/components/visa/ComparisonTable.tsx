@@ -56,7 +56,7 @@ export function ComparisonTable({ countries }: Props) {
                       <span className="inline-flex flex-col">
                         <span>{official.visaFee} {official.currency} {t('assistant.from')}</span>
                         {official.effectiveFrom && (
-                          <span className="text-[10px] font-normal text-ink/55">{official.effectiveFrom} {t('assistant.from')}</span>
+                          <span className="text-[10px] font-normal text-ink/60">{official.effectiveFrom} {t('assistant.from')}</span>
                         )}
                       </span>
                     )}

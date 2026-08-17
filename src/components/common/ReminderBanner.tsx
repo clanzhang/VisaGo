@@ -55,7 +55,7 @@ export function ReminderBanner() {
           <span className="text-lg">{KIND_ICON[r.kind] ?? '🔔'}</span>
           <div className="min-w-0 flex-1">
             <div className="font-semibold text-amber-800">{r.body}</div>
-            <div className="text-xs text-amber-700/70">
+            <div className="text-xs text-amber-800">
               {r.title} · {r.date} · {r.kind === 'submission' ? t('reminder.submissionKind') : t('reminder.issueKind')}
             </div>
           </div>

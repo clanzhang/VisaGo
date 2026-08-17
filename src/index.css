@@ -77,6 +77,25 @@ body {
   animation: growBar 0.6s ease-out forwards;
 }
 
+/* 尊重系统「减少动态效果」偏好：禁用动画/位移过渡，内容立即可见 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .anim-card {
+    opacity: 1;
+    transform: none;
+  }
+  .bar-anim {
+    width: var(--bar-target);
+  }
+}
+
 /* 滚动条美化 */
 ::-webkit-scrollbar {
   width: 8px;
