@@ -6,10 +6,10 @@ import { loadSettings, saveSettings, requestNotificationPermission, isTauri, typ
 
 type Section = 'general' | 'notify' | 'about'
 
-const SECTIONS: { key: Section; label: string; icon: string }[] = [
-  { key: 'general', label: '通用', icon: 'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1' },
-  { key: 'notify', label: '通知', icon: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0' },
-  { key: 'about', label: '关于', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20zM12 8v4M12 16h.01' },
+const SECTIONS: { key: Section; labelKey: string; icon: string }[] = [
+  { key: 'general', labelKey: 'settings.general', icon: 'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1' },
+  { key: 'notify', labelKey: 'settings.notify', icon: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0' },
+  { key: 'about', labelKey: 'settings.about', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20zM12 8v4M12 16h.01' },
 ]
 
 /** Toggle 开关组件：开启蓝色 #1460A4，关闭灰色 #D1D5DB，transition 200ms */
@@ -35,7 +35,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 }
 
 export function SettingsModal() {
-  const { setLang } = useI18n()
+  const { t, setLang } = useI18n()
   const { toast, settingsOpen, openSettings, closeSettings } = useAppStore()
   const [section, setSection] = useState<Section>('general')
   const [settings, setSettings] = useState<AppSettings>({
@@ -94,8 +94,8 @@ export function SettingsModal() {
   // 注意：所有 hooks 必须在条件 return 之前调用（React Hooks 规则）
   const notifyItems = useMemo(
     () => [
-      { key: 'notify_submission' as const, title: '递签日提醒', desc: '递签当天提醒你带齐材料前往签证中心' },
-      { key: 'notify_pre_issue' as const, title: '出签前 3 天提醒', desc: '预计出签前 3 天提醒你留意结果' },
+      { key: 'notify_submission' as const, titleKey: 'settings.notifySubmission', descKey: 'settings.notifySubmissionDesc' },
+      { key: 'notify_pre_issue' as const, titleKey: 'settings.notifyPreIssue', descKey: 'settings.notifyPreIssueDesc' },
     ],
     [],
   )
@@ -117,7 +117,7 @@ export function SettingsModal() {
     if (v && isTauri()) {
       try {
         const granted = await requestNotificationPermission()
-        toast(granted ? '通知权限已开启' : '未获得通知权限，请在系统设置中允许', granted ? 'success' : 'warning')
+        toast(granted ? t('settings.permissionGranted') : t('settings.permissionDenied'), granted ? 'success' : 'warning')
       } catch (e) {
         console.warn('[SettingsModal] 请求通知权限失败:', e)
       }
@@ -138,13 +138,13 @@ export function SettingsModal() {
               key={s.key}
               onClick={() => setSection(s.key)}
               className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150 ${
-                section === s.key ? 'bg-[#1460A4] font-medium text-white' : 'text-ink/55 hover:bg-white hover:text-ink'
+                section === s.key ? 'bg-[#1460A4] font-medium text-white' : 'text-ink/60 hover:bg-white hover:text-ink'
               }`}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={s.icon} />
               </svg>
-              {s.label}
+              {t(s.labelKey)}
             </button>
           ))}
         </div>
@@ -157,8 +157,8 @@ export function SettingsModal() {
                 {/* 启用桌面通知 */}
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-ink">启用桌面通知</div>
-                    <div className="mt-0.5 text-xs text-ink/50">开启后，递签提醒、出签提醒将推送到系统通知中心</div>
+                    <div className="text-sm font-semibold text-ink">{t('settings.desktopNotify')}</div>
+                    <div className="mt-0.5 text-xs text-ink/60">{t('settings.desktopNotifyDesc')}</div>
                   </div>
                   <Toggle checked={settings.desktop_notification} onChange={handleToggleDesktop} />
                 </div>
@@ -169,8 +169,8 @@ export function SettingsModal() {
                     {notifyItems.map((item) => (
                       <div key={item.key} className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-sm font-medium text-ink">☑ {item.title}</div>
-                          <div className="mt-0.5 text-xs text-ink/50">{item.desc}</div>
+                          <div className="text-sm font-medium text-ink">☑ {t(item.titleKey)}</div>
+                          <div className="mt-0.5 text-xs text-ink/60">{t(item.descKey)}</div>
                         </div>
                         <Toggle
                           checked={settings[item.key]}
@@ -187,8 +187,8 @@ export function SettingsModal() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-ink">语言</div>
-                    <div className="mt-0.5 text-xs text-ink/50">界面显示语言</div>
+                    <div className="text-sm font-semibold text-ink">{t('settings.language')}</div>
+                    <div className="mt-0.5 text-xs text-ink/60">{t('settings.languageDesc')}</div>
                   </div>
                   <select
                     value={settings.language}
@@ -213,12 +213,12 @@ export function SettingsModal() {
                   </div>
                   <div>
                     <div className="font-display text-lg font-bold text-ink">VisaGo</div>
-                    <div className="text-xs text-ink/50">版本 v0.0.9</div>
+                    <div className="text-xs text-ink/60">{t('settings.version', { version: '0.0.11' })}</div>
                   </div>
                 </div>
                 <div className="space-y-2 border-t border-ink/8 pt-4 text-sm">
                   <a
-                    href="https://github.com/yourusername/visago"
+                    href="https://github.com/clanzhang/VisaGo"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-2 text-ink/70 transition-colors hover:text-[#1460A4]"
@@ -226,17 +226,17 @@ export function SettingsModal() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                       <path d="M12 2a10 10 0 00-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.4.1-2.9 0 0 .8-.3 2.8 1a9.7 9.7 0 015 0c2-1.3 2.8-1 2.8-1 .5 1.5.2 2.6.1 2.9.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0012 2z" />
                     </svg>
-                    GitHub 仓库
+                    {t('settings.githubRepo')}
                   </a>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => toast('当前已是最新版本 v0.0.9', 'info')}
+                      onClick={() => toast(t('settings.upToDate', { version: '0.0.11' }), 'info')}
                       className="flex items-center gap-2 rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-[#1460A4]/40 hover:text-[#1460A4]"
                     >
-                      🔄 检查更新
+                      {t('settings.checkUpdate')}
                     </button>
                   </div>
-                  <div className="text-xs text-ink/40">Copyright © 2026 VisaGo. 保留所有权利。</div>
+                  <div className="text-xs text-ink/60">{t('settings.copyright')}</div>
                 </div>
               </div>
             )}
@@ -248,7 +248,7 @@ export function SettingsModal() {
               onClick={closeSettings}
               className="rounded-lg bg-white px-6 py-2 text-sm font-medium text-[#1460A4] shadow-sm ring-1 ring-ink/10 transition-colors duration-150 hover:bg-[#F3F4F6]"
             >
-              完成
+              {t('settings.done')}
             </button>
           </div>
         </div>

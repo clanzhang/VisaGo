@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function FeeCalculator({ countryId, visaType }: Props) {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
   const extra = getVisaExtra(countryId, visaType.id)
   const fees = extra?.fees
   // 官方多档位明细（日本单次/两次/多次等）
@@ -28,7 +28,7 @@ export function FeeCalculator({ countryId, visaType }: Props) {
         <div className="space-y-2.5">
           {official.tiers.map((tr, i) => (
             <div key={i} className="flex items-center justify-between text-sm">
-              <span className="text-ink/55">{tr.label.zh}</span>
+              <span className="text-ink/60">{pickL(tr.label)}</span>
               <span className="font-medium text-ink">{formatFee(tr)}</span>
             </div>
           ))}
@@ -54,20 +54,20 @@ export function FeeCalculator({ countryId, visaType }: Props) {
           <div className="flex items-center justify-between border-t border-ink/10 pt-3">
             <span className="text-sm font-medium">{t('encyclopedia.total')}</span>
             <span className="font-display text-lg font-bold text-primary">
-              {firstPaidTier ? `${formatFee(firstPaidTier)} 起` : '免费'}
+              {firstPaidTier ? `${formatFee(firstPaidTier)} ${t('assistant.from')}` : t('encyclopedia.free')}
             </span>
           </div>
         </div>
         {(official.effectiveFrom || official.note || official.freeNote) && (
-          <div className="mt-4 space-y-1 text-xs text-ink/40">
+          <div className="mt-4 space-y-1 text-xs text-ink/60">
             {official.effectiveFrom && (
               <p>📅 {t('encyclopedia.effectiveFrom')}: {official.effectiveFrom}</p>
             )}
-            {official.freeNote && <p>{official.freeNote.zh}</p>}
-            {official.note && <p>ℹ️ {official.note.zh}</p>}
+            {official.freeNote && <p>{pickL(official.freeNote)}</p>}
+            {official.note && <p>ℹ️ {pickL(official.note)}</p>}
           </div>
         )}
-        <p className="mt-3 text-xs text-ink/40">{t('encyclopedia.feeNote')}</p>
+        <p className="mt-3 text-xs text-ink/60">{t('encyclopedia.feeNote')}</p>
       </div>
     )
   }
@@ -85,7 +85,7 @@ export function FeeCalculator({ countryId, visaType }: Props) {
       <div className="space-y-2.5">
         {rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between text-sm">
-            <span className="text-ink/55">{r.label}</span>
+            <span className="text-ink/60">{r.label}</span>
             <span className="font-medium text-ink">¥{r.value}</span>
           </div>
         ))}

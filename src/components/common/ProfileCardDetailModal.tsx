@@ -2,6 +2,7 @@
 // 点击资料卡时展示已填写字段与缺失字段明细，缺失字段带补充提示
 import { useEffect } from 'react'
 import { VButton } from './VButton'
+import { useI18n } from '@/i18n'
 import type { ProfileCard } from '@/api/tauri'
 
 interface Props {
@@ -31,25 +32,44 @@ export const CARD_FIELD_SPECS = [
   { key: 'salary', label: '月薪', required: false },
 ]
 
-// 未填字段 → 补充提示
-const FIX_HINT: Record<string, string> = {
-  passport_number: '上传护照扫描件自动识别',
-  home_province: '上传户口本自动识别',
-  position: '上传在职证明或手动填写',
-  company: '上传在职证明或手动填写',
-  salary: '上传在职证明或手动填写',
-  phone: '手动输入',
-  name: '上传身份证扫描件自动识别',
-  id_number: '上传身份证扫描件自动识别',
-  nationality: '上传护照扫描件自动识别',
-  birth_date: '上传身份证扫描件自动识别',
-  gender: '上传身份证扫描件自动识别',
-  address: '手动输入',
-  passport_issued_in: '上传护照扫描件自动识别',
-  occupation: '手动选择职业类型',
+// 字段英文标签（UI 显示用；字段值本身是用户数据）
+export const CARD_FIELD_LABEL_EN: Record<string, string> = {
+  name: 'Full name',
+  passport_number: 'Passport No.',
+  id_number: 'ID No.',
+  nationality: 'Nationality',
+  birth_date: 'Date of birth',
+  gender: 'Gender',
+  phone: 'Phone',
+  address: 'Home address',
+  home_province: 'Province',
+  passport_issued_in: 'Issued in',
+  occupation: 'Occupation',
+  company: 'Company',
+  position: 'Position',
+  salary: 'Monthly salary',
+}
+
+// 未填字段 → 补充提示（i18n key）
+const FIX_HINT_KEYS: Record<string, string> = {
+  passport_number: 'scan.materialHint_passport',
+  home_province: 'scan.materialHint_family',
+  position: 'scan.materialHint_employment',
+  company: 'scan.materialHint_employment',
+  salary: 'scan.materialHint_employment',
+  phone: 'profile.supplementHint',
+  name: 'scan.materialHint_id',
+  id_number: 'scan.materialHint_id',
+  nationality: 'scan.materialHint_passport',
+  birth_date: 'scan.materialHint_id',
+  gender: 'scan.materialHint_id',
+  address: 'profile.supplementHint',
+  passport_issued_in: 'scan.materialHint_passport',
+  occupation: 'profile.supplementHint',
 }
 
 export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
+  const { t, isZh } = useI18n()
   useEffect(() => {
     if (!card) return
     const onKey = (e: KeyboardEvent) => {
@@ -70,11 +90,12 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
   const filled = CARD_FIELD_SPECS.filter((f) => has(f.key))
   const missing = CARD_FIELD_SPECS.filter((f) => !has(f.key))
   const progress = Math.round((filled.length / CARD_FIELD_SPECS.length) * 100)
-  const name = has('name') || card.name || '未命名'
+  const name = has('name') || card.name || t('profile.unnamed')
   const passport = has('passport_number') || has('passportNumber')
-  const phone = has('phone') || '待补充'
-  const nationality = has('nationality') || '待补充'
-  const updated = card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : '暂无更新时间'
+  const phone = has('phone') || t('profile.pending')
+  const nationality = has('nationality') || t('profile.pending')
+  const updated = card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : t('profile.noUpdatedAt')
+  const fieldLabel = (f: { key: string; label: string }) => (isZh ? f.label : CARD_FIELD_LABEL_EN[f.key] ?? f.label)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -84,8 +105,8 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
           <div className="absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_20%_20%,rgba(255,255,255,.7)_0,transparent_28%),radial-gradient(circle_at_85%_10%,rgba(255,255,255,.45)_0,transparent_24%)]" />
           <button
             onClick={onClose}
-            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-ink/45 shadow-sm transition-colors hover:text-ink"
-            aria-label="关闭"
+            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-ink/60 shadow-sm transition-colors hover:text-ink"
+            aria-label={t('common.close')}
           >
             <span className="h-5 w-5 icon-[mdi-light--fullscreen-close]" />
           </button>
@@ -101,27 +122,27 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="truncate text-2xl font-bold leading-tight text-ink">{name}</h3>
                   <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                    {progress}% 完成
+                    {t('profile.completionPercent', { progress })}
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink/50">
-                  <span>资料卡 {card.id}</span>
-                  <span>更新于 {updated}</span>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink/60">
+                  <span>{t('profile.cardId', { id: card.id })}</span>
+                  <span>{t('profile.updatedAt', { time: updated })}</span>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center md:w-80">
               <div className="rounded-xl bg-[#F5F7FA] px-3 py-2">
                 <div className="text-lg font-bold text-ink">{filled.length}</div>
-                <div className="text-[11px] text-ink/45">已填写</div>
+                <div className="text-[11px] text-ink/60">{t('profile.filled')}</div>
               </div>
               <div className="rounded-xl bg-[#F5F7FA] px-3 py-2">
                 <div className="text-lg font-bold text-ink">{missing.length}</div>
-                <div className="text-[11px] text-ink/45">待补充</div>
+                <div className="text-[11px] text-ink/60">{t('profile.toSupplement')}</div>
               </div>
               <div className="rounded-xl bg-[#F5F7FA] px-3 py-2">
                 <div className="text-lg font-bold text-ink">{CARD_FIELD_SPECS.length}</div>
-                <div className="text-[11px] text-ink/45">总字段</div>
+                <div className="text-[11px] text-ink/60">{t('profile.totalFields')}</div>
               </div>
             </div>
           </div>
@@ -135,21 +156,21 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
                   <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <span className="h-5 w-5 icon-[mdi-light--credit-card-scan]" />
                   </div>
-                  <div className="text-xs text-ink/45">护照号</div>
-                  <div className="mt-1 truncate text-sm font-semibold text-ink">{passport || '待补充'}</div>
+                  <div className="text-xs text-ink/60">{t('profile.passportNo')}</div>
+                  <div className="mt-1 truncate text-sm font-semibold text-ink">{passport || t('profile.pending')}</div>
                 </div>
                 <div className="rounded-2xl border border-ink/6 bg-white p-4 shadow-sm">
                   <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <span className="h-5 w-5 icon-[mdi-light--account]" />
                   </div>
-                  <div className="text-xs text-ink/45">国籍</div>
+                  <div className="text-xs text-ink/60">{t('profile.nationality')}</div>
                   <div className="mt-1 truncate text-sm font-semibold text-ink">{nationality}</div>
                 </div>
                 <div className="rounded-2xl border border-ink/6 bg-white p-4 shadow-sm">
                   <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <span className="h-5 w-5 icon-[mdi-light--phone]" />
                   </div>
-                  <div className="text-xs text-ink/45">手机号</div>
+                  <div className="text-xs text-ink/60">{t('profile.phone')}</div>
                   <div className="mt-1 truncate text-sm font-semibold text-ink">{phone}</div>
                 </div>
               </div>
@@ -157,11 +178,11 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
               <div className="rounded-2xl border border-ink/6 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-bold text-ink">已填写信息</div>
-                    <div className="text-xs text-ink/45">已识别并保存到这张资料卡的字段</div>
+                    <div className="text-sm font-bold text-ink">{t('profile.filledInfo')}</div>
+                    <div className="text-xs text-ink/60">{t('profile.filledInfoDesc')}</div>
                   </div>
                   <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
-                    {filled.length} 项
+                    {t('profile.items', { count: filled.length })}
                   </span>
                 </div>
                 {filled.length > 0 ? (
@@ -172,14 +193,14 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
                           <span className="h-3.5 w-3.5 icon-[mdi-light--check]" />
                         </span>
                         <div className="min-w-0">
-                          <div className="text-xs text-ink/45">{f.label}</div>
+                          <div className="text-xs text-ink/60">{fieldLabel(f)}</div>
                           <div className="truncate text-sm font-medium text-ink">{String(fields[f.key])}</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-xl bg-[#F8FAFC] px-3 py-6 text-center text-sm text-ink/40">暂无已填写字段</div>
+                  <div className="rounded-xl bg-[#F8FAFC] px-3 py-6 text-center text-sm text-ink/60">{t('profile.noFilled')}</div>
                 )}
               </div>
             </div>
@@ -187,11 +208,11 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
             <div className="rounded-2xl border border-ink/6 bg-[#FBFCFD] p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-bold text-ink">待补充</div>
-                  <div className="text-xs text-ink/45">补齐后生成材料更稳</div>
+                  <div className="text-sm font-bold text-ink">{t('profile.toSupplementTitle')}</div>
+                  <div className="text-xs text-ink/60">{t('profile.supplementDesc')}</div>
                 </div>
                 <span className="rounded-full bg-[#FEF3F2] px-2.5 py-1 text-xs font-semibold text-red-500">
-                  {missing.length} 项
+                  {missing.length}
                 </span>
               </div>
               {missing.length > 0 ? (
@@ -202,9 +223,9 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-50 text-red-500">
                           <span className="h-3.5 w-3.5 icon-[mdi-light--alert-circle]" />
                         </span>
-                        {f.label}
+                        {fieldLabel(f)}
                       </div>
-                      <div className="mt-1 pl-7 text-xs text-ink/45">{FIX_HINT[f.key] ?? '请补充相关材料'}</div>
+                      <div className="mt-1 pl-7 text-xs text-ink/60">{t(FIX_HINT_KEYS[f.key] ?? 'profile.supplementHint')}</div>
                     </div>
                   ))}
                 </div>
@@ -213,8 +234,8 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
                     <span className="h-7 w-7 icon-[mdi-light--check-circle]" />
                   </div>
-                  <div className="mt-3 text-sm font-semibold text-success">资料完整</div>
-                  <div className="mt-1 text-xs text-ink/45">这张资料卡已经补齐全部字段。</div>
+                  <div className="mt-3 text-sm font-semibold text-success">{t('profile.complete')}</div>
+                  <div className="mt-1 text-xs text-ink/60">{t('profile.completeDesc')}</div>
                 </div>
               )}
             </div>
@@ -222,10 +243,10 @@ export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
         </div>
 
         <div className="flex shrink-0 justify-end gap-3 border-t border-ink/6 bg-white px-6 py-4">
-          <VButton variant="secondary" size="sm" onClick={onClose}>关闭</VButton>
+          <VButton variant="secondary" size="sm" onClick={onClose}>{t('profile.close')}</VButton>
           <VButton size="sm" onClick={onSupplement}>
             <span className="h-4 w-4 icon-[mdi-light--plus]" />
-            去补充
+            {t('profile.supplement')}
           </VButton>
         </div>
       </div>

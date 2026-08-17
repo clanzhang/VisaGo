@@ -10,17 +10,17 @@ import { VISA_TYPE_ORDER, REGION_ORDER } from '@/data/country-list'
 // 筛选：全部 / 免签 / 落地签 / 电子签 / 需签证
 type VisaFilter = 'all' | '互免签证' | '单方面免签' | '落地签' | '电子签' | '需签证'
 
-const FILTERS: { key: VisaFilter; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: '互免签证', label: '互免' },
-  { key: '单方面免签', label: '单免' },
-  { key: '落地签', label: '落地签' },
-  { key: '电子签', label: '电子签' },
-  { key: '需签证', label: '需签证' },
+const FILTERS: { key: VisaFilter; labelKey: string }[] = [
+  { key: 'all', labelKey: 'encyclopedia.filterAll' },
+  { key: '互免签证', labelKey: 'encyclopedia.filterMutual' },
+  { key: '单方面免签', labelKey: 'encyclopedia.filterUnilateral' },
+  { key: '落地签', labelKey: 'encyclopedia.filterOnArrival' },
+  { key: '电子签', labelKey: 'encyclopedia.filterEvisa' },
+  { key: '需签证', labelKey: 'encyclopedia.filterVisaRequired' },
 ]
 
 export default function Encyclopedia() {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<VisaFilter>('all')
   const [aiOpen, setAiOpen] = useState(false)
@@ -111,7 +111,7 @@ export default function Encyclopedia() {
                   : 'bg-white text-ink/60 shadow-card hover:bg-ink/5'
               }`}
             >
-              {f.label}
+              {t(f.labelKey)}
             </button>
           ))}
         </div>
@@ -144,7 +144,7 @@ export default function Encyclopedia() {
         <section key={group.group}>
           <div className="mb-4 flex items-center gap-3">
             <h2 className="font-display text-base font-bold tracking-tight text-ink">{group.group}</h2>
-            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/50">{group.items.length} 个</span>
+            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/60">{t('encyclopedia.groupCount', { n: group.items.length })}</span>
             <div className="h-px flex-1 bg-ink/8" />
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -179,8 +179,21 @@ export default function Encyclopedia() {
         </section>
       ))}
       {list.length === 0 && (
-        <div className="rounded-2xl bg-white p-12 text-center text-sm text-ink/40 shadow-card">
-          {t('common.noData')}
+        <div className="flex flex-col items-center rounded-2xl bg-white p-12 text-center shadow-card">
+          <div className="mb-3 text-4xl">🔍</div>
+          <p className="text-sm font-semibold text-ink">{t('encyclopedia.noResults')}</p>
+          <p className="mt-1 text-sm text-ink/60">{t('encyclopedia.noResultsHint')}</p>
+          {(query || filter !== 'all') && (
+            <button
+              onClick={() => {
+                setQuery('')
+                setFilter('all')
+              }}
+              className="mt-4 rounded-full border border-ink/10 px-4 py-1.5 text-sm font-medium text-primary transition-colors hover:border-primary/40"
+            >
+              {t('encyclopedia.clearFilter')}
+            </button>
+          )}
         </div>
       )}
 

@@ -27,7 +27,7 @@ const NEXT_STATUS: Record<ApplicationStatus, ApplicationStatus | null> = {
 }
 
 export default function Tracker() {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
   const { applications, addApplication, updateApplication, removeApplication, addTimelineNode } = useTrackerStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<VisaApplication | null>(null)
@@ -124,8 +124,8 @@ export default function Tracker() {
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{country.flag}</span>
                     <div>
-                      <div className="text-base font-semibold text-ink">{country.name.zh}</div>
-                      <div className="text-xs text-ink/45">{visaType.name.zh}</div>
+                      <div className="text-base font-semibold text-ink">{pickL(country.name)}</div>
+                      <div className="text-xs text-ink/55">{pickL(visaType.name)}</div>
                     </div>
                   </div>
                   <VBadge tone={STATUS_TONE[app.status]}>{t(`tracker.status.${app.status}`)}</VBadge>
@@ -200,7 +200,7 @@ export default function Tracker() {
             >
               <option value="">{t('common.select')}</option>
               {countryOptions.map((c) => (
-                <option key={c.id} value={c.id}>{c.flag} {c.name.zh}</option>
+                <option key={c.id} value={c.id}>{c.flag} {pickL(c.name)}</option>
               ))}
             </select>
           </div>
@@ -213,7 +213,7 @@ export default function Tracker() {
             >
               <option value="">{t('common.select')}</option>
               {visaTypeOptions.map((v) => (
-                <option key={v.id} value={v.id}>{v.name.zh}</option>
+                <option key={v.id} value={v.id}>{pickL(v.name)}</option>
               ))}
             </select>
           </div>
@@ -281,11 +281,16 @@ export default function Tracker() {
           </>
         }
       >
-        <p className="text-sm text-ink/60">
-          {deleteTarget
-            ? `${t('common.confirm')}：${countries.find((c) => c.id === deleteTarget.countryId)?.name.zh ?? ''}？`
-            : ''}
-        </p>
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold text-ink">{t('tracker.deleteConfirmTitle')}</p>
+          <p className="text-sm text-ink/60">
+            {deleteTarget
+              ? t('tracker.deleteConfirmDesc', {
+                  country: pickL(countries.find((c) => c.id === deleteTarget.countryId)?.name) ?? '',
+                })
+              : ''}
+          </p>
+        </div>
       </VModal>
     </div>
   )

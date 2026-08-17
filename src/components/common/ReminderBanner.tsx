@@ -1,5 +1,6 @@
 // components/common/ReminderBanner.tsx — 首页顶部签证提醒横幅（黄色，可逐条关闭）
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/i18n'
 import { checkReminders, loadSettings, sendNotification, isTauri, type Reminder } from '@/api/tauri'
 
 const KIND_ICON: Record<Reminder['kind'], string> = {
@@ -8,6 +9,7 @@ const KIND_ICON: Record<Reminder['kind'], string> = {
 }
 
 export function ReminderBanner() {
+  const { t } = useI18n()
   const [reminders, setReminders] = useState<Reminder[]>([])
 
   // 应用启动时检查提醒 + 按设置推送系统通知
@@ -28,7 +30,7 @@ export function ReminderBanner() {
         }
         if (pushSystem) {
           for (const r of list) {
-            await sendNotification('VisaGo 签证提醒', r.body).catch((e) =>
+            await sendNotification(t('reminder.systemTitle'), r.body).catch((e) =>
               console.warn('[ReminderBanner] 系统通知发送失败:', e),
             )
           }
@@ -54,13 +56,14 @@ export function ReminderBanner() {
           <div className="min-w-0 flex-1">
             <div className="font-semibold text-amber-800">{r.body}</div>
             <div className="text-xs text-amber-700/70">
-              {r.title} · {r.date} · {r.kind === 'submission' ? '递签提醒' : '出签提醒'}
+              {r.title} · {r.date} · {r.kind === 'submission' ? t('reminder.submissionKind') : t('reminder.issueKind')}
             </div>
           </div>
           <button
             onClick={() => setReminders((prev) => prev.filter((x) => x.id !== r.id || x.kind !== r.kind))}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-amber-700/60 transition-colors hover:bg-amber-100 hover:text-amber-800"
-            title="关闭提醒"
+            title={t('reminder.dismiss')}
+            aria-label={t('reminder.dismiss')}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M6 6l12 12M18 6L6 18" />

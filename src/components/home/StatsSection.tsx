@@ -14,6 +14,14 @@ interface Props {
   stats?: Partial<StatsData>
 }
 
+/** 费用分类标签本地化（真实数据来自 useRealStats） */
+const FEE_LABEL_KEYS: Record<string, string> = {
+  签证费: 'assistant.visaFee',
+  服务费: 'assistant.serviceFee',
+  快递费: 'encyclopedia.courierFee',
+  其他: 'common.other',
+}
+
 export function StatsSection({ stats }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
@@ -54,7 +62,7 @@ export function StatsSection({ stats }: Props) {
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#F7F8FA] px-3 py-1.5 text-xs font-medium text-ink/70"
               >
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
-                {c.label} {c.percent}%
+                {t(FEE_LABEL_KEYS[c.label] ?? 'common.other')} {c.percent}%
               </span>
             ))}
           </div>

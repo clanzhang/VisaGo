@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { VButton } from './VButton'
 import { CARD_FIELD_SPECS, ProfileCardDetailModal } from './ProfileCardDetailModal'
 import { useAppStore } from '@/stores/appStore'
+import { useI18n } from '@/i18n'
 import { createProfile, deleteProfile, setActiveProfileId, type ProfileCard } from '@/api/tauri'
 
 interface Props {
@@ -30,6 +31,7 @@ export function ProfileCardManager({
   disabled,
 }: Props) {
   const { toast } = useAppStore()
+  const { t } = useI18n()
   const [showNameDialog, setShowNameDialog] = useState(false)
   const [newCardName, setNewCardName] = useState('')
   const [detailCard, setDetailCard] = useState<ProfileCard | null>(null)
@@ -37,7 +39,7 @@ export function ProfileCardManager({
   // 新建资料卡
   async function handleCreateProfile() {
     if (disabled) {
-      toast('请使用 Tauri 桌面端管理资料卡', 'warning')
+      toast(t('scan.tauriOnly'), 'warning')
       return
     }
     try {
@@ -47,15 +49,15 @@ export function ProfileCardManager({
       await setActiveProfileId(card.id)
       setShowNameDialog(false)
       setNewCardName('')
-      toast(`已创建「${card.name}」`, 'success')
+      toast(t('profile.created', { name: card.name }), 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : '创建失败', 'error')
+      toast(e instanceof Error ? e.message : t('profile.createFailed'), 'error')
     }
   }
 
   // 删除资料卡
   async function handleDeleteCard(card: ProfileCard) {
-    if (!window.confirm(`确定删除「${card.name}」？此操作不可恢复。`)) return
+    if (!window.confirm(t('profile.deleteConfirm', { name: card.name }))) return
     try {
       await deleteProfile(card.id)
       onCardsChange(cards.filter((c) => c.id !== card.id))
@@ -63,9 +65,9 @@ export function ProfileCardManager({
         onActiveCardChange(null)
         await setActiveProfileId(null)
       }
-      toast('资料卡已删除', 'success')
+      toast(t('profile.deleted'), 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : '删除失败', 'error')
+      toast(e instanceof Error ? e.message : t('profile.deleteFailed'), 'error')
     }
   }
 
@@ -84,17 +86,17 @@ export function ProfileCardManager({
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <span className="h-5 w-5 icon-[mdi-light--credit-card]" />
               </span>
-              <h2 className="text-base font-bold text-ink">资料卡</h2>
+              <h2 className="text-base font-bold text-ink">{t('profile.title')}</h2>
             </div>
-            <p className="mt-1 text-xs text-ink/45">切换常用资料，点击卡片查看完整档案。</p>
+            <p className="mt-1 text-xs text-ink/60">{t('profile.subtitle')}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <div className="hidden rounded-full border border-ink/8 bg-white px-3 py-1.5 text-xs text-ink/55 sm:block">
-              {cards.length} 张卡 · 已填 {completedTotal} 项
+            <div className="hidden rounded-full border border-ink/8 bg-white px-3 py-1.5 text-xs text-ink/60 sm:block">
+              {t('profile.count', { count: cards.length, filled: completedTotal })}
             </div>
             <VButton size="sm" onClick={() => setShowNameDialog(true)}>
               <span className="h-4 w-4 icon-[mdi-light--plus]" />
-              新建资料卡
+              {t('profile.newCard')}
             </VButton>
           </div>
         </div>
@@ -104,20 +106,20 @@ export function ProfileCardManager({
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <span className="h-7 w-7 icon-[mdi-light--account]" />
             </div>
-            <div className="mt-3 text-sm font-semibold text-ink">还没有资料卡</div>
-            <div className="mt-1 text-xs text-ink/45">扫描识别后保存，或点击右上角新建一张资料卡。</div>
+            <div className="mt-3 text-sm font-semibold text-ink">{t('profile.emptyTitle')}</div>
+            <div className="mt-1 text-xs text-ink/60">{t('profile.emptyDesc')}</div>
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto px-5 py-3">
             {cards.map((card) => {
               const isActive = card.id === activeCardId
               const fields = (card.fields ?? {}) as Record<string, unknown>
-              const name = (card.fields?.['name'] as string) || card.name || '未命名'
+              const name = (card.fields?.['name'] as string) || card.name || t('profile.unnamed')
               const passport = String(fields['passport_number'] ?? fields['passportNumber'] ?? '')
               const tail = passport.length >= 4 ? passport.slice(-4) : passport
               const filled = CARD_FIELD_SPECS.filter((field) => String(fields[field.key] ?? '').trim()).length
               const progress = Math.round((filled / CARD_FIELD_SPECS.length) * 100)
-              const updated = card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : '暂无更新时间'
+              const updated = card.updated_at ? new Date(card.updated_at).toLocaleString().slice(0, 16) : t('profile.noUpdatedAt')
               return (
                 <div
                   key={card.id}
@@ -136,11 +138,11 @@ export function ProfileCardManager({
                       <div className="flex items-center gap-1.5">
                         <div className="truncate text-sm font-bold text-ink">{name}</div>
                         {isActive && (
-                          <span className="h-2 w-2 shrink-0 rounded-full bg-primary" title="当前使用" />
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-primary" title={t('profile.active')} />
                         )}
                       </div>
-                      <div className="mt-0.5 truncate text-[11px] text-ink/45">
-                        {tail ? `护照尾号 ${tail}` : '护照号待补充'}
+                      <div className="mt-0.5 truncate text-[11px] text-ink/60">
+                        {tail ? t('profile.passportTail', { tail }) : t('profile.passportMissing')}
                       </div>
                     </div>
                     <button
@@ -148,28 +150,28 @@ export function ProfileCardManager({
                         e.stopPropagation()
                         handleDeleteCard(card)
                       }}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink/25 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                      title="删除资料卡"
-                      aria-label="删除资料卡"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink/40 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                      title={t('profile.deleteCard')}
+                      aria-label={t('profile.deleteCard')}
                     >
                       <span className="h-3.5 w-3.5 icon-[mdi-light--delete]" />
                     </button>
                   </div>
 
                   <div className="mt-3">
-                    <div className="mb-1 flex items-center justify-between text-[10px] text-ink/40">
-                      <span>{isActive ? '当前使用' : `${progress}% 完成`}</span>
-                      <span>{filled}/{CARD_FIELD_SPECS.length}</span>
+                    <div className="mb-1 flex items-center justify-between text-[10px] text-ink/60">
+                      <span>{isActive ? t('profile.active') : t('profile.progress', { progress })}</span>
+                      <span>{t('profile.fillStatus', { filled, total: CARD_FIELD_SPECS.length })}</span>
                     </div>
                     <div className="h-1 overflow-hidden rounded-full bg-ink/8">
                       <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
                     </div>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-ink/35">
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-ink/55">
                     <span className="truncate">{updated}</span>
                     <span className="flex shrink-0 items-center gap-0.5 font-medium text-primary">
-                      详情
+                      {t('profile.details')}
                       <span className="h-3 w-3 icon-[mdi-light--arrow-right]" />
                     </span>
                   </div>
@@ -184,19 +186,19 @@ export function ProfileCardManager({
       {showNameDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4" onClick={() => setShowNameDialog(false)}>
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-ink">新建资料卡</h3>
-            <p className="mt-1 text-xs text-ink/50">给这张资料卡起个名字，例如「我的资料」「老婆的资料」「爸妈的资料」</p>
+            <h3 className="text-base font-bold text-ink">{t('profile.nameDialogTitle')}</h3>
+            <p className="mt-1 text-xs text-ink/60">{t('profile.nameDialogDesc')}</p>
             <input
               autoFocus
               value={newCardName}
               onChange={(e) => setNewCardName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreateProfile()}
-              placeholder="如：我的资料"
-              className="mt-4 w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
+              placeholder={t('profile.namePlaceholder')}
+              className="mt-4 w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none placeholder:text-ink/60 focus:border-primary/40"
             />
             <div className="mt-4 flex justify-end gap-2">
-              <VButton variant="secondary" size="sm" onClick={() => setShowNameDialog(false)}>取消</VButton>
-              <VButton size="sm" onClick={handleCreateProfile} disabled={!newCardName.trim()}>创建</VButton>
+              <VButton variant="secondary" size="sm" onClick={() => setShowNameDialog(false)}>{t('profile.cancel')}</VButton>
+              <VButton size="sm" onClick={handleCreateProfile} disabled={!newCardName.trim()}>{t('profile.create')}</VButton>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 // components/visa/ResultGenerator.tsx — 第三步：生成材料（选择申请目标 + 生成结果）
 import { VButton } from '@/components/common'
+import { useI18n } from '@/i18n'
 import type { TripData } from '@/types'
 
 interface Props {
@@ -19,9 +20,9 @@ interface Props {
 const COUNTRIES = ['日本', '韩国', '泰国', '申根', '美国', '英国', '澳大利亚']
 const VISA_TYPES = ['旅游签证', '商务签证', '探亲签证', '学生签证']
 const DOC_TYPES = [
-  { id: 'itinerary', label: '行程单' },
-  { id: 'employment', label: '在职证明' },
-  { id: 'cover', label: '解释信' },
+  { id: 'itinerary', labelKey: 'scan.docItinerary' },
+  { id: 'employment', labelKey: 'scan.docEmployment' },
+  { id: 'cover', labelKey: 'scan.docCover' },
 ] as const
 
 export function ResultGenerator({
@@ -37,13 +38,14 @@ export function ResultGenerator({
   onGenerate,
   onExport,
 }: Props) {
+  const { t } = useI18n()
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="rounded-2xl bg-white p-6 shadow-card">
-        <h2 className="mb-4 text-lg font-bold text-ink">选择申请目标</h2>
+        <h2 className="mb-4 text-lg font-bold text-ink">{t('scan.chooseTarget')}</h2>
         <div className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">国家</label>
+            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('scan.country')}</label>
             <select
               value={country}
               onChange={(e) => onCountryChange(e.target.value)}
@@ -55,7 +57,7 @@ export function ResultGenerator({
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">签证类型</label>
+            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('scan.visaType')}</label>
             <select
               value={visaType}
               onChange={(e) => onVisaTypeChange(e.target.value)}
@@ -67,7 +69,7 @@ export function ResultGenerator({
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-ink/60">生成文档类型</label>
+            <label className="mb-1.5 block text-sm font-medium text-ink/60">{t('scan.docType')}</label>
             <div className="grid grid-cols-3 gap-2">
               {DOC_TYPES.map((dt) => (
                 <button
@@ -77,7 +79,7 @@ export function ResultGenerator({
                     docType === dt.id ? 'border-primary bg-primary/5 text-primary' : 'border-ink/10 text-ink/55'
                   }`}
                 >
-                  {dt.label}
+                  {t(dt.labelKey)}
                 </button>
               ))}
             </div>
@@ -87,21 +89,21 @@ export function ResultGenerator({
           {docType === 'itinerary' && tripData && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
-                <span>🗺️</span> 已从行程文件提取数据
+                <span>🗺️</span> {t('scan.tripExtracted')}
               </div>
               <dl className="space-y-1 text-xs text-ink/70">
-                <div className="flex justify-between"><dt className="text-ink/50">目的地</dt><dd className="font-medium">{tripData.destination || country}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink/50">出发</dt><dd className="font-medium">{tripData.start_date || '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink/50">返回</dt><dd className="font-medium">{tripData.end_date || '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink/50">天数</dt><dd className="font-medium">{tripData.days ?? tripData.daily_plan?.length ?? '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink/50">城市</dt><dd className="font-medium">{(tripData.cities ?? []).join('、') || '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/60">{t('scan.tripDest')}</dt><dd className="font-medium">{tripData.destination || country}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/60">{t('scan.tripDepart')}</dt><dd className="font-medium">{tripData.start_date || '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/60">{t('scan.tripReturn')}</dt><dd className="font-medium">{tripData.end_date || '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/60">{t('scan.tripDays')}</dt><dd className="font-medium">{tripData.days ?? tripData.daily_plan?.length ?? '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-ink/60">{t('scan.tripCities')}</dt><dd className="font-medium">{(tripData.cities ?? []).join('、') || '—'}</dd></div>
               </dl>
               {tripData.daily_plan && tripData.daily_plan.length > 0 && (
                 <div className="mt-2 border-t border-primary/15 pt-2">
-                  <div className="mb-1 text-[11px] text-ink/50">每日安排</div>
+                  <div className="mb-1 text-[11px] text-ink/60">{t('scan.dailyPlan')}</div>
                   <div className="max-h-28 space-y-0.5 overflow-y-auto text-[11px] text-ink/70">
                     {tripData.daily_plan.map((d, i) => (
-                      <div key={i}>· 第{d.day ?? i + 1}天 {d.date ? `(${d.date})` : ''} {d.city || ''}：{d.activity || ''}</div>
+                      <div key={i}>· {t('scan.dayN', { n: d.day ?? i + 1 })} {d.date ? `(${d.date})` : ''} {d.city || ''}: {d.activity || ''}</div>
                     ))}
                   </div>
                 </div>
@@ -110,17 +112,17 @@ export function ResultGenerator({
           )}
 
           <VButton className="w-full" onClick={onGenerate} disabled={generating}>
-            {generating ? '生成中…' : '✨ AI 生成材料'}
+            {generating ? t('scan.generateText') : t('scan.generate')}
           </VButton>
         </div>
       </div>
 
       <div className="rounded-2xl bg-white p-6 shadow-card">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">生成结果</h2>
+          <h2 className="text-lg font-bold text-ink">{t('scan.result')}</h2>
           {generated && (
-            <VButton variant="secondary" size="sm" onClick={onExport}>
-              ⬇️ 导出 PDF
+            <VButton variant="secondary" size="sm" onClick={onExport} disabled={generating}>
+              {t('scan.exportPdf')}
             </VButton>
           )}
         </div>
@@ -129,8 +131,8 @@ export function ResultGenerator({
             {generated}
           </pre>
         ) : (
-          <div className="flex h-64 items-center justify-center rounded-xl bg-[#F9F9F6] text-sm text-ink/40">
-            点击「AI 生成材料」获取文档
+          <div className="flex h-64 items-center justify-center rounded-xl bg-[#F9F9F6] text-sm text-ink/60">
+            {t('scan.generateHint')}
           </div>
         )}
       </div>

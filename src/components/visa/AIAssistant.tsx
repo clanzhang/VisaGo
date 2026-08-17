@@ -14,7 +14,7 @@ interface Props {
 const QUICK_ACTIONS = ['quickMaterials', 'quickFee', 'quickTime', 'quickReject']
 
 export function AIAssistant({ open, onClose, country }: Props) {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -24,7 +24,7 @@ export function AIAssistant({ open, onClose, country }: Props) {
     if (open && messages.length === 0) {
       const c = country
       const greeting = c
-        ? t('ai.greeting', { c: c.name.zh })
+        ? t('ai.greeting', { c: pickL(c.name) })
         : `${t('ai.subtitle')} 👋`
       setMessages([{ role: 'assistant', content: greeting }])
     }
@@ -60,15 +60,15 @@ export function AIAssistant({ open, onClose, country }: Props) {
             <div>
               <div className="text-sm font-semibold">{t('ai.title')}</div>
               {country && (
-                <div className="text-xs text-ink/45">
-                  {country.flag} {country.name.zh}
+                <div className="text-xs text-ink/60">
+                  {country.flag} {pickL(country.name)}
                 </div>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-ink/40 hover:bg-ink/5 hover:text-ink"
+            className="rounded-lg p-1.5 text-ink/60 hover:bg-ink/5 hover:text-ink"
             aria-label={t('ai.close')}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -123,7 +123,7 @@ export function AIAssistant({ open, onClose, country }: Props) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && ask(input)}
               placeholder={t('ai.placeholder')}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink/35"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink/60"
             />
             <button
               onClick={() => ask(input)}

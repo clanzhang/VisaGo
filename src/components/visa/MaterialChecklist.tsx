@@ -2,6 +2,7 @@
 // 页面加载自动完成可自动化的 6 项，用户只需处理证件照 + 银行流水
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { VButton } from '@/components/common'
+import { useI18n } from '@/i18n'
 import { checkMaterials, materialProgress, type MaterialItem } from '@/lib/material-check'
 import { generateApplicationForm, generateEmploymentCertificate, generateItinerary } from '@/lib/doc-generator'
 import { checkPassportPhoto, PHOTO_CHECKS, type PhotoCheckResult } from '@/lib/photo-check'
@@ -57,6 +58,7 @@ function fieldsToProfile(fields: Record<string, unknown>): UserProfile {
 }
 
 export function MaterialChecklist({ countryName = '目标国家', tripDates, onAllReady }: Props) {
+  const { t } = useI18n()
   const [items, setItems] = useState<MaterialItem[]>([])
   const [photoResult, setPhotoResult] = useState<PhotoCheckResult | null>(null)
   const [bankResult, setBankResult] = useState<BankCheckResult | null>(null)
@@ -162,6 +164,22 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)))
   }
 
+  /** 本地化材料显示名 / 状态 / 提示（lib 里的中文数据不直接展示） */
+  const itemName = (item: MaterialItem) => t(`scan.materialName_${item.id}`)
+  const itemStatusLabel = (item: MaterialItem) => {
+    if (item.status === 'ready') return t('scan.materialStatus_ready')
+    if (item.status === 'auto-generate') return t('scan.materialStatus_auto')
+    if (item.status === 'need-photo') return t('scan.materialStatus_photo')
+    return t('scan.materialStatus_user')
+  }
+  const itemAction = (item: MaterialItem) => {
+    if (item.status === 'ready') return t('scan.materialReused')
+    if (item.id === 'employment' && item.status === 'auto-generate' && item.progress < 100) {
+      return t('scan.materialHint_employmentPartial')
+    }
+    return t(`scan.materialHint_${item.id}`)
+  }
+
   // 一键生成：申请表 + 在职证明 + 行程
   async function handleGenerateAll() {
     const profile = await loadProfile()
@@ -173,9 +191,9 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
         generateEmploymentCertificate(profile, dates),
         generateItinerary(countryName, dates),
       ])
-      updateItem('application', { status: 'auto-generate', progress: 100, label: '已生成', labelCls: 'bg-[#1460A4]/10 text-[#1460A4]' })
-      updateItem('employment', { status: 'auto-generate', progress: 100, label: '已生成', labelCls: 'bg-[#1460A4]/10 text-[#1460A4]' })
-      updateItem('itinerary', { status: 'auto-generate', progress: 100, label: '已生成', labelCls: 'bg-[#1460A4]/10 text-[#1460A4]' })
+      updateItem('application', { status: 'auto-generate', progress: 100 })
+      updateItem('employment', { status: 'auto-generate', progress: 100 })
+      updateItem('itinerary', { status: 'auto-generate', progress: 100 })
       // 导出第一份（申请表）作为示例
       await exportPdf(app.content, app.filename.replace('.pdf', '')).catch(() => {})
       void emp
@@ -201,9 +219,9 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
         const filePath = (file as unknown as { path?: string }).path ?? file.name
         localStorage.setItem('visago:photo', filePath)
         console.log('[MaterialChecklist] 证件照已保存:', filePath)
-        updateItem('photo', { status: 'ready', progress: 100, label: '已归档', labelCls: 'bg-success/10 text-success' })
+        updateItem('photo', { status: 'ready', progress: 100 })
       } else {
-        updateItem('photo', { status: 'need-photo', progress: 30, label: '不合规', labelCls: 'bg-red-500/10 text-red-600' })
+        updateItem('photo', { status: 'need-photo', progress: 30 })
       }
     }
     reader.readAsDataURL(file)
@@ -223,8 +241,6 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       updateItem('bank', {
         status: result.coversRequired && result.matchApplicant ? 'ready' : 'need-user',
         progress: result.matchApplicant ? 80 : 40,
-        label: result.coversRequired && result.matchApplicant ? '已归档' : '待上传',
-        labelCls: result.coversRequired && result.matchApplicant ? 'bg-success/10 text-success' : 'bg-amber-500/10 text-amber-600',
       })
     }
     reader.readAsDataURL(file)
@@ -234,7 +250,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
   async function handleOtherUpload(file: File, targetId: string) {
     const filePath = (file as unknown as { path?: string }).path
     if (!filePath) {
-      updateItem(targetId, { status: 'need-user', progress: 30, label: '待上传', labelCls: 'bg-amber-500/10 text-amber-600' })
+      updateItem(targetId, { status: 'need-user', progress: 30 })
       return
     }
     try {
@@ -243,18 +259,13 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       const got = res.category || ''
       // 类型不符 → 弹确认
       if (expected && got && !got.includes(expected) && !expected.includes(got)) {
-        const ok = window.confirm(`检测到这是「${got}」文件，确定要作为「${expected}」上传吗？`)
+        const ok = window.confirm(`${t('scan.confirmCategory', { got, expected })}`)
         if (!ok) return
       }
-      updateItem(targetId, {
-        status: 'ready',
-        progress: 100,
-        label: '已归档',
-        labelCls: 'bg-success/10 text-success',
-      })
+      updateItem(targetId, { status: 'ready', progress: 100 })
     } catch (e) {
       console.warn('[MaterialChecklist] 上传识别失败:', e)
-      updateItem(targetId, { status: 'need-user', progress: 30, label: '待上传', labelCls: 'bg-amber-500/10 text-amber-600' })
+      updateItem(targetId, { status: 'need-user', progress: 30 })
     }
   }
 
@@ -264,7 +275,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       return (
         <div className="flex shrink-0 items-center gap-2">
           <VButton size="sm" variant="secondary" onClick={() => exportPdf(`<pre>${item.name}</pre>`, item.name).catch(() => {})}>
-            预览
+            {t('scan.preview')}
           </VButton>
           {item.id === 'photo' || item.id === 'bank' || item.id === 'id' || item.id === 'passport' || item.id === 'family' ? (
             <VButton
@@ -275,11 +286,11 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
                 fileRef.current?.click()
               }}
             >
-              重新上传
+              {t('scan.reupload')}
             </VButton>
           ) : (
             <VButton size="sm" variant="secondary" onClick={handleGenerateAll} disabled={generating}>
-              重新生成
+              {t('scan.regenerate')}
             </VButton>
           )}
         </div>
@@ -287,7 +298,7 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
     }
     if (item.status === 'need-photo') {
       return (
-        <VButton size="sm" onClick={() => { setCurrentUploadTarget('photo'); fileRef.current?.click() }}>上传</VButton>
+        <VButton size="sm" onClick={() => { setCurrentUploadTarget('photo'); fileRef.current?.click() }}>{t('scan.upload')}</VButton>
       )
     }
     // need-user：根据材料类型设置上传目标
@@ -300,10 +311,12 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
           fileRef.current?.click()
         }}
       >
-        上传
+        {t('scan.upload')}
       </VButton>
     )
   }
+
+  const autoDoneCount = items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length
 
   return (
     <div>
@@ -319,14 +332,14 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       </div>
 
       {/* 自动推进提示 */}
-      <div className="mb-4 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-2.5 text-xs text-ink/60">
-        🔄 系统已自动完成资料库复用与可生成项（{items.filter((i) => i.status === 'ready' || i.status === 'auto-generate').length}/8），你只需处理需要手动操作的项
+      <div className="mb-4 rounded-xl border border-[#E0F7FA] bg-[#E0F7FA]/40 px-4 py-2.5 text-xs text-ink/70">
+        {t('scan.autoProgress', { done: autoDoneCount })}
       </div>
 
       {/* 一键生成 */}
       <div className="mb-5">
         <VButton onClick={handleGenerateAll} disabled={generating} className="w-full">
-          {generating ? '正在生成…' : '⚡ 一键生成（申请表 + 在职证明 + 行程单）'}
+          {generating ? t('scan.generating') : t('scan.oneClickGenerate')}
         </VButton>
       </div>
 
@@ -337,12 +350,16 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
             <span className="text-base">{item.id === 'photo' ? '📸' : item.id === 'bank' ? '🏦' : '📄'}</span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-ink">{item.name}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${item.labelCls}`}>
-                  {item.status === 'need-photo' || item.status === 'need-user' ? (item.status === 'need-photo' ? '📸 待拍照' : '📤 待上传') : item.label}
+                <span className="text-sm font-medium text-ink">{itemName(item)}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  item.status === 'ready' || item.status === 'auto-generate'
+                    ? 'bg-success/10 text-success'
+                    : 'bg-amber-500/10 text-amber-600'
+                }`}>
+                  {itemStatusLabel(item)}
                 </span>
               </div>
-              <div className="mt-1 text-xs text-ink/45">{item.action}</div>
+              <div className="mt-1 text-xs text-ink/60">{itemAction(item)}</div>
               {/* 进度 */}
               <div className="mt-1.5 h-1 w-32 overflow-hidden rounded-full bg-[#F3F4F6]">
                 <div
@@ -378,9 +395,9 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
         <div className={`mt-4 rounded-xl border px-4 py-3 ${photoResult.passed ? 'border-success/40 bg-success/5' : 'border-red-200 bg-red-50'}`}>
           <div className="flex items-center justify-between">
             <span className={`text-sm font-semibold ${photoResult.passed ? 'text-success' : 'text-red-600'}`}>
-              {photoResult.passed ? '✅ 证件照合格' : '❌ 证件照不合规'}
+              {photoResult.passed ? t('scan.photoPassed') : t('scan.photoFailed')}
             </span>
-            <span className="text-xs text-ink/45">评分 {photoResult.score}/100</span>
+            <span className="text-xs text-ink/60">{t('scan.photoScore', { score: photoResult.score })}</span>
           </div>
           {!photoResult.passed && (
             <ul className="mt-2 space-y-1 text-xs text-red-600/80">
@@ -389,10 +406,10 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
               ))}
             </ul>
           )}
-          {photoDataUrl && <img src={photoDataUrl} alt="证件照预览" className="mt-3 h-24 rounded-lg border border-ink/10" />}
+          {photoDataUrl && <img src={photoDataUrl} alt={t('scan.photoPreview')} className="mt-3 h-24 rounded-lg border border-ink/10" />}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {PHOTO_CHECKS.map((c) => (
-              <span key={c} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-ink/50">{c}</span>
+              <span key={c} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-ink/60">{c}</span>
             ))}
           </div>
         </div>
@@ -401,11 +418,11 @@ export function MaterialChecklist({ countryName = '目标国家', tripDates, onA
       {/* 银行流水检查结果 */}
       {bankResult && (
         <div className={`mt-4 rounded-xl border px-4 py-3 ${bankResult.matchApplicant && bankResult.coversRequired ? 'border-success/40 bg-success/5' : 'border-amber-200 bg-amber-50'}`}>
-          <div className="text-sm font-semibold text-ink">{bankResult.bank || '银行流水'}</div>
-          <div className="mt-1 space-y-0.5 text-xs text-ink/60">
-            <div>账户名：{bankResult.accountName || '—'}{bankResult.matchApplicant ? ' ✅' : ' ⚠️ 与申请人不符'}</div>
-            <div>覆盖时间：{bankResult.coversRequired ? '✅ 满足 6 个月' : '⚠️ 未满足'}</div>
-            <div>最终余额：¥{bankResult.balance.toLocaleString()}</div>
+          <div className="text-sm font-semibold text-ink">{bankResult.bank || t('scan.materialName_bank')}</div>
+          <div className="mt-1 space-y-0.5 text-xs text-ink/70">
+            <div>{t('scan.bankAccount')}：{bankResult.accountName || '—'}{bankResult.matchApplicant ? ' ✅' : ` ⚠️ ${t('scan.bankNotApplicant')}`}</div>
+            <div>{t('scan.bankCoveredLabel')}：{bankResult.coversRequired ? `✅ ${t('scan.bankCovered')}` : `⚠️ ${t('scan.bankNotCovered')}`}</div>
+            <div>{t('scan.bankBalance')}：¥{bankResult.balance.toLocaleString()}</div>
           </div>
           {bankResult.issues.length > 0 && (
             <div className="mt-1 text-xs text-amber-700">{bankResult.issues[0]}</div>

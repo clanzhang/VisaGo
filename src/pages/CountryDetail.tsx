@@ -1,7 +1,7 @@
 // pages/CountryDetail.tsx — 国家详情页（静态兜底 + Kimi AI 实时数据）
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useI18n } from '@/i18n'
+import { useI18n, regionLabelKey } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
 import { FeeCalculator, AIAssistant, RequirementList } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
@@ -13,7 +13,6 @@ const IDENTITY_KEYS = ['employed', 'student', 'retired', 'freelance'] as const
 
 /** 新西兰翻译提示条（全站唯一的醒目提示） */
 const NZ_TRANSLATION_BANNER = {
-  text: '新西兰签证要求所有非英文材料必须提供翻译件',
   bg: '#FFF3E0',
   border: '#F5A623',
 }
@@ -21,7 +20,7 @@ const NZ_TRANSLATION_BANNER = {
 export default function CountryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { t } = useI18n()
+  const { t, isZh, pickL } = useI18n()
   const country = countries.find((c) => c.id === id)
   const { data: aiData, loading: aiLoading, refresh: aiRefresh } = useCountryAIData(id)
 
@@ -71,12 +70,12 @@ export default function CountryDetail() {
           <span className="text-5xl">{country.flag}</span>
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
-              {country.name.zh}
+              {pickL(country.name)}
             </h1>
-            <p className="mt-1 text-sm text-ink/50">{country.name.en} · {country.region}</p>
+            <p className="mt-1 text-sm text-ink/60">{isZh ? country.name.en : ''}{isZh ? ' · ' : ''}{t(regionLabelKey(country.region))}</p>
           </div>
           <VBadge tone={difficultyTone} className="ml-2">
-            {t('encyclopedia.difficultyLabel')}: {DIFFICULTY_LABELS[country.difficulty].zh}
+            {t('encyclopedia.difficultyLabel')}: {pickL(DIFFICULTY_LABELS[country.difficulty])}
           </VBadge>
         </div>
       </div>
@@ -85,11 +84,11 @@ export default function CountryDetail() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
           <h3 className="mb-2 text-sm font-medium text-subtle">{t('encyclopedia.overview')}</h3>
-          <p className="text-sm leading-relaxed text-ink/70">{country.overview.zh}</p>
+          <p className="text-sm leading-relaxed text-ink/70">{pickL(country.overview)}</p>
         </div>
         <div className="anim-card rounded-2xl bg-white p-6 shadow-card" style={{ animationDelay: '60ms' }}>
           <h3 className="mb-2 text-sm font-medium text-subtle">{t('encyclopedia.visaFreePolicy')}</h3>
-          <p className="text-sm leading-relaxed text-ink/70">{country.visaFree.zh}</p>
+          <p className="text-sm leading-relaxed text-ink/70">{pickL(country.visaFree)}</p>
         </div>
       </div>
 
@@ -107,7 +106,7 @@ export default function CountryDetail() {
                   : 'border-ink/10 text-ink/60 hover:border-ink/25'
               }`}
             >
-              {v.name.zh}
+              {pickL(v.name)}
             </button>
           ))}
         </div>
@@ -131,9 +130,9 @@ export default function CountryDetail() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#121C19] text-xs font-bold text-[#39A2B8]">K</span>
-            <h3 className="text-sm font-semibold text-ink">Kimi AI 实时签证数据</h3>
+            <h3 className="text-sm font-semibold text-ink">{t('encyclopedia.aiLiveTitle')}</h3>
             {ai?.lastUpdated && (
-              <span className="text-xs text-ink/40">更新于 {ai.lastUpdated}</span>
+              <span className="text-xs text-ink/60">{t('encyclopedia.updatedAt', { date: ai.lastUpdated })}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -141,7 +140,7 @@ export default function CountryDetail() {
               <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
             )}
             <VButton variant="secondary" size="sm" onClick={() => aiRefresh()} disabled={aiLoading}>
-              刷新数据
+              {t('home.refresh')}
             </VButton>
           </div>
         </div>
@@ -159,13 +158,13 @@ export default function CountryDetail() {
         {aiLoading && !ai ? (
           <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/50">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
-            正在从 Kimi 获取 {country?.name.zh} 最新签证信息…
+            {t('encyclopedia.aiLoading', { country: country ? pickL(country.name) : '' })}
           </div>
         ) : aiVisaType ? (
           <div className="space-y-5">
             {/* 身份分层材料 */}
             <div>
-              <div className="mb-2 text-xs font-medium text-ink/45">按身份分层的材料清单</div>
+              <div className="mb-2 text-xs font-medium text-ink/60">{t('encyclopedia.identityMaterialsLabel')}</div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {IDENTITY_KEYS.map((key) => {
                   const list = aiVisaType.identityRequirements?.[key]
@@ -224,7 +223,7 @@ export default function CountryDetail() {
             {/* FAQ */}
             {ai?.faq && ai.faq.length > 0 && (
               <div>
-                <div className="mb-2 text-xs font-medium text-ink/45">AI 整理 FAQ</div>
+                <div className="mb-2 text-xs font-medium text-ink/60">{t('encyclopedia.aiFaq')}</div>
                 <div className="space-y-2">
                   {ai.faq.map((f, i) => (
                     <details key={i} className="group rounded-xl border border-ink/5 p-3">
@@ -293,16 +292,16 @@ export default function CountryDetail() {
                 requirements={visaType.requirements}
                 translationBanner={
                   country.id === 'new-zealand'
-                    ? NZ_TRANSLATION_BANNER
+                    ? { ...NZ_TRANSLATION_BANNER, text: t('encyclopedia.nzTranslationBanner') }
                     : null
                 }
               />
               {/* 引导到申请页 */}
               <div className="mt-6 flex items-center justify-between rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-5 py-4">
                 <div>
-                  <div className="text-sm font-bold text-ink">去申请签证</div>
+                  <div className="text-sm font-bold text-ink">{t('encyclopedia.goApply')}</div>
                   <div className="mt-0.5 text-xs text-ink/50">
-                    材料自动检测、一键生成与递交在「申请签证」页面完成
+                    {t('encyclopedia.viewMaterialsDesc')}
                   </div>
                 </div>
                 <VButton
@@ -313,16 +312,16 @@ export default function CountryDetail() {
                     })
                   }
                 >
-                  去申请签证 →
+                  {t('encyclopedia.goApplyCta')}
                 </VButton>
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-6 py-12 text-center">
               <span className="text-4xl">📋</span>
-              <h4 className="text-base font-bold text-ink">查看详细材料</h4>
-              <p className="max-w-md text-sm text-ink/50">
-                材料清单、自动检测、一键生成与递交均在「申请签证」页面完成，避免信息分散。
+              <h4 className="text-base font-bold text-ink">{t('encyclopedia.viewMaterialsTitle')}</h4>
+              <p className="max-w-md text-sm text-ink/60">
+                {t('encyclopedia.viewMaterialsDesc')}
               </p>
               <VButton
                 size="lg"
@@ -333,7 +332,7 @@ export default function CountryDetail() {
                   })
                 }
               >
-                去申请签证 →
+                {t('encyclopedia.goApplyCta')}
               </VButton>
             </div>
           )
@@ -362,15 +361,15 @@ export default function CountryDetail() {
               {matchedDistrict && (
                 <div className="mt-3 rounded-xl bg-[#E0F7FA] px-4 py-3 text-sm text-ink">
                   <span className="font-medium text-primary">{t('encyclopedia.currentDistrict')}：</span>
-                  {matchedDistrict.name.zh}
+                  {pickL(matchedDistrict.name)}
                 </div>
               )}
             </div>
             <div className="space-y-3">
               {visaType.consularDistricts.map((d, i) => (
                 <div key={i} className="rounded-xl border border-ink/5 p-4">
-                  <div className="text-sm font-semibold text-ink">{d.name.zh}</div>
-                  <div className="mt-1 text-xs text-ink/45">{t('encyclopedia.coverCities')}: {d.provinces.join('、')}</div>
+                  <div className="text-sm font-semibold text-ink">{pickL(d.name)}</div>
+                  <div className="mt-1 text-xs text-ink/60">{t('encyclopedia.coverCities')}: {d.provinces.join(', ')}</div>
                 </div>
               ))}
             </div>
@@ -383,10 +382,10 @@ export default function CountryDetail() {
               <details key={i} className="group rounded-xl border border-ink/5 p-4">
                 <summary className="cursor-pointer list-none text-sm font-medium text-ink">
                   <span className="mr-2 text-primary">Q.</span>
-                  {f.question.zh}
+                  {pickL(f.question)}
                   <span className="float-right text-ink/30 transition-transform group-open:rotate-45">+</span>
                 </summary>
-                <p className="mt-3 pl-6 text-sm leading-relaxed text-ink/60">{f.answer.zh}</p>
+                <p className="mt-3 pl-6 text-sm leading-relaxed text-ink/60">{pickL(f.answer)}</p>
               </details>
             ))}
             {visaType.rejectionReasons.length > 0 && (
@@ -398,7 +397,7 @@ export default function CountryDetail() {
                   {visaType.rejectionReasons.map((r, i) => (
                     <li key={i} className="flex items-start gap-2 text-[13px] text-ink/60">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-                      {r.zh}
+                      {pickL(r)}
                     </li>
                   ))}
                 </ul>
@@ -415,10 +414,10 @@ export default function CountryDetail() {
           <div className="space-y-3">
             {country.announcements.map((a, i) => (
               <div key={i} className="flex gap-3 rounded-xl border border-ink/5 p-4">
-                <span className="shrink-0 text-xs font-medium text-ink/35">{a.date}</span>
+                <span className="shrink-0 text-xs font-medium text-ink/55">{a.date}</span>
                 <div>
-                  <div className="text-sm font-semibold text-ink">{a.title.zh}</div>
-                  <p className="mt-0.5 text-[13px] text-ink/55">{a.content.zh}</p>
+                  <div className="text-sm font-semibold text-ink">{pickL(a.title)}</div>
+                  <p className="mt-0.5 text-[13px] text-ink/60">{pickL(a.content)}</p>
                 </div>
               </div>
             ))}

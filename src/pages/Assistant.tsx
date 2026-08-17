@@ -1,17 +1,31 @@
 // pages/Assistant.tsx — 签证申请助手（四步流程）
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useI18n } from '@/i18n'
+import { useI18n, regionLabelKey } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
 import { MaterialChecklist } from '@/components/visa'
 import { useVisaStore } from '@/stores/visaStore'
 import { useTrackerStore } from '@/stores/trackerStore'
+import { useAppStore } from '@/stores/appStore'
 import { listProfiles, getActiveProfileId, isTauri } from '@/api/tauri'
 import { countries, PROVINCES, OCCUPATIONS, DIFFICULTY_LABELS } from '@/data/countries'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
 import { getVisaOfficialFee, formatFee } from '@/data/visa-fees'
 import type { UserProfile } from '@/types'
 
+
+/** 签证类型筛选 tab 文案 key（tab 值为数据值） */
+function filterLabelKey(tab: string): string {
+  const map: Record<string, string> = {
+    '': 'assistant.filterAll',
+    互免签证: 'assistant.filterMutual',
+    单方面免签: 'assistant.filterUnilateral',
+    落地签: 'assistant.filterOnArrival',
+    电子签: 'assistant.filterEvisa',
+    需通行证: 'assistant.filterPermit',
+  }
+  return map[tab] ?? 'assistant.filterAll'
+}
 const STEPS = ['step1', 'step2', 'step3', 'step4']
 
 /** 把 Rust 资料卡 snake_case fields 转成前端 camelCase UserProfile */
@@ -35,7 +49,7 @@ function cardFieldsToProfile(fields: Record<string, unknown>): UserProfile {
 }
 
 export default function Assistant() {
-  const { t } = useI18n()
+  const { t, isZh, pickL } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
   const {
@@ -46,6 +60,7 @@ export default function Assistant() {
     savedProfile, saveProfile,
   } = useVisaStore()
   const { addApplication } = useTrackerStore()
+  const { toast } = useAppStore()
   const [search, setSearch] = useState('')
   const [added, setAdded] = useState(false)
   // 材料是否全部就绪（由 MaterialChecklist 上报）
@@ -117,7 +132,7 @@ export default function Assistant() {
   const visaTypeStats = useMemo(
     () => REGION_TABS.map((tab) => ({
       key: tab,
-      label: tab || '全部',
+      label: t(filterLabelKey(tab)),
       count: tab ? countries.filter((c) => c.visaType === tab).length : countries.length,
     })),
     [],
@@ -156,6 +171,7 @@ export default function Assistant() {
       notes: '',
     })
     setAdded(true)
+    toast(t('tracker.addedToast'), 'success')
     setTimeout(() => navigate('/tracker'), 1200)
   }
 
@@ -193,7 +209,7 @@ export default function Assistant() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-ink">{t('assistant.selectCountry')}</h2>
-                <p className="mt-1 text-sm text-ink/45">先按办理方式缩小范围，再从结果里选择目的地。</p>
+                <p className="mt-1 text-sm text-ink/60">{t('assistant.step1Hint')}</p>
               </div>
               <div className="relative w-full xl:max-w-md">
                 <span className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/35 icon-[mdi-light--magnify]" />
@@ -220,14 +236,14 @@ export default function Assistant() {
                   >
                     <div className="text-sm font-semibold">{tab.label}</div>
                     <div className={regionTab === tab.key ? 'text-xs text-white/70' : 'text-xs text-ink/35'}>
-                      {tab.count} 个目的地
+                      {t('assistant.destCount', { count: tab.count })}
                     </div>
                   </button>
                 ))}
               </div>
 
               <div className="rounded-xl border border-ink/6 bg-white px-4 py-3">
-                <div className="text-xs font-semibold text-ink/45">当前结果</div>
+                <div className="text-xs font-semibold text-ink/60">{t('assistant.currentResults')}</div>
                 <div className="mt-1 flex items-end justify-between">
                   <div className="font-display text-2xl font-bold text-ink">{filtered.length}</div>
                   <button
@@ -237,7 +253,7 @@ export default function Assistant() {
                     }}
                     className="text-xs font-medium text-primary hover:text-[#0e4a80]"
                   >
-                    重置筛选
+                    {t('assistant.resetFilter')}
                   </button>
                 </div>
               </div>
@@ -249,8 +265,8 @@ export default function Assistant() {
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-bold text-ink">常用目的地</div>
-                    <div className="text-xs text-ink/45">高频申请国家，点一下直接选中。</div>
+                    <div className="text-sm font-bold text-ink">{t('assistant.quickCountries')}</div>
+                    <div className="text-xs text-ink/60">{t('assistant.quickCountriesHint')}</div>
                   </div>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -266,8 +282,8 @@ export default function Assistant() {
                       >
                         <span className="text-2xl">{c.flag}</span>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-ink">{c.name.zh}</div>
-                          <div className="truncate text-[11px] text-ink/40">{c.visaType}</div>
+                          <div className="truncate text-sm font-semibold text-ink">{pickL(c.name)}</div>
+                          <div className="truncate text-[11px] text-ink/60">{t(filterLabelKey(c.visaType))}</div>
                         </div>
                       </button>
                     )
@@ -279,29 +295,29 @@ export default function Assistant() {
             <div>
               <div className="mb-3 flex items-end justify-between gap-3">
                 <div>
-                  <div className="text-sm font-bold text-ink">全部结果</div>
+                  <div className="text-sm font-bold text-ink">{t('assistant.allResults')}</div>
                   <div className="text-xs text-ink/45">
-                    {regionTab ? `已筛选：${regionTab}` : '按地区归类，减少连续扫描压力。'}
+                    {regionTab ? t('assistant.filteredBy', { filter: t(filterLabelKey(regionTab)) }) : t('assistant.groupHint')}
                   </div>
                 </div>
                 {country && (
                   <div className="hidden rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:block">
-                    已选 {country.flag} {country.name.zh}
+                    {t('assistant.selectedCountry', { flag: country.flag, name: pickL(country.name) })}
                   </div>
                 )}
               </div>
 
               {filtered.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-ink/12 bg-[#FBFCFD] px-4 py-10 text-center">
-                  <div className="text-sm font-semibold text-ink">没有找到匹配国家</div>
-                  <div className="mt-1 text-xs text-ink/45">试试换个关键词，或清空筛选后重新选择。</div>
+                  <div className="text-sm font-semibold text-ink">{t('assistant.noMatchTitle')}</div>
+                  <div className="mt-1 text-xs text-ink/60">{t('assistant.noMatchHint')}</div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {filteredByRegion.map(([region, list]) => (
                     <div key={region}>
-                      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink/45">
-                        <span>{region}</span>
+                      <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink/60">
+                        <span>{t(regionLabelKey(region)) || region}</span>
                         <span className="h-px flex-1 bg-ink/8" />
                         <span>{list.length}</span>
                       </div>
@@ -323,17 +339,17 @@ export default function Assistant() {
                               </span>
                               <div className="min-w-0 flex-1">
                                 <div className="flex min-w-0 items-center gap-2">
-                                  <div className="truncate text-sm font-semibold text-ink">{c.name.zh}</div>
+                                  <div className="truncate text-sm font-semibold text-ink">{pickL(c.name)}</div>
                                   {active && <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />}
                                 </div>
-                                <div className="truncate text-xs text-ink/40">{c.name.en}</div>
+                                {isZh && <div className="truncate text-xs text-ink/60">{c.name.en}</div>}
                               </div>
                               <div className="flex shrink-0 flex-col items-end gap-1">
-                                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-medium text-ink/55">
-                                  {c.visaType}
+                                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-medium text-ink/60">
+                                  {t(filterLabelKey(c.visaType))}
                                 </span>
                                 <VBadge tone={c.difficulty === 'easy' ? 'success' : c.difficulty === 'medium' ? 'warning' : 'danger'} className="px-2 py-0 text-[11px]">
-                                  {DIFFICULTY_LABELS[c.difficulty].zh}
+                                  {pickL(DIFFICULTY_LABELS[c.difficulty])}
                                 </VBadge>
                               </div>
                             </button>
@@ -359,7 +375,7 @@ export default function Assistant() {
       {step === 1 && country && (
         <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
           <h2 className="mb-5 text-lg font-bold text-ink">
-            {country.flag} {country.name.zh} — {t('assistant.selectVisaType')}
+            {country.flag} {pickL(country.name)} — {t('assistant.selectVisaType')}
           </h2>
           <div className="space-y-4">
             {country.visaTypes.map((v) => {
@@ -384,7 +400,7 @@ export default function Assistant() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-base font-semibold text-ink">{v.name.zh}</div>
+                      <div className="text-base font-semibold text-ink">{pickL(v.name)}</div>
                       <div className="mt-1 text-xs text-ink/45">
                         {t('assistant.duration')}: {v.duration} · {t('assistant.validity')}: {v.validity}
                       </div>
@@ -393,9 +409,9 @@ export default function Assistant() {
                       <div className="font-display text-lg font-bold text-primary">
                         {vOfficial
                           ? allFree
-                            ? '免费'
+                            ? t('assistant.free')
                             : showFrom
-                              ? `${firstPaid ? formatFee(firstPaid) : ''} 起`
+                              ? `${firstPaid ? formatFee(firstPaid) : ''} ${t('assistant.from')}`
                               : firstPaid
                                 ? formatFee(firstPaid)
                                 : `¥${total}`
@@ -443,30 +459,35 @@ export default function Assistant() {
           {activeCard ? (
             <div className="mb-5 flex items-center gap-3 rounded-xl border border-success/30 bg-success/5 px-4 py-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#39A2B8] to-[#1460A4] text-sm font-semibold text-white">
-                {(activeCard.name || '用').slice(0, 1)}
+                {(activeCard.name || '?').slice(0, 1)}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-ink">
-                  {activeCard.name || '未命名'} <span className="ml-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">✓ 已自动读取</span>
+                  {activeCard.name || t('assistant.unnamed')} <span className="ml-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">✓ {t('assistant.autoLoaded')}</span>
                 </div>
-                <div className="mt-0.5 truncate text-xs text-ink/50">
-                  护照 {activeCard.passportNumber || '—'} · 国籍 {activeCard.nationality || '—'} · 职业 {t(`documents.occupation${activeCard.occupation.charAt(0).toUpperCase() + activeCard.occupation.slice(1)}`)} · 户籍 {activeCard.homeProvince || '—'}
+                <div className="mt-0.5 truncate text-xs text-ink/60">
+                  {t('assistant.cardSummary', {
+                    passport: activeCard.passportNumber || '—',
+                    nationality: activeCard.nationality || '—',
+                    occupation: t(`documents.occupation${activeCard.occupation.charAt(0).toUpperCase() + activeCard.occupation.slice(1)}`),
+                    home: activeCard.homeProvince || '—',
+                  })}
                   {activeCardName && `（${activeCardName}）`}
                 </div>
               </div>
               <VButton variant="secondary" size="sm" onClick={() => navigate('/scan')}>
-                📁 管理资料卡
+                📁 {t('assistant.manageCards')}
               </VButton>
             </div>
           ) : (
             <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <span className="text-lg">📢</span>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-amber-700">请先去材料扫描录入信息</div>
-                <div className="mt-0.5 text-xs text-amber-600/70">扫描身份证、护照等材料会自动提取信息保存为资料卡，申请时自动填入</div>
+                <div className="text-sm font-semibold text-amber-700">{t('assistant.scanFirstTitle')}</div>
+                <div className="mt-0.5 text-xs text-amber-700">{t('assistant.scanFirstDesc')}</div>
               </div>
               <VButton size="sm" onClick={() => navigate('/scan')}>
-                📁 去扫描材料
+                📁 {t('assistant.goScan')}
               </VButton>
             </div>
           )}
@@ -493,7 +514,7 @@ export default function Assistant() {
               <input
                 value={profile?.nationality ?? ''}
                 onChange={(e) => setProfile({ ...profile, nationality: e.target.value })}
-                placeholder="中国"
+                placeholder={t('assistant.nationalityPlaceholder')}
                 className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm outline-none focus:border-primary/40"
               />
             </div>
@@ -565,7 +586,7 @@ export default function Assistant() {
         <div className="anim-card rounded-2xl bg-white p-6 shadow-card">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-lg font-bold text-ink">
-              {country.flag} {country.name.zh} · {visaType.name.zh}
+              {country.flag} {pickL(country.name)} · {pickL(visaType.name)}
             </h2>
             <div className="flex gap-2">
               <VButton variant="secondary" size="sm" onClick={reset}>
@@ -582,7 +603,7 @@ export default function Assistant() {
             <div className="mb-6 rounded-xl bg-[#E0F7FA] px-5 py-4">
               <div className="text-xs text-ink/50">{t('assistant.yourDistrict')}</div>
               <div className="mt-1 text-sm font-semibold text-primary">
-                {visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))?.name.zh || t('common.noData')}
+                {visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!)) ? pickL(visaType.consularDistricts.find((d) => d.provinces.includes(profile.homeProvince!))!.name) : t('common.noData')}
               </div>
             </div>
           )}
@@ -647,7 +668,7 @@ export default function Assistant() {
                         <div className="mt-3 flex justify-between border-t border-ink/10 pt-3">
                           <span className="text-sm font-medium">{t('assistant.total')}</span>
                           <span className="font-display text-lg font-bold text-primary">
-                            {firstPaidTier ? `${formatFee(firstPaidTier)} 起` : '免费'}
+                            {firstPaidTier ? `${formatFee(firstPaidTier)} ${t('assistant.from')}` : t('assistant.free')}
                           </span>
                         </div>
                         {(official.effectiveFrom || official.note || official.freeNote) && (
@@ -699,7 +720,7 @@ export default function Assistant() {
 
               <div className="rounded-xl bg-[#F9F9F6] p-5">
                 <h3 className="mb-2 text-sm font-semibold text-ink">{t('assistant.notes')}</h3>
-                <p className="text-sm leading-relaxed text-ink/60">{visaType.tips.zh}</p>
+                <p className="text-sm leading-relaxed text-ink/70">{pickL(visaType.tips)}</p>
               </div>
 
               <VButton
@@ -709,7 +730,7 @@ export default function Assistant() {
                 disabled={added || !materialsReady}
               >
                 {added ? '✓ ' : ''}
-                {!materialsReady ? '请先完成材料上传' : `+ ${t('assistant.trackApplication')}`}
+                {!materialsReady ? t('assistant.materialsNotReady') : `+ ${t('assistant.trackApplication')}`}
               </VButton>
             </div>
           </div>

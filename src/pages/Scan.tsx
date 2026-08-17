@@ -6,6 +6,7 @@ import { ScanEmptyState, ScannedFileList, ReviewForm, ResultGenerator, type Scan
 import { FIELD_SPECS } from '@/data/field-specs'
 import type { TripData } from '@/types'
 import { useAppStore } from '@/stores/appStore'
+import { useI18n } from '@/i18n'
 import {
   scanFiles,
   pickFiles,
@@ -26,6 +27,7 @@ import {
 type Step = 1 | 2 | 3
 
 export default function Scan() {
+  const { t } = useI18n()
   const { toast } = useAppStore()
   const [step, setStep] = useState<Step>(1)
   const [folder, setFolder] = useState('')
@@ -70,7 +72,7 @@ export default function Scan() {
   // 保存核对资料到当前活跃资料卡
   async function handleSaveToCard(cardName?: string) {
     if (!tauriEnv) {
-      toast('请使用 Tauri 桌面端保存', 'warning')
+      toast(t('scan.tauriOnly'), 'warning')
       return
     }
     try {
@@ -134,10 +136,10 @@ export default function Scan() {
       window.dispatchEvent(new CustomEvent('visago:profile-updated', { detail: { id } }))
       // 同步更新列表
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, fields, updated_at: new Date().toISOString() } : c)))
-      toast('已保存到资料卡', 'success')
+      toast(t('scan.savedToCard'), 'success')
     } catch (e) {
       console.error('[Scan] 保存资料卡失败:', e)
-      toast(e instanceof Error ? e.message : '保存失败', 'error')
+      toast(e instanceof Error ? e.message : t('scan.saveFailed'), 'error')
     }
   }
 
@@ -212,7 +214,7 @@ export default function Scan() {
   /** 弹系统文件选择器，选单个或多个文件后扫描 */
   async function handlePickFiles() {
     if (!tauriEnv) {
-      toast('请使用 Tauri 桌面端进行扫描', 'warning')
+      toast(t('scan.tauriScanOnly'), 'warning')
       return
     }
     setScanning(true)
@@ -229,7 +231,7 @@ export default function Scan() {
       applyScanResult(result)
     } catch (e) {
       console.error('[Scan] 扫描失败:', e)
-      toast(e instanceof Error ? e.message : `扫描失败: ${String(e)}`, 'error')
+      toast(e instanceof Error ? e.message : `${t('scan.scanFailed')}: ${String(e)}`, 'error')
     } finally {
       setScanning(false)
     }
@@ -255,24 +257,24 @@ export default function Scan() {
     if (!append) setFolder(result.folder)
 
     if (result.files.length === 0) {
-      if (!append) toast('未找到支持的材料文件（pdf/jpg/png/docx/doc）', 'warning')
+      if (!append) toast(t('scan.noFilesFound'), 'warning')
       return
     }
     setStep(2)
     if (append) {
-      toast(`追加 ${fresh.length} 个文件`, 'success')
+      toast(t('scan.filesAppended', { count: fresh.length }), 'success')
       if (fresh.length > 0) {
         void handleRecognizeAllFresh(fresh)
       }
     } else {
-      toast(`找到 ${fresh.length} 个文件`, 'success')
+      toast(t('scan.filesFound', { count: fresh.length }), 'success')
     }
   }
 
   /** 追加更多文件：重新弹选择器，新文件追加到列表并自动识别 */
   async function handleAddMore() {
     if (!tauriEnv) {
-      toast('请使用 Tauri 桌面端进行扫描', 'warning')
+      toast(t('scan.tauriScanOnly'), 'warning')
       return
     }
     setScanning(true)
@@ -288,7 +290,7 @@ export default function Scan() {
       applyScanResult(result, true)
     } catch (e) {
       console.error('[Scan] 追加失败:', e)
-      toast(e instanceof Error ? e.message : '追加扫描失败', 'error')
+      toast(e instanceof Error ? e.message : t('scan.scanFailed'), 'error')
     } finally {
       setScanning(false)
     }
@@ -321,7 +323,7 @@ export default function Scan() {
       setItems((prev) =>
         prev.map((x) =>
           x.path === item.path
-            ? { ...x, status: 'error', error: e instanceof Error ? `${e.name}: ${e.message}` : '识别失败' }
+            ? { ...x, status: 'error', error: e instanceof Error ? `${e.name}: ${e.message}` : t('scan.recognizeFailed') }
             : x,
         ),
       )
@@ -340,7 +342,7 @@ export default function Scan() {
       }
     }
     setRecognizingAll(false)
-    toast('识别完成', 'success')
+    toast(t('scan.recognizeDone'), 'success')
   }
 
   // 追加后自动识别一组新文件（串行，间隔 5 秒配合 Kimi 3 RPM 限额）
@@ -354,7 +356,7 @@ export default function Scan() {
       }
     }
     setRecognizingAll(false)
-    toast('追加文件识别完成', 'success')
+    toast(t('scan.appendRecognizeDone'), 'success')
   }
 
   // 从识别结果聚合字段到核对表单
@@ -443,7 +445,7 @@ export default function Scan() {
     } catch (e) {
       console.error('[Scan] 保存失败:', e)
       const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
-      toast(`保存失败: ${msg}`, 'error')
+      toast(`${t('scan.saveFailed')}: ${msg}`, 'error')
     }
   }
 
@@ -486,7 +488,7 @@ export default function Scan() {
       console.log('[Scan] 生成完成，长度:', content.length)
       setGenerated(content)
     } catch (e) {
-      toast(e instanceof Error ? e.message : '生成失败', 'error')
+      toast(e instanceof Error ? e.message : t('scan.generateFailed'), 'error')
     } finally {
       setGenerating(false)
     }
@@ -495,9 +497,9 @@ export default function Scan() {
   async function handleExport() {
     try {
       const path = await exportPdf(`<html><body><pre>${generated}</pre></body></html>`, `${country}-${docType}`)
-      toast(`已导出: ${path}`, 'success')
+      toast(t('scan.exportDone', { path }), 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : '导出失败', 'error')
+      toast(e instanceof Error ? e.message : t('scan.exportFailed'), 'error')
     }
   }
 
@@ -513,13 +515,13 @@ export default function Scan() {
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">材料扫描助手</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{t('scan.title')}</h1>
           <p className="mt-1 text-base font-medium text-subtle">
-            选文件夹 → 自动识别 → 核对信息 → 生成材料
+            {t('scan.subtitle')}
           </p>
         </div>
         {!tauriEnv && (
-          <VBadge tone="warning">当前为 Web 模式，需在 Tauri 桌面端使用完整功能</VBadge>
+          <VBadge tone="warning">{t('scan.webModeBadge')}</VBadge>
         )}
       </div>
 
@@ -535,13 +537,13 @@ export default function Scan() {
           setActiveCardId(card.id)
           void setActiveProfileId(card.id)
           setStep(1)
-          toast('请在第一步补充上传缺失材料', 'info')
+          toast(t('scan.supplementHint'), 'info')
         }}
       />
 
       {/* 步骤指示器 */}
       <StepIndicator
-        steps={['扫描', '核对', '出结果']}
+        steps={[t('scan.stepScan'), t('scan.stepReview'), t('scan.stepResult')]}
         current={step - 1}
         startAtOne
         hideLabelOnMobile={false}

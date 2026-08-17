@@ -1,6 +1,7 @@
 // components/visa/ScanEmptyState.tsx — 扫描第一步空状态引导卡片
 // 图标 + 标题 + 描述 + 选文件按钮 + Web 模式提示
 import { VButton } from '@/components/common'
+import { useI18n } from '@/i18n'
 
 interface Props {
   /** 是否正在扫描（按钮 loading 态） */
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function ScanEmptyState({ scanning, onPickFiles, isTauriEnv }: Props) {
+  const { t } = useI18n()
   return (
     <div className="flex flex-col items-center rounded-2xl bg-white p-16 text-center shadow-card">
       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#E0F7FA]">
@@ -21,17 +23,17 @@ export function ScanEmptyState({ scanning, onPickFiles, isTauriEnv }: Props) {
           <path d="M12 12.5V9m0 9v-1.5" strokeLinecap="round" />
         </svg>
       </div>
-      <h2 className="text-xl font-bold text-ink">扫描我的资料</h2>
-      <p className="mt-2 max-w-md text-sm text-ink/55">
-        选择包含签证材料的文件夹，或直接选择单个/多个材料文件（PDF / JPG / PNG / DOCX）
+      <h2 className="text-xl font-bold text-ink">{t('scan.emptyTitle')}</h2>
+      <p className="mt-2 max-w-md text-sm text-ink/60">
+        {t('scan.emptyDesc')}
       </p>
       <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
         <VButton size="lg" variant="secondary" onClick={onPickFiles} disabled={scanning}>
-          {scanning ? '打开选择器…' : '📄 选文件扫描'}
+          {scanning ? t('scan.openingPicker') : t('scan.pickFiles')}
         </VButton>
       </div>
       {!isTauriEnv && (
-        <p className="mt-4 text-xs text-warning">桌面端才能弹出系统选择器，Web 模式仅演示</p>
+        <p className="mt-4 text-xs text-warning">{t('scan.webHint')}</p>
       )}
     </div>
   )

@@ -7,8 +7,10 @@ import { ReminderBanner } from '@/components/common/ReminderBanner'
 import { useHomeAIData } from '@/hooks/useAIData'
 import { useRealStats } from '@/hooks/useRealStats'
 import { useAppStore } from '@/stores/appStore'
+import { useI18n } from '@/i18n'
 
 export default function Home() {
+  const { t } = useI18n()
   const { data, loading, refreshing, refresh } = useHomeAIData()
   // 统计模块从真实申请记录计算（费用 + 进度），AI 数据仅用于 destinations 和 hero
   const realStats = useRealStats()
@@ -22,11 +24,12 @@ export default function Home() {
           onClick={() => {
             if (loading || refreshing) return
             refresh()
-            toast('已触发数据刷新', 'info')
+            toast(t('home.refreshDone'), 'info')
           }}
           disabled={loading || refreshing}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-ink/40 shadow-card transition-all duration-150 hover:text-[#1460A4] hover:shadow-card-lg disabled:opacity-60"
-          title="刷新数据"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-ink/60 shadow-card transition-all duration-150 hover:text-[#1460A4] hover:shadow-card-lg disabled:opacity-60"
+          title={t('home.refresh')}
+          aria-label={t('home.refresh')}
         >
           <svg
             width="15"

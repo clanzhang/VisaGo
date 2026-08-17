@@ -7,7 +7,7 @@ import { countries } from '@/data/countries'
 import type { Country } from '@/types'
 
 export function Header() {
-  const { t } = useI18n()
+  const { t, pickL } = useI18n()
   const navigate = useNavigate()
   const { applications } = useTrackerStore()
   const [query, setQuery] = useState('')
@@ -24,9 +24,9 @@ export function Header() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-6">
-        <div>
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-            {t('home.greeting', { name: '用户' })}
+            {t('home.greetingAnonymous')}
           </h1>
           <p className="mt-1 text-base font-medium text-subtle">
             {t('home.greetingSub', { count: inProgress })}
@@ -36,7 +36,7 @@ export function Header() {
         {/* 搜索框 */}
         <div className="relative w-full max-w-xl">
           <i
-            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9CA3AF] transition-colors duration-150 hover:text-[#6B7280] icon-[mdi-light--magnify]"
+            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6B7280] transition-colors duration-150 icon-[mdi-light--magnify]"
           />
           <input
             value={query}
@@ -47,12 +47,13 @@ export function Header() {
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             onFocus={() => setOpen(true)}
             placeholder={t('home.searchPlaceholder')}
-            className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-7 pr-4 text-sm outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#1460A4]"
+            aria-label={t('home.searchAria')}
+            className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-7 pr-4 text-sm outline-none transition-colors placeholder:text-ink/60 focus:border-[#1460A4]"
           />
           {open && query && (
             <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-ink/5 bg-white shadow-card-lg">
               {results.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-ink/40">{t('common.noData')}</div>
+                <div className="px-4 py-3 text-sm text-ink/60">{t('home.searchNoResults')}</div>
               ) : (
                 results.map((c) => (
                   <button
@@ -65,9 +66,8 @@ export function Header() {
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[#F9F9F6]"
                   >
                     <span className="text-lg">{c.flag}</span>
-                    <span className="font-medium">{c.name.zh}</span>
-                    <span className="text-xs text-ink/40">{c.name.en}</span>
-                    <span className="ml-auto rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/50">
+                    <span className="font-medium">{pickL(c.name)}</span>
+                    <span className="ml-auto rounded-full bg-ink/5 px-2 py-0.5 text-xs text-ink/60">
                       {c.visaTypes.length} {t('encyclopedia.visaTypes')}
                     </span>
                   </button>
