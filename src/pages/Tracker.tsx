@@ -28,6 +28,12 @@ const NEXT_STATUS: Record<ApplicationStatus, ApplicationStatus | null> = {
   rejected: null,
 }
 
+/** 费用显示：CNY 用 ¥，其他币种带代码 */
+function formatFeeInline(fee: { amount: number; currency: string }): string {
+  if (fee.currency === 'CNY') return `¥${fee.amount}`
+  return `${fee.amount} ${fee.currency}`
+}
+
 export default function Tracker() {
   const { t, pickL } = useI18n()
   const navigate = useNavigate()
@@ -427,13 +433,16 @@ export default function Tracker() {
             >
               <option value="">{t('common.select')}</option>
               {visaTypeOptions.map((v) => (
-                <option key={v.id} value={v.id}>{pickL(v.name)}</option>
+                <option key={v.id} value={v.id}>
+                  {pickL(v.name)} · {v.processingDays.min}-{v.processingDays.max} {t('tracker.days')} · {formatFeeInline(v.fee)}
+                </option>
               ))}
             </select>
             {countryId && (
               <p className="mt-1 text-xs text-ink/50">
                 {t('tracker.visaTypeInfo', {
                   days: `${selectedVisaType?.processingDays.min ?? '?'}-${selectedVisaType?.processingDays.max ?? '?'}`,
+                  fee: selectedVisaType ? formatFeeInline(selectedVisaType.fee) : '',
                 })}
               </p>
             )}

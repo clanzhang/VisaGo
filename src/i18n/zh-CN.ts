@@ -262,7 +262,7 @@ export default {
     editStatusNote: '修改状态会追加一条进度记录',
     requiredMark: '必填',
     optionalMark: '选填',
-    visaTypeInfo: '办理周期 {days} 天，留空日期时按此自动推算',
+    visaTypeInfo: '办理周期 {days} 天 · 签证费 {fee}，留空日期时按此自动推算',
     confirmDiscardTitle: '放弃未保存的修改？',
     confirmDiscardDesc: '离开后当前填写的内容将丢失。',
     keepEditing: '继续编辑',

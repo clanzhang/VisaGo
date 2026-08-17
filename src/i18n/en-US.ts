@@ -262,7 +262,7 @@ export default {
     editStatusNote: 'Changing the status appends a progress record',
     requiredMark: 'Required',
     optionalMark: 'Optional',
-    visaTypeInfo: 'Processing time {days} days — used for auto-calculation when dates are empty',
+    visaTypeInfo: 'Processing time {days} days · Visa fee {fee} — used for auto-calculation when dates are empty',
     confirmDiscardTitle: 'Discard unsaved changes?',
     confirmDiscardDesc: 'Your current input will be lost if you leave.',
     keepEditing: 'Keep editing',
