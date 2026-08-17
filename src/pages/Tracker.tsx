@@ -1,7 +1,8 @@
 // pages/Tracker.tsx — 进度追踪
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
-import { VButton, VBadge, VModal } from '@/components/common'
+import { VButton, VBadge, VModal, EmptyState } from '@/components/common'
 import { Timeline } from '@/components/visa'
 import { useTrackerStore } from '@/stores/trackerStore'
 import { countries } from '@/data/countries'
@@ -28,6 +29,7 @@ const NEXT_STATUS: Record<ApplicationStatus, ApplicationStatus | null> = {
 
 export default function Tracker() {
   const { t, pickL } = useI18n()
+  const navigate = useNavigate()
   const { applications, addApplication, updateApplication, removeApplication, addTimelineNode } = useTrackerStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<VisaApplication | null>(null)
@@ -90,22 +92,41 @@ export default function Tracker() {
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{t('tracker.title')}</h1>
           <p className="mt-1 text-base font-medium text-subtle">{t('tracker.subtitle')}</p>
         </div>
-        <VButton onClick={openCreate}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          {t('tracker.newApplication')}
-        </VButton>
+        {applications.length > 0 && (
+          <VButton onClick={openCreate}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            {t('tracker.newApplication')}
+          </VButton>
+        )}
       </div>
 
       {applications.length === 0 ? (
-        <div className="flex flex-col items-center rounded-2xl bg-white p-16 text-center shadow-card">
-          <div className="mb-4 text-5xl">🗂️</div>
-          <p className="text-sm text-ink/60">{t('tracker.noApplications')}</p>
-          <VButton className="mt-6" onClick={openCreate}>
-            {t('tracker.newApplication')}
-          </VButton>
-        </div>
+        <EmptyState
+          centered
+          icon={
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1460A4" strokeWidth="1.6">
+              <path d="M12 21a9 9 0 100-18 9 9 0 000 18z" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          }
+          title={t('tracker.emptyTitle')}
+          desc={t('tracker.emptyDesc')}
+          actions={
+            <>
+              <VButton onClick={openCreate}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                {t('tracker.newApplication')}
+              </VButton>
+              <VButton variant="secondary" onClick={() => navigate('/encyclopedia')}>
+                {t('tracker.emptyBrowse')}
+              </VButton>
+            </>
+          }
+        />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {applications.map((app, idx) => {
