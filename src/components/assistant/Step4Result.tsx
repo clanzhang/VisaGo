@@ -120,7 +120,7 @@ export function Step4Result({
         </div>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* 左栏：材料（整页滚动，无内层滚动容器） */}
         <div className="min-w-0">
           <h3 className="mb-3 text-sm font-semibold text-ink">{t('assistant.materials')}</h3>
@@ -144,7 +144,7 @@ export function Step4Result({
         </div>
 
         {/* 右栏：sticky 摘要/行动区（窄屏堆叠到材料区下方） */}
-        <div className="space-y-4 lg:sticky lg:top-16">
+        <div className="space-y-4 xl:sticky xl:top-16">
           {/* 完成度 */}
           <div className="rounded-xl border border-ink/5 p-5">
             <div className="mb-2 flex items-baseline justify-between">
