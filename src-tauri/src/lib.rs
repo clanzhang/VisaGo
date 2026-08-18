@@ -27,7 +27,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
-        // macOS 应用菜单：visago → 偏好设置... ⌘,
+        // macOS 应用菜单：VisaGo（偏好设置... ⌘,）+ 标准 Edit 菜单（剪贴板快捷键）+ Window 菜单
+        // 关键：macOS 上 ⌘C/⌘V/⌘X/⌘A/⌘Z 由原生 Edit 菜单的 PredefinedMenuItem 派发，
+        // 缺失 Edit 菜单会导致 WebView 收不到任何剪贴板快捷键（全应用无法粘贴/复制）。
+        // SubmenuBuilder 的 undo/redo/cut/copy/paste/select_all/minimize 等便捷方法
+        // 在 tauri 2.11 中由 shared_menu_builder! 宏生成，内部映射到 muda::PredefinedMenuItem，
+        // 绑定 macOS 标准 responder action，无需手写 accelerator 与事件处理。
         .setup(|app| {
             let settings = MenuItemBuilder::with_id("open-preferences", "偏好设置...")
                 .accelerator("CmdOrCtrl+,")
@@ -37,8 +42,24 @@ pub fn run() {
                 .separator()
                 .quit()
                 .build()?;
+            // 标准 Edit 菜单：撤销/重做/剪切/复制/粘贴/全选 —— 恢复剪贴板快捷键
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+            // Window 菜单：最小化/缩放/全屏，保证 ⌘M / ⌘W 等窗口快捷键正常
+            let window_menu = SubmenuBuilder::new(app, "Window")
+                .minimize()
+                .maximize()
+                .fullscreen()
+                .build()?;
             let menu = MenuBuilder::new(app)
-                .items(&[&app_menu])
+                .items(&[&app_menu, &edit_menu, &window_menu])
                 .build()?;
             app.set_menu(menu)?;
             Ok(())
