@@ -2,10 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
-import { readFileSync } from 'node:fs'
-
-// 版本号单一来源：package.json
-const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version: string }
+import { appVersionPlugin } from './vite-plugins/app-version'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -15,10 +12,9 @@ export default defineConfig(({ mode }) => {
   const kimiBase = env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1'
 
   return {
-    define: {
-      __APP_VERSION__: JSON.stringify(pkg.version),
-    },
-    plugins: [react(), tailwindcss()],
+    // 版本号不再用 define 固化（define 在 dev server 启动时缓存，改版本号需重启）；
+    // 改由 appVersionPlugin 在每次 transform 时读 package.json，dev 下刷新即生效。
+    plugins: [appVersionPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
