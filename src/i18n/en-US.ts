@@ -71,12 +71,7 @@ export default {
     emptyStatsTitle: 'No visa applications yet',
     emptyStatsDesc: 'Start your first application from "Apply for Visa" — fees and progress will be summarized here automatically.',
     emptyStatsCta: 'Start your first application',
-    aiKeyInvalidTitle: 'Invalid or missing Kimi API Key',
-    aiKeyInvalidDesc: 'Cannot reach the AI service. Check your API key in Settings.',
-    aiOfflineTitle: 'Showing local reference data',
-    aiOfflineDesc: 'The AI service is temporarily unavailable, so some content may not be up to date. Retry, or check your API key in Settings.',
-    aiRetry: 'Retry',
-    aiGoSettings: 'Go to Settings',
+    localDataHint: 'Showing local reference data — AI service unavailable',
   },
   assistant: {
     title: 'Visa Assistant',

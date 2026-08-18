@@ -6,7 +6,6 @@ import { VButton, VBadge } from '@/components/common'
 import { FeeCalculator, AIAssistant, RequirementList } from '@/components/visa'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
 import { useCountryAIData } from '@/hooks/useAIData'
-import { useAppStore } from '@/stores/appStore'
 import { ProvincePicker } from '@/components/visa'
 import { KIND_KEYS, DISTRICT_NO_NEED_KEYS, districtNoNeedType, joinProvinces } from '@/utils/districts'
 import type { AiCountryData } from '@/types/ai'
@@ -24,7 +23,6 @@ export default function CountryDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t, isZh, pickL } = useI18n()
-  const { openSettings } = useAppStore()
   const country = countries.find((c) => c.id === id)
   const { data: aiData, loading: aiLoading, error: aiError, refresh: aiRefresh } = useCountryAIData(id)
 
@@ -139,44 +137,18 @@ export default function CountryDetail() {
             {aiLoading && (
               <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" />
             )}
+            {aiError && !aiLoading && (
+              <span
+                className="inline-flex h-2.5 w-2.5 rounded-full bg-ink/20"
+                title={t('home.localDataHint')}
+                aria-label={t('home.localDataHint')}
+              />
+            )}
             <VButton variant="secondary" size="sm" onClick={() => aiRefresh()} disabled={aiLoading}>
               {t('home.refresh')}
             </VButton>
           </div>
         </div>
-
-        {/* AI 降级提示（克制式）：AI 数据不可用时保留静态数据，但明确告知用户；区分 Key 问题与临时故障 */}
-        {aiError && !aiLoading && (
-          <div
-            role="status"
-            className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-amber-800">
-                {aiError.kind === 'invalid_key' ? t('home.aiKeyInvalidTitle') : t('home.aiOfflineTitle')}
-              </div>
-              <div className="mt-0.5 text-xs leading-relaxed text-amber-700">
-                {aiError.kind === 'invalid_key' ? t('home.aiKeyInvalidDesc') : t('home.aiOfflineDesc')}
-              </div>
-            </div>
-            {aiError.kind === 'invalid_key' ? (
-              <button
-                onClick={() => openSettings('ai')}
-                className="shrink-0 rounded-full bg-amber-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-900"
-              >
-                {t('home.aiGoSettings')}
-              </button>
-            ) : (
-              <button
-                onClick={() => aiRefresh()}
-                disabled={aiLoading}
-                className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-60"
-              >
-                {t('home.aiRetry')}
-              </button>
-            )}
-          </div>
-        )}
 
         {aiLoading && !ai ? (
           <div className="flex items-center gap-3 rounded-xl bg-[#F9F9F6] px-4 py-6 text-sm text-ink/60">

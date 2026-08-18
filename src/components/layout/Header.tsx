@@ -12,9 +12,11 @@ interface Props {
   onRefresh?: () => void
   /** 是否正在加载/刷新（图标旋转 + 禁用） */
   refreshing?: boolean
+  /** 数据来源为本地兜底时传入：在刷新按钮旁显示极轻量指示（小圆点 + tooltip），AI 正常时不传 */
+  localDataHint?: boolean
 }
 
-export function Header({ onRefresh, refreshing = false }: Props) {
+export function Header({ onRefresh, refreshing = false, localDataHint = false }: Props) {
   const { t, pickL } = useI18n()
   const navigate = useNavigate()
   const { applications } = useTrackerStore()
@@ -131,6 +133,13 @@ export function Header({ onRefresh, refreshing = false }: Props) {
           )}
         </div>
 
+        {localDataHint && (
+          <span
+            className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-ink/20"
+            title={t('home.localDataHint')}
+            aria-label={t('home.localDataHint')}
+          />
+        )}
         {onRefresh && (
           <button
             onClick={onRefresh}

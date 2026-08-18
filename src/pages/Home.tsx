@@ -14,7 +14,7 @@ export default function Home() {
   const { data, loading, refreshing, error, refresh } = useHomeAIData()
   // 统计模块从真实申请记录计算（费用 + 进度），AI 数据仅用于 destinations 和 hero
   const realStats = useRealStats()
-  const { toast, openSettings } = useAppStore()
+  const { toast } = useAppStore()
 
   return (
     <div className="flex flex-col gap-8">
@@ -26,46 +26,11 @@ export default function Home() {
           toast(t('home.refreshDone'), 'info')
         }}
         refreshing={loading || refreshing}
+        localDataHint={!!error && !loading && !refreshing}
       />
 
       {/* 顶部提醒横幅（今天有递签/出签安排的申请） */}
       <ReminderBanner />
-
-      {/* AI 降级提示：区分 Key 问题（引导去设置）与临时故障（引导重试） */}
-      {error && !loading && !refreshing && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
-        >
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-amber-800">
-              {error.kind === 'invalid_key' ? t('home.aiKeyInvalidTitle') : t('home.aiOfflineTitle')}
-            </div>
-            <div className="mt-0.5 text-xs leading-relaxed text-amber-700">
-              {error.kind === 'invalid_key' ? t('home.aiKeyInvalidDesc') : t('home.aiOfflineDesc')}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {error.kind === 'invalid_key' ? (
-              // Key 问题是根因：「去设置」才是正解，设为高权重
-              <button
-                onClick={() => openSettings('ai')}
-                className="rounded-full bg-amber-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-900"
-              >
-                {t('home.aiGoSettings')}
-              </button>
-            ) : (
-              <button
-                onClick={refresh}
-                disabled={refreshing}
-                className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-60"
-              >
-                {t('home.aiRetry')}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {loading ? <HomeSkeleton /> : (
         <>
