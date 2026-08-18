@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,13 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.1.0 (当前版本)
+### v0.1.1 (当前版本)
+
+- 🐛 修复桌面端 AI 数据静默降级：`ai_chat` IPC 返回形状与前端断言不一致，导致首页始终显示本地兜底数据、黄色降级横幅无法消除
+- 🐛 IPC 边界增加运行时校验（形状异常不再伪装成「服务不可用」），AI 错误区分 Key 无效 / 限流 / 网络 / 形状四类
+- 🐛 修复 macOS 全应用无法粘贴（⌘V/⌘C/⌘X/⌘A/⌘Z 失效）：补齐标准 Edit/Window 菜单
+
+### v0.1.0
 
 - ✅ 新增「设置 → AI 模型」分区：配置 Kimi API Key（掩码显示、替换/清除、测试连接），支持环境变量 / 用户设置 / .env 三来源取 Key
 - ✅ 新增澳门到签证百科与申请签证（需通行证类型），首页热门目的地同步上线

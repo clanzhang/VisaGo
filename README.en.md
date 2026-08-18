@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.1.1-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,13 @@ visago/
 
 ## 📦 Changelog
 
-### v0.1.0 (Current)
+### v0.1.1 (Current)
+
+- 🐛 Fixed desktop AI data silently falling back to local data: ai_chat IPC response shape mismatched the frontend assertion, keeping the home page on fallback content with a persistent degraded banner
+- 🐛 Added runtime validation at the IPC boundary (shape errors no longer masquerade as "service unavailable"); AI errors now distinguish invalid key / rate limit / network / shape
+- 🐛 Fixed macOS clipboard shortcuts across the app (⌘V/⌘C/⌘X/⌘A/⌘Z): restored the standard Edit/Window menus
+
+### v0.1.0
 
 - ✅ New "Settings → AI Model" section: configure Kimi API Key (masked display, replace/clear, test connection); key resolved from env / user settings / .env
 - ✅ Added Macau to encyclopedia & assistant (travel permit type); home featured destinations updated
