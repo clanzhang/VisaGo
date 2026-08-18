@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.11-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,15 @@ visago/
 
 ## 📦 Changelog
 
-### v0.0.11 (Current)
+### v0.1.0 (Current)
+
+- ✅ New "Settings → AI Model" section: configure Kimi API Key (masked display, replace/clear, test connection); key resolved from env / user settings / .env
+- ✅ Added Macau to encyclopedia & assistant (travel permit type); home featured destinations updated
+- ✅ Settings entry unified to ⌘, / profile card; modal trimmed to Notifications / AI / About
+- ✅ Tracker: first-added-application guide to enable submission/decision reminders
+- ✅ Scan: post-save result state (which card / fields written / missing required) + cross-person data isolation
+
+### v0.0.11
 
 - ✅ Home stats computed from real application records (fees + progress)
 - ✅ Added Hong Kong & Taiwan to encyclopedia and assistant (travel permit type)

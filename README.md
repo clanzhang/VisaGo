@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.0.11-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,15 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.0.11 (当前版本)
+### v0.1.0 (当前版本)
+
+- ✅ 新增「设置 → AI 模型」分区：配置 Kimi API Key（掩码显示、替换/清除、测试连接），支持环境变量 / 用户设置 / .env 三来源取 Key
+- ✅ 新增澳门到签证百科与申请签证（需通行证类型），首页热门目的地同步上线
+- ✅ 设置入口统一为 ⌘, / 用户卡片，弹窗精简为 通知 / AI / 关于 三栏
+- ✅ 进度追踪首次添加申请后引导开启递签/出签提醒
+- ✅ 材料扫描保存后结果态（存到哪张卡/写入字段/缺失必填）+ 跨人数据串档防护
+
+### v0.0.11
 
 - ✅ 首页统计模块改为从真实申请记录计算（费用 + 进度）
 - ✅ 新增香港、台湾到签证百科与申请签证（需通行证类型）
