@@ -37,7 +37,7 @@ function formatFeeInline(fee: { amount: number; currency: string }): string {
 export default function Tracker() {
   const { t, pickL } = useI18n()
   const navigate = useNavigate()
-  const { toast } = useAppStore()
+  const { toast, openSettings } = useAppStore()
   const { applications, addApplication, updateApplication, removeApplication, addTimelineNode } = useTrackerStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<VisaApplication | null>(null)
@@ -183,6 +183,13 @@ export default function Tracker() {
     } else {
       const created = addApplication({ countryId, visaTypeId, status, notes, submissionDate, expectedIssueDate })
       toast(t('tracker.savedToast'), 'success')
+      // 首次添加后的提醒引导：入口藏进 ⌘, 后，给一次场景内触点让用户发现递签/出签提醒
+      if (applications.length === 0) {
+        toast(t('tracker.notifyGuide'), 'info', {
+          label: t('tracker.notifyGuideAction'),
+          onClick: openSettings,
+        })
+      }
       // 新建卡片短暂高亮（2s 后清除）
       setHighlightId(created.id)
       if (highlightTimer.current) clearTimeout(highlightTimer.current)

@@ -10,10 +10,17 @@ import {
 } from 'react'
 import type { Language } from '@/i18n'
 
+export interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 export interface ToastItem {
   id: number
   message: string
   type: 'success' | 'error' | 'info' | 'warning'
+  /** 可选动作按钮（如「去设置开启提醒」） */
+  action?: ToastAction
 }
 
 interface AppStoreValue {
@@ -24,7 +31,7 @@ interface AppStoreValue {
   settingsOpen: boolean
   setLanguage: (lang: Language) => void
   toggleTheme: () => void
-  toast: (message: string, type?: ToastItem['type']) => void
+  toast: (message: string, type?: ToastItem['type'], action?: ToastAction) => void
   dismissToast: (id: number) => void
   openSettings: () => void
   closeSettings: () => void
@@ -51,9 +58,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toast = useCallback(
-    (message: string, type: ToastItem['type'] = 'info') => {
+    (message: string, type: ToastItem['type'] = 'info', action?: ToastAction) => {
       const id = ++toastId.current
-      setToasts((prev) => [...prev, { id, message, type }].slice(-3)) // 最多同时 3 条，不遮挡
+      setToasts((prev) => [...prev, { id, message, type, action }].slice(-3)) // 最多同时 3 条，不遮挡
       setTimeout(() => dismissToast(id), 4000) // 停留 4s，足够读完
     },
     [dismissToast],

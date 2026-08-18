@@ -227,6 +227,8 @@ export default {
     markRejected: '标记拒签',
     savedToast: '申请已保存',
     deletedToast: '申请已删除',
+    notifyGuide: '可开启递签/出签系统提醒，不错过重要时间点',
+    notifyGuideAction: '去设置开启',
     rejectedToast: '已标记为拒签',
     degradedTitle: '这条申请数据异常',
     degradedDesc: '找不到对应的国家或签证类型，可能是旧版本数据。可以编辑修正，或删除这条记录。',

@@ -227,6 +227,8 @@ export default {
     markRejected: 'Mark Rejected',
     savedToast: 'Application saved',
     deletedToast: 'Application deleted',
+    notifyGuide: 'Enable submission/issue reminders so you never miss a key date',
+    notifyGuideAction: 'Open Settings',
     rejectedToast: 'Marked as rejected',
     degradedTitle: 'This application has invalid data',
     degradedDesc: 'The referenced country or visa type no longer exists — possibly legacy data. You can edit it to fix, or delete the record.',

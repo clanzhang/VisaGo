@@ -26,6 +26,17 @@ export function VToast() {
         >
           <span className="h-2 w-2 shrink-0 rounded-full bg-current" />
           <span className="min-w-0 flex-1 text-sm">{item.message}</span>
+          {item.action && (
+            <button
+              onClick={() => {
+                item.action?.onClick()
+                dismissToast(item.id)
+              }}
+              className="shrink-0 rounded-full border border-current px-2.5 py-1 text-xs font-medium text-current transition-colors hover:bg-current/10"
+            >
+              {item.action.label}
+            </button>
+          )}
           <button
             onClick={() => dismissToast(item.id)}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-current opacity-60 transition-opacity hover:opacity-100"
