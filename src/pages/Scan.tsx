@@ -86,6 +86,8 @@ export default function Scan() {
   const [profileBaseline, setProfileBaseline] = useState<Record<string, string>>({})
   // P1-7：每个字段的来源文件（key → 文件名）
   const [profileSource, setProfileSource] = useState<Record<string, string>>({})
+  // P1-7b：字段冲突（同一字段多份文件值不一致，key → {prev,next,prevFile,nextFile}）
+  const [fieldConflicts, setFieldConflicts] = useState<Record<string, { prev: string; next: string; prevFile: string; nextFile: string }>>({})
   // P0-1：occupation 无法映射到枚举时的建议值（更像职位）
   const [occupationSuggestion, setOccupationSuggestion] = useState<string | null>(null)
   // P2-21：行程数据的来源文件
@@ -130,11 +132,11 @@ export default function Scan() {
     })()
   }, [tauriEnv])
 
-  // 保存核对资料到当前活跃资料卡（返回是否成功，供表单显示保存态）
-  async function handleSaveToCard(cardName?: string): Promise<boolean> {
+  // 保存核对资料到当前活跃资料卡（返回保存结果，供表单展示结果态）
+  async function handleSaveToCard(cardName?: string): Promise<{ ok: boolean; cardName?: string; cardId?: string; fieldCount?: number; missing?: string[] }> {
     if (!tauriEnv) {
       toast(t('scan.tauriOnly'), 'warning')
-      return false
+      return { ok: false }
     }
     try {
       // 若没有活跃卡，自动新建一张
@@ -150,7 +152,7 @@ export default function Scan() {
       }
       // 更新卡片字段（snake_case，与 Rust UserProfile 一致）
       const target = cardsNow.find((c) => c.id === id)
-      if (!target) return false
+      if (!target) return { ok: false }
       // 规范化字段：确保 key 统一为英文 snake_case（中文 key / 别名 → 英文）
       const fields: Record<string, unknown> = {}
       const normMap: Record<string, string> = {
@@ -197,12 +199,16 @@ export default function Scan() {
       window.dispatchEvent(new CustomEvent('visago:profile-updated', { detail: { id } }))
       // 同步更新列表
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, fields, updated_at: new Date().toISOString() } : c)))
-      toast(t('scan.savedToCard'), 'success')
-      return true
+      // 保存结果：卡名 + id + 写入字段数 + 缺失必填（供结果态卡片展示，不再只有转瞬即逝的 toast）
+      const fieldCount = Object.values(fields).filter(
+        (v) => Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).trim() !== '',
+      ).length
+      const missing = FIELD_SPECS.filter((f) => f.required && !profile[f.key]).map((f) => f.key)
+      return { ok: true, cardName: target.name || String(fields['name'] ?? ''), cardId: id, fieldCount, missing }
     } catch (e) {
       console.error('[Scan] 保存资料卡失败:', e)
       toast(e instanceof Error ? e.message : t('scan.saveFailed'), 'error')
-      return false
+      return { ok: false }
     }
   }
 
@@ -556,6 +562,8 @@ export default function Scan() {
     let tripSrc: string | null = null
     // P1-7：记录每个字段首次被填充时来自哪个文件（不改变聚合规则）
     const source: Record<string, string> = {}
+    // P1-7b：字段冲突（同一字段多份文件值不一致）
+    const conflicts: Record<string, { prev: string; next: string; prevFile: string; nextFile: string }> = {}
     for (const item of items) {
       if (item.status !== 'done') continue
       const fields = (item.fields ?? {}) as Record<string, unknown>
@@ -577,16 +585,26 @@ export default function Scan() {
         }
       }
       for (const k of fieldKeys) {
-        // 已填过则跳过（后续文件不覆盖）
-        if (merged[k]) continue
         const v = normalized[k]
         if (v === null || v === undefined) continue
         const clean = String(v).trim()
-        if (clean && clean !== 'null' && clean !== '暂无' && !merged[k]) {
-          merged[k] = clean
-          source[k] = item.name
+        if (!clean || clean === 'null' || clean === '暂无') continue
+        if (merged[k]) {
+          // 同一字段多份文件值不一致 → 记录冲突，提示用户而不是静默取第一个
+          if (merged[k] !== clean) {
+            conflicts[k] = { prev: merged[k], next: clean, prevFile: source[k], nextFile: item.name }
+          }
+          continue
         }
+        merged[k] = clean
+        source[k] = item.name
       }
+    }
+
+    // 冲突字段：合并进 profile 时保留首个来源，但把冲突信息传给核对表单提示
+    setFieldConflicts(conflicts)
+    if (Object.keys(conflicts).length > 0) {
+      console.warn('[Scan] 多文件字段冲突:', conflicts)
     }
 
     // P0-1：occupation 归一化为枚举；无法映射时不静默丢弃，提示并建议填入职位
@@ -628,14 +646,30 @@ export default function Scan() {
     setStep(3)
   }
 
-  async function handleSaveProfile(): Promise<boolean> {
+  async function handleSaveProfile(): Promise<{ ok: boolean; cardName?: string; cardId?: string; fieldCount?: number; missing?: string[] }> {
     console.log('[Scan] handleSaveProfile 被调用，profile=', profile)
-    const ok = await handleSaveToCard()
-    if (ok) {
+    const result = await handleSaveToCard()
+    if (result.ok) {
       // P1-10：保存成功后更新脏状态基准
       setProfileBaseline({ ...profile })
     }
-    return ok
+    return result
+  }
+
+  /** 扫描下一份：清空当前批次数据，回到第一步（防跨人数据串档） */
+  function handleScanNext() {
+    setItems([])
+    setProfile({})
+    setProfileBaseline({})
+    setProfileSource({})
+    setFieldConflicts({})
+    setTripData(null)
+    setTripSource(null)
+    setGenerated('')
+    setExportResult(null)
+    setOccupationSuggestion(null)
+    setStep(1)
+    toast(t('scan.scanNextHint'), 'info')
   }
 
   // ===== 第四步：生成 =====
@@ -770,7 +804,25 @@ export default function Scan() {
         cards={cards}
         activeCardId={activeCardId}
         onCardsChange={setCards}
-        onActiveCardChange={setActiveCardId}
+        onActiveCardChange={(id) => {
+          // 切换活跃资料卡 = 换处理对象：清空当前批次数据，防跨人串档
+          if (id !== activeCardId) {
+            setItems([])
+            setProfile({})
+            setProfileBaseline({})
+            setProfileSource({})
+            setFieldConflicts({})
+            setTripData(null)
+            setTripSource(null)
+            setGenerated('')
+            setExportResult(null)
+            setOccupationSuggestion(null)
+            if (itemsRef.current.length > 0 || Object.keys(profile).length > 0) {
+              toast(t('scan.switchCardCleared'), 'info')
+            }
+          }
+          setActiveCardId(id)
+        }}
         disabled={!tauriEnv}
         collapsed={step === 2}
         onSupplement={(card) => {
@@ -814,12 +866,15 @@ export default function Scan() {
           profile={profile}
           baseline={profileBaseline}
           source={profileSource}
+          fieldConflicts={fieldConflicts}
           occupationSuggestion={occupationSuggestion}
           missingFields={missingFields}
           items={items}
+          tauriEnv={tauriEnv}
           onSave={handleSaveProfile}
           onBack={() => setStep(2)}
           onContinue={() => setStep(4)}
+          onScanNext={handleScanNext}
           onFieldChange={(key, value) => setProfile((prev) => ({ ...prev, [key]: value }))}
         />
       )}

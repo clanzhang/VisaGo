@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { VButton, VModal } from '@/components/common'
 import { FIELD_SPECS, type FieldSpec } from '@/data/field-specs'
+import { useAppStore } from '@/stores/appStore'
 import { useI18n } from '@/i18n'
 import type { ScannedFileItem } from './ScannedFileList'
 
@@ -28,21 +29,45 @@ const FIELD_LABEL_EN: Record<string, string> = {
 /** 高风险字段：需要用户逐项确认（其余字段编辑即视为已确认） */
 const HIGH_RISK_KEYS = ['name', 'passport_number', 'id_number', 'birth_date', 'salary']
 
+/** 保存结果（供结果态卡片展示） */
+export interface SaveResult {
+  ok: boolean
+  cardName?: string
+  cardId?: string
+  fieldCount?: number
+  /** 缺失的必填字段 key 列表 */
+  missing?: string[]
+}
+
+/** 字段冲突（同一字段多份文件值不一致） */
+export interface FieldConflict {
+  prev: string
+  next: string
+  prevFile: string
+  nextFile: string
+}
+
 interface Props {
   profile: Record<string, string>
   /** 进入核对时的聚合快照（脏状态基准） */
   baseline: Record<string, string>
   /** 每字段来源文件（key → 文件名） */
   source: Record<string, string>
+  /** 字段冲突（key → 冲突详情） */
+  fieldConflicts: Record<string, FieldConflict>
   /** occupation 无法映射到枚举时的建议值（更像职位） */
   occupationSuggestion: string | null
   missingFields: FieldSpec[]
   /** 已扫描文件（查看原始识别用） */
   items: ScannedFileItem[]
-  onSave: () => Promise<boolean>
+  /** 是否 Tauri 桌面端（Web 模式下保存按钮禁用） */
+  tauriEnv: boolean
+  onSave: () => Promise<SaveResult>
   onBack: () => void
   /** 保存成功后进入下一步（P2-14：核对 → 生成） */
   onContinue: () => void
+  /** 扫描下一份：清空本批数据回第一步 */
+  onScanNext: () => void
   onFieldChange: (key: string, value: string) => void
 }
 
@@ -76,13 +101,16 @@ function formatNum(n: number): string {
   return n.toLocaleString('zh-CN')
 }
 
-export function ReviewForm({ profile, baseline, source, occupationSuggestion, missingFields, items, onSave, onBack, onContinue, onFieldChange }: Props) {
-  const { t, pickL } = useI18n()
+export function ReviewForm({ profile, baseline, source, fieldConflicts, occupationSuggestion, missingFields, items, tauriEnv, onSave, onBack, onContinue, onScanNext, onFieldChange }: Props) {
+  const { t, isZh, pickL } = useI18n()
+  const { toast } = useAppStore()
   // P1-6：已确认的高风险字段
   const [confirmedKeys, setConfirmedKeys] = useState<Set<string>>(() => new Set())
   // P1-10：保存状态与脏状态
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // 保存结果（不自动消失的结果态卡片）
+  const [saveResult, setSaveResult] = useState<SaveResult | null>(null)
   const [dirtyConfirmOpen, setDirtyConfirmOpen] = useState(false)
   // P1-12：职业细节（company/position/salary）折叠
   const [occupationDetailsOpen, setOccupationDetailsOpen] = useState(false)
@@ -136,15 +164,35 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
     if (saving) return
     setSaving(true)
     try {
-      const ok = await onSave()
-      if (ok) {
+      const result = await onSave()
+      if (result.ok) {
         setSaved(true)
-        // P2-14：保存成功 → 进入生成材料步骤
-        onContinue()
+        setSaveResult(result)
+        const missingCount = result.missing?.length ?? 0
+        if (missingCount > 0) {
+          // 不完整保存：明确标为草稿并说明缺几项，不给无差别成功提示
+          toast(t('scan.savedAsDraft', { n: missingCount }), 'warning')
+        } else {
+          toast(t('scan.savedToCard'), 'success')
+        }
       }
     } finally {
       setSaving(false)
     }
+  }
+
+  /** 继续补充材料：回文件列表（保留 items，可追加扫描） */
+  function handleSupplement() {
+    setSaved(false)
+    setSaveResult(null)
+    onBack()
+  }
+
+  /** 扫描下一份：清空本批数据回第一步 */
+  function handleScanNextClick() {
+    setSaved(false)
+    setSaveResult(null)
+    onScanNext()
   }
 
   function handleBack() {
@@ -404,6 +452,72 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
           </div>
         )}
 
+        {/* 多文件字段冲突提示（不静默取第一个） */}
+        {Object.keys(fieldConflicts).length > 0 && (
+          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-orange-800">
+              <span className="h-4 w-4 icon-[mdi-light--alert]" aria-hidden="true" />
+              {t('scan.conflictTitle', { n: Object.keys(fieldConflicts).length })}
+            </div>
+            <p className="mt-1 text-xs text-orange-700">{t('scan.conflictDesc')}</p>
+            <ul className="mt-2 space-y-1">
+              {Object.entries(fieldConflicts).map(([key, c]) => (
+                <li key={key} className="text-xs text-orange-800">
+                  {t('scan.conflictDetail', {
+                    label: FIELD_SPECS.find((f) => f.key === key)?.label ?? key,
+                    prev: c.prev,
+                    next: c.next,
+                    prevFile: c.prevFile,
+                    nextFile: c.nextFile,
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 保存成功结果态（不自动消失）：存到哪张卡 / 写入几项 / 缺哪几项必填 */}
+        {saveResult && (
+          <div
+            className={`mb-4 rounded-xl border px-4 py-4 ${(saveResult.missing?.length ?? 0) > 0 ? 'border-amber-200 bg-amber-50' : 'border-success/30 bg-success/5'}`}
+            role="status"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`h-4 w-4 shrink-0 ${(saveResult.missing?.length ?? 0) > 0 ? 'text-amber-600' : 'text-success'} icon-[mdi-light--check-circle]`} aria-hidden="true" />
+              <span className="text-sm font-semibold text-ink">
+                {(saveResult.missing?.length ?? 0) > 0 ? t('scan.savedAsDraftTitle') : t('scan.savedOkTitle')}
+              </span>
+            </div>
+            <div className="mt-2 space-y-1 text-sm text-ink/70">
+              <p>
+                {t('scan.savedToCardName', { name: saveResult.cardName || t('profile.unnamed') })}
+                {saveResult.cardId && <span className="ml-1 text-xs text-ink/40">({saveResult.cardId})</span>}
+              </p>
+              <p>{t('scan.savedFieldCount', { n: saveResult.fieldCount ?? 0 })}</p>
+              {(saveResult.missing?.length ?? 0) > 0 && (
+                <p className="text-amber-800">
+                  {t('scan.savedMissingList', {
+                    names: (saveResult.missing ?? [])
+                      .map((k) => FIELD_SPECS.find((f) => f.key === k)?.label ?? k)
+                      .join(isZh ? '、' : ', '),
+                  })}
+                </p>
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <VButton size="sm" onClick={onContinue}>
+                {t('scan.resultGoGenerate')}
+              </VButton>
+              <VButton size="sm" variant="secondary" onClick={handleSupplement}>
+                {t('scan.resultSupplement')}
+              </VButton>
+              <VButton size="sm" variant="ghost" className="text-ink/60 hover:text-ink" onClick={handleScanNextClick}>
+                {t('scan.resultScanNext')}
+              </VButton>
+            </div>
+          </div>
+        )}
+
         {/* P1-12：语义分组（fieldset/legend）—— 身份证件置顶 */}
         <fieldset className="mb-6 border-0 p-0">
           <legend className="mb-3 px-0 text-sm font-semibold text-ink">{t('scan.groupIdentity')}</legend>
@@ -456,12 +570,20 @@ export function ReviewForm({ profile, baseline, source, occupationSuggestion, mi
               t('scan.reviewConfirmed', { n: confirmedCount, m: HIGH_RISK_KEYS.length })
             )}
           </span>
-          <div className="flex shrink-0 gap-3">
+          <div className="flex shrink-0 items-center gap-3">
+            {!tauriEnv && <span className="text-xs text-ink/50">{t('scan.webSaveDisabled')}</span>}
             <VButton type="button" variant="secondary" size="lg" onClick={handleBack}>
               {t('scan.backToList')}
             </VButton>
-            <VButton type="button" size="lg" onClick={handleSave} disabled={saving}>
-              {saving ? t('scan.saving') : `💾 ${t('scan.saveAndContinue')}`}
+            <VButton type="button" size="lg" onClick={handleSave} disabled={saving || !tauriEnv}>
+              {saving ? (
+                t('scan.saving')
+              ) : (
+                <>
+                  <span className="h-4 w-4 icon-[mdi-light--content-save]" aria-hidden="true" />
+                  {t('scan.saveAndContinue')}
+                </>
+              )}
             </VButton>
           </div>
         </div>
