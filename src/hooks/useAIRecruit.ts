@@ -33,6 +33,8 @@ export function useAIRecruit() {
       return await kimiJson<RecommendResult>(ASSISTANT_RECOMMEND_PROMPT, prompt, {
         temperature: 0.3,
         maxTokens: 8000,
+        // 8000 token 输出在 8k 模型上（输入+输出）必然超限 → 显式用 32k 模型
+        model: 'moonshot-v1-32k',
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : '推荐生成失败，请重试')

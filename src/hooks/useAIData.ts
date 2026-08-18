@@ -90,6 +90,9 @@ export function useHomeAIData() {
       const result = await kimiJson<HomeAIData>(HOME_DATA_PROMPT, '请整理上述 6 个国家的签证概览数据。', {
         temperature: 0.2,
         maxTokens: 6000,
+        // 大输出场景：6 国概览 6000 token，默认 8k 模型总上下文（输入+输出）贴近上限，
+        // 显式用 32k 模型避免被拒绝（与 Scan 生成材料同一做法）
+        model: 'moonshot-v1-32k',
       })
       // 目的地卡片费用以官方数据为准（id 对应），避免 AI 生成过时金额
       const aiDests = result.destinations?.length ? result.destinations : fallbackDestinations
@@ -169,7 +172,13 @@ export function useCountryAIData(countryId: string | undefined) {
       const result = await kimiJson<unknown>(
         VISA_DATA_PROMPT,
         `请整理 ${countryId} 的完整签证信息，输出 JSON。`,
-        { temperature: 0.2, maxTokens: 12000 },
+        {
+          temperature: 0.2,
+          maxTokens: 12000,
+          // 完整签证信息 12000 token 远超 8k 上下文 → 必须显式用 32k 模型，
+          // 否则 Kimi 直接拒绝请求（max_tokens 超出模型上下文上限）
+          model: 'moonshot-v1-32k',
+        },
       )
       writeCache(key, result)
       setData(result)
