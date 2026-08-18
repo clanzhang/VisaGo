@@ -50,6 +50,7 @@ pub struct RecognizeResult {
 /// IPC: ai_chat — 调用 Kimi 对话（Key 在 Rust 端）
 #[tauri::command]
 pub(crate) async fn ai_chat(
+    app: tauri::AppHandle,
     messages: Vec<ChatMessageDto>,
     options: Option<ChatOptionsDto>,
 ) -> Result<AiChatResponse, String> {
@@ -67,6 +68,7 @@ pub(crate) async fn ai_chat(
     let opts = options.unwrap_or_default();
     println!("=== ai_chat model: {:?}, max_tokens: {:?} ===", opts.model, opts.max_tokens);
     let result = kimi::chat(
+        &app,
         msgs,
         kimi::ChatOptions {
             model: opts.model,
@@ -85,7 +87,7 @@ pub(crate) async fn ai_chat(
 
 /// IPC: kimi_chat — 简单版 Kimi 对话（单 prompt，可指定模型）
 #[tauri::command]
-pub(crate) async fn kimi_chat(prompt: String, model: Option<String>) -> Result<String, String> {
+pub(crate) async fn kimi_chat(app: tauri::AppHandle, prompt: String, model: Option<String>) -> Result<String, String> {
     println!("=== 生成请求 prompt 长度: {} 字符 ===", prompt.chars().count());
     println!("=== 生成请求 model: {:?} ===", model);
     println!("=== 生成请求 prompt 前500字: {} ===", prompt.chars().take(500).collect::<String>());
@@ -94,6 +96,7 @@ pub(crate) async fn kimi_chat(prompt: String, model: Option<String>) -> Result<S
         content: prompt,
     }];
     let result = kimi::chat(
+        &app,
         messages,
         kimi::ChatOptions {
             model,
@@ -112,6 +115,41 @@ pub(crate) async fn kimi_chat(prompt: String, model: Option<String>) -> Result<S
         }
     }
     result
+}
+
+/// IPC: test_kimi_connection — 最小成本测试连接（Key 在 Rust 端，不返回任何 Key 信息）
+/// 返回结构化结果：ok / invalid_key（401/403）/ rate_limited（429）/ network
+#[tauri::command]
+pub(crate) async fn test_kimi_connection(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let messages = vec![kimi::ChatMessage {
+        role: "user".to_string(),
+        content: "ping".to_string(),
+    }];
+    let result = kimi::chat(
+        &app,
+        messages,
+        kimi::ChatOptions {
+            max_tokens: Some(1),
+            ..Default::default()
+        },
+    )
+    .await;
+    match result {
+        Ok(_) => Ok(serde_json::json!({ "kind": "ok" })),
+        Err(e) => {
+            // 只报结论，不打印 Key 或错误体中可能的 Key 片段
+            let lower = e.to_lowercase();
+            let kind = if lower.contains("401") || lower.contains("403") || lower.contains("unauthorized") || lower.contains("invalid key") || lower.contains("authentication") {
+                "invalid_key"
+            } else if lower.contains("429") || lower.contains("rate") {
+                "rate_limited"
+            } else {
+                "network"
+            };
+            println!("=== test_kimi_connection 结果: {} ===", kind);
+            Ok(serde_json::json!({ "kind": kind }))
+        }
+    }
 }
 
 // ===== 文件扫描与识别 =====
@@ -315,7 +353,7 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
     // 429 限流重试：识别失败若含 429/rate_limit，等 3 秒重试，最多 2 次
     let mut attempt = 0;
     let recognized = loop {
-        match recognizer::recognize_file(&path, &name, file_text.clone(), content_b64.clone()).await {
+        match recognizer::recognize_file(&app, &path, &name, file_text.clone(), content_b64.clone()).await {
             Ok(r) => {
                 // 打印 family 字段（户口本家庭成员）长度，确认数据已写入
                 let family_len = r
@@ -464,6 +502,7 @@ pub(crate) async fn refresh_visa_data(
     prompt: String,
 ) -> Result<serde_json::Value, String> {
     let content = kimi::chat(
+        &app,
         vec![kimi::ChatMessage {
             role: "user".to_string(),
             content: prompt,

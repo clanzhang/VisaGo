@@ -71,6 +71,7 @@ fn file_type_hint(name: &str) -> String {
 
 /// 识别单个文件（文件名 + 文件文本内容 + 可选图片 base64 调 Kimi）
 pub async fn recognize_file(
+    app: &tauri::AppHandle,
     path: &str,
     name: &str,
     file_text: Option<String>,
@@ -87,6 +88,7 @@ pub async fn recognize_file(
                 "文件名称：{name}\n文件路径：{path}\n{hint_text}（图片过大无法识别，请根据文件名「{name}」判断文件类型，尽力提取字段；无法确定则 category 填\"其他\"，fields 全部填 null）"
             );
             kimi::chat(
+                app,
                 vec![
                     kimi::ChatMessage {
                         role: "system".to_string(),
@@ -115,7 +117,7 @@ pub async fn recognize_file(
                 "文件名称：{name}\n文件路径：{path}\n{hint_text}{}\n请识别图片中的签证材料内容，提取字段。",
                 file_text.as_deref().unwrap_or("")
             );
-            kimi::chat_vision(RECOGNIZE_PROMPT, &text, b64).await?
+            kimi::chat_vision(app, RECOGNIZE_PROMPT, &text, b64).await?
         }
     } else {
         // 文本类文件（PDF 有文本层 / DOCX）：走文本模型
@@ -140,6 +142,7 @@ pub async fn recognize_file(
         }
 
         kimi::chat(
+            app,
             vec![
                 kimi::ChatMessage {
                     role: "system".to_string(),

@@ -12,6 +12,7 @@ use commands::{
     list_profiles, load_profile, load_settings, push_notification, recognize_file,
     refresh_visa_data, request_notification_permission, save_application,
     save_profile, save_profile_card, save_settings, scan_files, scan_folder,
+    test_kimi_connection,
     send_notification, set_active_profile_id,
 };
 
@@ -51,6 +52,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ai_chat,
             kimi_chat,
+            test_kimi_connection,
             scan_folder,
             scan_files,
             recognize_file,

@@ -2,6 +2,8 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+use crate::store;
+
 const BASE_URL: &str = "https://api.moonshot.cn/v1/chat/completions";
 const MODEL: &str = "moonshot-v1-8k";
 /// 视觉模型：支持图片理解（用于识别扫描件 PDF / 图片类材料）
@@ -42,14 +44,26 @@ pub struct ChatOptions {
     pub response_format: Option<serde_json::Value>,
 }
 
-/// 从环境变量读取 Kimi Key（优先环境变量，其次从项目根 .env 读取）
-pub fn api_key() -> Result<String, String> {
+/// 从三个来源读取 Kimi Key，优先级：环境变量 > 用户设置（settings.json）> 项目根 .env。
+/// 理由：环境变量是部署/CI/开发的标准注入方式（vite proxy 也读它），保持最高优先级
+/// 不破坏现有 dev 流程；用户设置是桌面端运行时显式配置，次之；.env 是开发兜底最后读。
+/// 不打印 Key 本身或任何片段。
+pub fn api_key(app: &tauri::AppHandle) -> Result<String, String> {
+    // 1) 环境变量
     if let Ok(key) = std::env::var("KIMI_API_KEY") {
         if !key.trim().is_empty() {
             return Ok(key);
         }
     }
-    // 尝试读取项目根 .env（向上级目录查找，兼容 src-tauri 作为 cwd 的情况）
+    // 2) 用户设置（settings.json 中的 kimi_api_key）
+    if let Ok(settings) = store::load_settings(app) {
+        if let Some(key) = settings.kimi_api_key {
+            if !key.trim().is_empty() {
+                return Ok(key);
+            }
+        }
+    }
+    // 3) 项目根 .env（向上级目录查找，兼容 src-tauri 作为 cwd 的情况）
     let candidates = [
         std::path::Path::new(".env"),
         std::path::Path::new("../.env"),
@@ -66,12 +80,16 @@ pub fn api_key() -> Result<String, String> {
             }
         }
     }
-    Err("未找到 KIMI_API_KEY，请在环境变量或项目根 .env 中配置".to_string())
+    Err("未找到 KIMI_API_KEY，请在设置、环境变量或项目根 .env 中配置".to_string())
 }
 
 /// 调用 Kimi Chat Completions，返回回复文本
-pub async fn chat(messages: Vec<ChatMessage>, options: ChatOptions) -> Result<String, String> {
-    let key = api_key()?;
+pub async fn chat(
+    app: &tauri::AppHandle,
+    messages: Vec<ChatMessage>,
+    options: ChatOptions,
+) -> Result<String, String> {
+    let key = api_key(app)?;
     let client = reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()
@@ -120,11 +138,12 @@ pub async fn chat(messages: Vec<ChatMessage>, options: ChatOptions) -> Result<St
 /// 调用 Kimi 视觉模型（moonshot-v1-8k-vision-preview）识别图片
 /// system 为系统提示词，text 为附加文本（如文件名），image_b64 为图片 base64
 pub async fn chat_vision(
+    app: &tauri::AppHandle,
     system: &str,
     text: &str,
     image_b64: &str,
 ) -> Result<String, String> {
-    let key = api_key()?;
+    let key = api_key(app)?;
     let client = reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()

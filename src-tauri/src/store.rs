@@ -252,6 +252,9 @@ pub struct AppSettings {
     pub notify_pre_issue: bool,
     #[serde(default)]
     pub language: String, // zh-CN / en-US
+    /// Kimi API Key（用户设置中配置；明文存于 settings.json，仅桌面端生效）
+    #[serde(default)]
+    pub kimi_api_key: Option<String>,
 }
 
 /// 读取用户设置（src-tauri/data/settings.json）
