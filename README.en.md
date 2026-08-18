@@ -170,12 +170,7 @@ visago/
 - ✅ Application progress tracking
 - ✅ Visa comparison
 
-### v0.0.11 (Planned)
 
-- 🔜 More countries visa data
-- 🔜 AI chat assistant widget
-- 🔜 Auto-update support
-- 🔜 Improved i18n
 
 ## 🤝 Contributing
 
