@@ -758,7 +758,7 @@ export default function Scan() {
       {/* 步骤指示器：sticky 常驻页面顶部，不随资料卡区块高度漂移 */}
       <div className="sticky top-0 z-20 -mx-4 border-b border-ink/5 bg-bg px-4 pb-3 pt-1 sm:-mx-8 sm:px-8">
         <StepIndicator
-          steps={[t('scan.stepScan'), t('scan.stepReview'), t('scan.stepResult')]}
+          steps={[t('scan.stepPickFiles'), t('scan.stepRecognize'), t('scan.stepReview'), t('scan.stepResult')]}
           current={step - 1}
           startAtOne
           hideLabelOnMobile={false}
