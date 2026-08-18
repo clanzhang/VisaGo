@@ -23,17 +23,22 @@ export interface ToastItem {
   action?: ToastAction
 }
 
+/** 设置弹窗分区（供 openSettings 指定默认落点） */
+export type SettingsSection = 'notify' | 'about' | 'ai'
+
 interface AppStoreValue {
   language: Language
   theme: 'light' | 'dark'
   toasts: ToastItem[]
   isZh: boolean
   settingsOpen: boolean
+  /** 设置弹窗当前分区（openSettings 指定后作为默认落点） */
+  settingsSection: SettingsSection
   setLanguage: (lang: Language) => void
   toggleTheme: () => void
   toast: (message: string, type?: ToastItem['type'], action?: ToastAction) => void
   dismissToast: (id: number) => void
-  openSettings: () => void
+  openSettings: (section?: SettingsSection) => void
   closeSettings: () => void
 }
 
@@ -47,6 +52,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const toastId = useRef(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('notify')
 
   const setLanguage = useCallback((lang: Language) => {
     localStorage.setItem('visago:lang', lang)
@@ -73,14 +79,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       toasts,
       isZh: language === 'zh-CN',
       settingsOpen,
+      settingsSection,
       setLanguage,
       toggleTheme: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')),
       toast,
       dismissToast,
-      openSettings: () => setSettingsOpen(true),
+      openSettings: (section?: SettingsSection) => {
+        if (section) setSettingsSection(section)
+        setSettingsOpen(true)
+      },
       closeSettings: () => setSettingsOpen(false),
     }),
-    [language, theme, toasts, settingsOpen, setLanguage, toast, dismissToast],
+    [language, theme, toasts, settingsOpen, settingsSection, setLanguage, toast, dismissToast],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>

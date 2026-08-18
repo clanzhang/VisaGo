@@ -90,6 +90,15 @@ pub async fn chat(
     options: ChatOptions,
 ) -> Result<String, String> {
     let key = api_key(app)?;
+    chat_with_key(&key, messages, options).await
+}
+
+/// 用指定 Key 调用 Kimi（供「测试连接」验证用户新填但未保存的 Key；Key 不打印、不进日志）
+pub async fn chat_with_key(
+    key: &str,
+    messages: Vec<ChatMessage>,
+    options: ChatOptions,
+) -> Result<String, String> {
     let client = reqwest::Client::builder()
         .timeout(TIMEOUT)
         .build()

@@ -265,7 +265,12 @@ export interface AppSettings {
   notify_submission: boolean
   notify_pre_issue: boolean
   language: string
+  /** Kimi API Key（仅 Tauri 桌面端生效；明文存于本地 settings.json，Web 模式不可用） */
+  kimi_api_key?: string
 }
+
+/** 测试 Kimi 连接的结果分类 */
+export type KimiConnectionResult = 'ok' | 'invalid_key' | 'rate_limited' | 'network'
 
 export function loadSettings(): Promise<AppSettings> {
   return invoke<AppSettings>('load_settings')
@@ -273,6 +278,11 @@ export function loadSettings(): Promise<AppSettings> {
 
 export function saveSettings(settings: AppSettings): Promise<void> {
   return invoke<void>('save_settings', { settings })
+}
+
+/** 测试 Kimi 连接（key 可选：传了测试该 Key，否则测试当前生效 Key）。Key 在 Rust 端，不返回、不打印。 */
+export function testKimiConnection(key?: string): Promise<{ kind: KimiConnectionResult }> {
+  return invoke<{ kind: KimiConnectionResult }>('test_kimi_connection', key ? { key } : {})
 }
 
 export function requestNotificationPermission(): Promise<boolean> {

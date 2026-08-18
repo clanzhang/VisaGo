@@ -50,7 +50,7 @@ export default function Home() {
               {t('home.aiRetry')}
             </button>
             <button
-              onClick={openSettings}
+              onClick={() => openSettings('ai')}
               className="rounded-full bg-amber-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-900"
             >
               {t('home.aiGoSettings')}

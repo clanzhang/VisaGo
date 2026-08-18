@@ -118,22 +118,25 @@ pub(crate) async fn kimi_chat(app: tauri::AppHandle, prompt: String, model: Opti
 }
 
 /// IPC: test_kimi_connection — 最小成本测试连接（Key 在 Rust 端，不返回任何 Key 信息）
+/// key 可选：传了则测试该 Key（用户新填未保存的），否则测试当前生效 Key（env > 设置 > .env）
 /// 返回结构化结果：ok / invalid_key（401/403）/ rate_limited（429）/ network
 #[tauri::command]
-pub(crate) async fn test_kimi_connection(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+pub(crate) async fn test_kimi_connection(
+    app: tauri::AppHandle,
+    key: Option<String>,
+) -> Result<serde_json::Value, String> {
     let messages = vec![kimi::ChatMessage {
         role: "user".to_string(),
         content: "ping".to_string(),
     }];
-    let result = kimi::chat(
-        &app,
-        messages,
-        kimi::ChatOptions {
-            max_tokens: Some(1),
-            ..Default::default()
-        },
-    )
-    .await;
+    let options = kimi::ChatOptions {
+        max_tokens: Some(1),
+        ..Default::default()
+    };
+    let result = match key.as_deref().map(str::trim).filter(|k| !k.is_empty()) {
+        Some(k) => kimi::chat_with_key(k, messages, options).await,
+        None => kimi::chat(&app, messages, options).await,
+    };
     match result {
         Ok(_) => Ok(serde_json::json!({ "kind": "ok" })),
         Err(e) => {

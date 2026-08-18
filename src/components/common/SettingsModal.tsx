@@ -1,18 +1,33 @@
-// components/common/SettingsModal.tsx — 设置弹窗（通知/关于，左右分栏）
+// components/common/SettingsModal.tsx — 设置弹窗（通知/AI 模型/关于，左右分栏）
 // 语言切换统一走侧边栏 中/EN（localStorage: visago:lang 为唯一来源），弹窗内不再读/写 language。
-// AppSettings 契约不变（含 language 字段原样透传，Rust 结构体不动，旧 settings.json 兼容）。
+// AppSettings 契约不变（含 language/kimi_api_key 字段原样透传，Rust 结构体不动，旧 settings.json 兼容）。
 import { useEffect, useId, useMemo, useState } from 'react'
 import { useI18n } from '@/i18n'
 import { useAppStore } from '@/stores/appStore'
 import { useModalA11y } from '@/hooks/useModalA11y'
-import { loadSettings, saveSettings, requestNotificationPermission, isTauri, type AppSettings } from '@/api/tauri'
+import {
+  loadSettings,
+  saveSettings,
+  requestNotificationPermission,
+  testKimiConnection,
+  isTauri,
+  type AppSettings,
+} from '@/api/tauri'
 
-type Section = 'notify' | 'about'
+type Section = 'notify' | 'about' | 'ai'
 
 const SECTIONS: { key: Section; labelKey: string; icon: string }[] = [
   { key: 'notify', labelKey: 'settings.notify', icon: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0' },
+  { key: 'ai', labelKey: 'settings.ai', icon: 'M12 2a7 7 0 017 7c0 2.4-1.2 4.5-3 5.7V17H8v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 017-7zM9 20h6M10 23h4' },
   { key: 'about', labelKey: 'settings.about', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20zM12 8v4M12 16h.01' },
 ]
+
+/** 掩码摘要：只留首尾各 4 位（如 sk-****…a1b2），完整 Key 不长期停留 DOM */
+function maskKey(key: string): string {
+  const k = key.trim()
+  if (k.length <= 8) return '****'
+  return `${k.slice(0, 4)}****…${k.slice(-4)}`
+}
 
 /** Toggle 开关组件：开启蓝色 #1460A4，关闭灰色 #D1D5DB，transition 200ms */
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
@@ -38,10 +53,10 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 
 export function SettingsModal() {
   const { t } = useI18n()
-  const { toast, settingsOpen, openSettings, closeSettings } = useAppStore()
+  const { toast, settingsOpen, settingsSection, openSettings, closeSettings } = useAppStore()
   const titleId = useId()
   const dialogRef = useModalA11y(settingsOpen, closeSettings, titleId)
-  const [section, setSection] = useState<Section>('notify')
+  const [section, setSection] = useState<Section>(settingsSection)
   const [settings, setSettings] = useState<AppSettings>({
     desktop_notification: false,
     notify_submission: true,
@@ -49,6 +64,13 @@ export function SettingsModal() {
     // 语言以 visago:lang 为唯一来源；此处仅占位，保存时原样透传，前端不再据此改语言
     language: 'zh-CN',
   })
+  // AI Key 输入：编辑中才回填新值；已保存时显示掩码
+  const [keyDraft, setKeyDraft] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [editingKey, setEditingKey] = useState(false)
+  const [testingKey, setTestingKey] = useState(false)
+  const hasSavedKey = !!settings.kimi_api_key?.trim()
+  const tauriEnv = isTauri()
 
   // 监听 Tauri 菜单事件 open-preferences（macOS 菜单栏 visago → 偏好设置 ⌘,）
   useEffect(() => {
@@ -70,15 +92,19 @@ export function SettingsModal() {
   }, [openSettings])
 
   // 打开时加载设置（不再据此改语言；语言唯一来源是 visago:lang）
+  // 分区由 openSettings 指定（settingsSection），无指定时保持 notify
   useEffect(() => {
     if (!settingsOpen) return
-    setSection('notify')
+    setSection(settingsSection)
+    setKeyDraft('')
+    setEditingKey(false)
+    setShowKey(false)
     if (!isTauri()) return
     loadSettings()
       .then((s) => setSettings(s))
       .catch((e) => console.warn('[SettingsModal] 加载设置失败:', e))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsOpen])
+  }, [settingsOpen, settingsSection])
 
   // 注意：所有 hooks 必须在条件 return 之前调用（React Hooks 规则）
   const notifyItems = useMemo(
@@ -109,6 +135,48 @@ export function SettingsModal() {
       } catch (e) {
         console.warn('[SettingsModal] 请求通知权限失败:', e)
       }
+    }
+  }
+
+  // ===== AI Key =====
+
+  /** 保存 Key（仅 Tauri 生效；Web 模式按钮已禁用，不会走到这里） */
+  function handleSaveKey() {
+    const k = keyDraft.trim()
+    if (!k) return
+    update({ kimi_api_key: k })
+    setEditingKey(false)
+    setKeyDraft('')
+    toast(t('settings.apiKeySaved'), 'success')
+  }
+
+  /** 清除 Key */
+  function handleClearKey() {
+    update({ kimi_api_key: undefined })
+    setEditingKey(false)
+    setKeyDraft('')
+    toast(t('settings.apiKeyCleared'), 'info')
+  }
+
+  /** 测试连接：优先测新填未保存的 Key，否则测当前生效 Key；区分 无效/限流/网络 三种失败 */
+  async function handleTestKey() {
+    if (testingKey) return
+    setTestingKey(true)
+    try {
+      const res = await testKimiConnection(keyDraft.trim() || undefined)
+      if (res.kind === 'ok') {
+        toast(t('settings.apiKeyTestOk'), 'success')
+      } else if (res.kind === 'invalid_key') {
+        toast(t('settings.apiKeyTestInvalid'), 'error')
+      } else if (res.kind === 'rate_limited') {
+        toast(t('settings.apiKeyTestRateLimited'), 'warning')
+      } else {
+        toast(t('settings.apiKeyTestNetwork'), 'error')
+      }
+    } catch {
+      toast(t('settings.apiKeyTestNetwork'), 'error')
+    } finally {
+      setTestingKey(false)
     }
   }
 
@@ -180,6 +248,133 @@ export function SettingsModal() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {section === 'ai' && (
+              <div className="space-y-5">
+                <div>
+                  <div className="text-sm font-semibold text-ink">{t('settings.apiKeyTitle')}</div>
+                  <p className="mt-0.5 text-xs leading-relaxed text-ink/60">{t('settings.apiKeyDesc')}</p>
+                </div>
+
+                {/* Web 模式：禁用并说明（Web 下填了也不会生效，明确标注不骗用户） */}
+                {!tauriEnv ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+                    {t('settings.apiKeyWebDisabled')}
+                  </div>
+                ) : (
+                  <>
+                    {hasSavedKey && !editingKey ? (
+                      <div className="rounded-xl border border-ink/5 bg-[#F9F9F6] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs text-ink/60">{t('settings.apiKeyStored')}</div>
+                            <div className="mt-0.5 truncate font-mono text-sm text-ink">{maskKey(settings.kimi_api_key ?? '')}</div>
+                          </div>
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingKey(true)
+                                setKeyDraft('')
+                              }}
+                              className="rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-primary/40 hover:text-primary"
+                            >
+                              {t('settings.apiKeyReplace')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleClearKey}
+                              className="rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-red-300 hover:text-red-600"
+                            >
+                              {t('settings.apiKeyClear')}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <label htmlFor="settings-api-key" className="sr-only">{t('settings.apiKeyTitle')}</label>
+                          <input
+                            id="settings-api-key"
+                            type={showKey ? 'text' : 'password'}
+                            value={keyDraft}
+                            onChange={(e) => setKeyDraft(e.target.value)}
+                            placeholder={t('settings.apiKeyPlaceholder')}
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 font-mono text-sm outline-none focus:border-primary/40"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowKey((v) => !v)}
+                            aria-label={showKey ? t('settings.apiKeyHide') : t('settings.apiKeyShow')}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
+                          >
+                            <span className={`h-4 w-4 icon-[mdi-light--${showKey ? 'eye-off' : 'eye'}]`} aria-hidden="true" />
+                          </button>
+                        </div>
+                        {keyDraft && !keyDraft.trim().startsWith('sk-') && (
+                          <p id="settings-api-key-hint" className="text-xs text-amber-700">{t('settings.apiKeyFormatHint')}</p>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-wrap items-center gap-1 text-xs text-ink/60">
+                            <span>{t('settings.apiKeyGetKey')}</span>
+                            <a
+                              href="https://platform.moonshot.cn"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-medium text-primary underline-offset-2 hover:underline"
+                            >
+                              platform.moonshot.cn
+                            </a>
+                          </div>
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              type="button"
+                              onClick={handleSaveKey}
+                              disabled={!keyDraft.trim()}
+                              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#0e4a80] disabled:cursor-not-allowed disabled:bg-ink/5 disabled:text-ink/40"
+                            >
+                              {t('common.save')}
+                            </button>
+                            {editingKey && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingKey(false)
+                                  setKeyDraft('')
+                                }}
+                                className="rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:bg-ink/5"
+                              >
+                                {t('common.cancel')}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 测试连接：保存的 Key 或新填的 Key 均可测（Key 在 Rust 端） */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleTestKey}
+                        disabled={testingKey}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-ink/10 px-3 py-1.5 text-xs font-medium text-ink/70 transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {testingKey && <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" aria-hidden="true" />}
+                        {testingKey ? t('settings.apiKeyTesting') : t('settings.apiKeyTest')}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                <p className="border-t border-ink/8 pt-4 text-[11px] leading-relaxed text-ink/50">
+                  {t('settings.apiKeyPlaintextNote')}
+                </p>
               </div>
             )}
 
