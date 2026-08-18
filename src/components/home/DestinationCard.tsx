@@ -1,4 +1,5 @@
 // components/home/DestinationCard.tsx — 单个目的地卡片
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 
@@ -30,6 +31,7 @@ interface Props {
 export function DestinationCard({ item, index }: Props) {
   const { t, isZh, pickL } = useI18n()
   const navigate = useNavigate()
+  const [imgError, setImgError] = useState(false)
   const name = isZh ? item.name : item.nameEn ?? item.name
   const days = isZh ? item.days : item.daysEn ?? item.days
   const desc = isZh ? item.desc : item.descEn ?? item.desc
@@ -48,12 +50,20 @@ export function DestinationCard({ item, index }: Props) {
       onClick={() => navigate(`/encyclopedia/${item.id}`)}
     >
       <div className="relative h-[140px] w-full overflow-hidden">
-        <img
-          src={item.image}
-          alt={name}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-          loading="lazy"
-        />
+        {imgError ? (
+          // 图片加载失败兜底：渐变底色 + 旗帜 emoji，避免碎图
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#E0F7FA] to-[#B3E5F7]">
+            <span className="text-5xl" aria-hidden="true">{item.flag}</span>
+          </div>
+        ) : (
+          <img
+            src={item.image}
+            alt={name}
+            onError={() => setImgError(true)}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+            loading="lazy"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-ink shadow-sm backdrop-blur">
           {item.flag} {name}

@@ -11,6 +11,7 @@ export const destinations = [
   { id: 'usa', name: '美国', nameEn: 'United States', flag: '🇺🇸', days: '15天', daysEn: '15 days', desc: '美西自驾·纽约都市之旅', descEn: 'US West road trip · New York city', fee: '$185 起', difficulty: '难' as const, image: '/images/usa.svg' },
   { id: 'uk', name: '英国', nameEn: 'United Kingdom', flag: '🇬🇧', days: '12天', daysEn: '12 days', desc: '伦敦·爱丁堡英伦风情', descEn: 'London · Edinburgh British charm', fee: '£135 起', difficulty: '中' as const, image: '/images/uk.svg' },
   { id: 'hong-kong', name: '香港', nameEn: 'Hong Kong', flag: '🇭🇰', days: '3-7天', daysEn: '3-7 days', desc: '港澳通行证·购物美食迪士尼', descEn: 'Permit, shopping, food & Disneyland', fee: '¥80 起', difficulty: '易' as const, image: '/images/hong-kong.svg' },
+  { id: 'macau', name: '澳门', nameEn: 'Macau', flag: '🇲🇴', days: '1-5天', daysEn: '1-5 days', desc: '港澳通行证·葡式风情与美食', descEn: 'Permit, Portuguese charm & cuisine', fee: '¥80 起', difficulty: '易' as const, image: '/images/macau.svg' },
   { id: 'taiwan', name: '台湾', nameEn: 'Taiwan', flag: '🇨🇳', days: '5-10天', daysEn: '5-10 days', desc: '入台证·阿里山日月潭垦丁', descEn: 'Entry permit · Alishan, Sun Moon Lake & Kenting', fee: '¥90 起', difficulty: '易' as const, image: '/images/taiwan.svg' },
 ]
 

@@ -66,16 +66,25 @@ const VISA_FEES: Record<string, { fee: number; serviceFee: number }> = {
 
   // 港澳台
   'hong-kong': { fee: 80, serviceFee: 20 },
+  macau: { fee: 80, serviceFee: 20 },
   taiwan: { fee: 90, serviceFee: 60 },
 }
+
+/** 港澳台通行证/入台证办理天数（按目的地区分；其余走通用逻辑） */
+const PERMIT_PROCESSING_DAYS: Record<string, { min: number; max: number }> = {
+  'hong-kong': { min: 1, max: 7 },
+  macau: { min: 1, max: 5 },
+  taiwan: { min: 5, max: 10 },
+}
+
+/** 归入「港澳台」区域的 id（供 region 归组复用，避免分散判断） */
+export const PERMIT_REGION_IDS = new Set(['hong-kong', 'taiwan', 'macau'])
 
 function buildBasicVisaType(meta: CountryMeta): VisaType {
   const name = `${meta.zh}旅游签证`
   const canApplyOnline = meta.visaType === '电子签' || meta.visaType === '落地签'
   const needInterview = meta.difficulty === 'hard'
   const isVisaFree = meta.visaType === '互免签证' || meta.visaType === '单方面免签'
-  // 港澳台：通行证/入台证，办理天数不同
-  const isHKorTW = meta.id === 'hong-kong' || meta.id === 'taiwan'
   // 国家专属材料清单（新西兰/申根），其余用默认模板
   const requirements =
     meta.id === 'new-zealand'
@@ -103,14 +112,10 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
     entries: isVisaFree ? 'multiple' : 'single',
     fee: { amount: feeData.fee, currency: 'CNY' },
     serviceFee: { amount: feeData.serviceFee, currency: 'CNY' },
-    processingDays: isHKorTW
-      ? meta.id === 'hong-kong'
-        ? { min: 1, max: 7 }
-        : { min: 5, max: 10 }
-      : {
-          min: isVisaFree ? 0 : meta.visaType === '落地签' ? 1 : 5,
-          max: isVisaFree ? 0 : meta.visaType === '落地签' ? 3 : 15,
-        },
+    processingDays: PERMIT_PROCESSING_DAYS[meta.id] ?? {
+      min: isVisaFree ? 0 : meta.visaType === '落地签' ? 1 : 5,
+      max: isVisaFree ? 0 : meta.visaType === '落地签' ? 3 : 15,
+    },
     needInterview,
     canApplyOnline,
     acceptPersonal,
@@ -134,8 +139,8 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
 }
 
 function buildCountry(meta: CountryMeta): Country {
-  // 港澳台单独分组
-  const region = meta.id === 'hong-kong' || meta.id === 'taiwan' ? '港澳台' : meta.region
+  // 港澳台单独分组（含澳门）
+  const region = PERMIT_REGION_IDS.has(meta.id) ? '港澳台' : meta.region
   return {
     id: meta.id,
     name: { zh: meta.zh, en: meta.en },

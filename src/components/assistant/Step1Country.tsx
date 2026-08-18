@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { useI18n, regionLabelKey } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
 import { countries, DIFFICULTY_LABELS } from '@/data/countries'
+import { REGION_ORDER } from '@/data/country-list'
 
 /** 签证类型筛选 tab 文案 key（tab 值为数据值） */
 export function filterLabelKey(tab: string): string {
@@ -64,10 +65,7 @@ export function Step1Country({ selectedCountryId, onSelect, onNext }: Props) {
       acc[c.region] = acc[c.region] ? [...acc[c.region], c] : [c]
       return acc
     }, {})
-    return Object.entries(groups).sort(([a], [b]) => {
-      const order = ['亚洲', '欧洲', '美洲', '大洋洲', '非洲', '港澳台']
-      return order.indexOf(a) - order.indexOf(b)
-    })
+    return Object.entries(groups).sort(([a], [b]) => REGION_ORDER.indexOf(a) - REGION_ORDER.indexOf(b))
   }, [filtered])
 
   const selectedCountry = countries.find((c) => c.id === selectedCountryId)
