@@ -46,6 +46,28 @@ export interface HomeAIData {
   }
 }
 
+/** AI 数据错误分类（供 UI 区分「Key 问题→引导去设置」与「临时故障→引导重试」） */
+export type AIErrorKind = 'invalid_key' | 'rate_limited' | 'shape' | 'network'
+
+export interface AIFetchError {
+  kind: AIErrorKind
+  message: string
+}
+
+function classifyAIError(e: unknown): AIFetchError {
+  if (e instanceof KimiError) {
+    // 形状/解析类错误属程序 bug，绝不伪装成「服务不可用」：控制台留可定位报错
+    if (e.kind === 'shape') {
+      console.error('[useAIData] IPC 返回形状异常（程序 bug，非服务故障）:', e.message, e)
+    }
+    return {
+      kind: e.kind ?? 'network',
+      message: e.message,
+    }
+  }
+  return { kind: 'network', message: e instanceof Error ? e.message : String(e) }
+}
+
 /** 首页 AI 数据（目的地 + 统计 + Hero 文案） */
 export function useHomeAIData() {
   const [data, setData] = useState<HomeAIData>(() => {
@@ -54,7 +76,7 @@ export function useHomeAIData() {
     return fallbackData()
   })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AIFetchError | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const fetching = useRef(false)
 
@@ -87,8 +109,8 @@ export function useHomeAIData() {
       writeCache('visago:ai:home', merged)
       setData(merged)
     } catch (e) {
-      const msg = e instanceof KimiError ? e.message : '数据加载失败，点击重试'
-      setError(msg)
+      const err = classifyAIError(e)
+      setError(err)
       // 失败时用兜底数据
       if (force) setData(fallbackData())
     } finally {
@@ -129,7 +151,7 @@ function fallbackData(): HomeAIData {
 export function useCountryAIData(countryId: string | undefined) {
   const [data, setData] = useState<unknown | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<AIFetchError | null>(null)
 
   const fetchFromAI = useCallback(async (force: boolean) => {
     if (!countryId) return
@@ -152,8 +174,7 @@ export function useCountryAIData(countryId: string | undefined) {
       writeCache(key, result)
       setData(result)
     } catch (e) {
-      const msg = e instanceof KimiError ? e.message : '数据加载失败，点击重试'
-      setError(msg)
+      setError(classifyAIError(e))
     } finally {
       setLoading(false)
     }

@@ -53,10 +53,13 @@ export interface KimiChatOptions {
 
 export class KimiError extends Error {
   status?: number
-  constructor(message: string, status?: number) {
+  /** 错误分类：invalid_key（401/403）/ rate_limited（429）/ shape（IPC 返回形状异常，属程序 bug）/ 其他 */
+  kind?: 'invalid_key' | 'rate_limited' | 'shape' | 'network'
+  constructor(message: string, status?: number, kind?: KimiError['kind']) {
     super(message)
     this.name = 'KimiError'
     this.status = status
+    this.kind = kind
   }
 }
 
@@ -95,10 +98,35 @@ export async function kimiChat(
 
   if (isTauri()) {
     // Tauri 模式：Rust 后端持有 Key，通过 IPC 调用
-    return tauriInvoke().invoke('ai_chat', {
-      messages,
-      options: { model, temperature, maxTokens, responseFormat },
-    }) as Promise<string>
+    // Rust 端 ai_chat / kimi_chat 均返回纯 String（契约已统一）。
+    // 这里做运行时形状校验：IPC 边界一旦返回非 string（如旧版 {content} 对象），
+    // 立即抛出带明确信息的 KimiError，而不是把坏值往下游传直到 extractJson 才炸。
+    try {
+      const res = await tauriInvoke().invoke('ai_chat', {
+        messages,
+        options: { model, temperature, maxTokens, responseFormat },
+      })
+      if (typeof res !== 'string') {
+        throw new KimiError(
+          `ai_chat IPC 返回形状异常（期望 string，实际 ${typeof res}）。请确认 Rust 侧命令契约。`,
+          undefined,
+          'shape',
+        )
+      }
+      return res
+    } catch (e) {
+      if (e instanceof KimiError) throw e
+      // Rust 端返回 Err(String)：按文本分类，让调用方能区分 Key 无效 / 限流 / 其他
+      const msg = e instanceof Error ? e.message : String(e)
+      const lower = msg.toLowerCase()
+      if (lower.includes('401') || lower.includes('403') || lower.includes('unauthorized') || lower.includes('invalid key') || lower.includes('authentication')) {
+        throw new KimiError(msg, 401, 'invalid_key')
+      }
+      if (lower.includes('429') || lower.includes('rate') || lower.includes('concurrency')) {
+        throw new KimiError(msg, 429, 'rate_limited')
+      }
+      throw new KimiError(msg, undefined, 'network')
+    }
   }
 
   // Web 模式：走 Vite 代理（串行队列 + 429 重试）
@@ -122,7 +150,9 @@ export async function kimiChat(
 
         if (!res.ok) {
           const body = await res.text().catch(() => '')
-          throw new KimiError(`Kimi API 请求失败 (${res.status}): ${body.slice(0, 200)}`, res.status)
+          // Web 代理注入的 Key 无效 / 限流等，按状态码分类（与 Tauri 分支的 kind 一致）
+          const kind = res.status === 401 || res.status === 403 ? 'invalid_key' : res.status === 429 ? 'rate_limited' : undefined
+          throw new KimiError(`Kimi API 请求失败 (${res.status}): ${body.slice(0, 200)}`, res.status, kind)
         }
 
         const data = await res.json()

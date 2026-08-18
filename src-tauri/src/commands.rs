@@ -26,11 +26,6 @@ pub struct ChatOptionsDto {
 }
 
 #[derive(Serialize)]
-pub struct AiChatResponse {
-    pub content: String,
-}
-
-#[derive(Serialize)]
 pub struct ScanResult {
     pub folder: String,
     pub files: Vec<scanner::ScannedItem>,
@@ -48,12 +43,14 @@ pub struct RecognizeResult {
 // ===== Kimi 对话 =====
 
 /// IPC: ai_chat — 调用 Kimi 对话（Key 在 Rust 端）
+/// 返回纯 String（与 kimi_chat 一致）。前端 kimi.ts 的 Tauri 分支按 string 消费，
+/// 并做运行时形状校验——避免再出现「Rust 返回对象、前端断言成 string」的静默降级。
 #[tauri::command]
 pub(crate) async fn ai_chat(
     app: tauri::AppHandle,
     messages: Vec<ChatMessageDto>,
     options: Option<ChatOptionsDto>,
-) -> Result<AiChatResponse, String> {
+) -> Result<String, String> {
     println!("=== ai_chat 收到 messages 数: {} ===", messages.len());
     for (i, m) in messages.iter().enumerate() {
         println!("=== ai_chat message[{}] role={}, content前200字: {} ===", i, m.role, m.content.chars().take(200).collect::<String>());
@@ -82,7 +79,7 @@ pub(crate) async fn ai_chat(
         Ok(content) => println!("=== ai_chat Kimi 返回 (前1000字): {} ===", content.chars().take(1000).collect::<String>()),
         Err(e) => println!("=== ai_chat Kimi 错误: {} ===", e),
     }
-    Ok(AiChatResponse { content: result? })
+    result
 }
 
 /// IPC: kimi_chat — 简单版 Kimi 对话（单 prompt，可指定模型）

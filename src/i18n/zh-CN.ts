@@ -71,6 +71,8 @@ export default {
     emptyStatsTitle: '还没有签证申请',
     emptyStatsDesc: '从「申请签证」开始你的第一个申请，费用与进度将自动汇总在这里。',
     emptyStatsCta: '开始第一个申请',
+    aiKeyInvalidTitle: 'Kimi API Key 无效或缺失',
+    aiKeyInvalidDesc: '无法连接 AI 服务。请前往设置检查 API Key 是否正确。',
     aiOfflineTitle: '当前展示的是本地参考数据',
     aiOfflineDesc: 'AI 服务暂时不可用，部分内容可能不是最新结果。可点击重试，或在设置中检查 API Key。',
     aiRetry: '重试',
