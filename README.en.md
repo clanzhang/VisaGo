@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.2-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,12 @@ visago/
 
 ## 📦 Changelog
 
-### v0.1.2 (Current)
+### v0.2.0 (Current)
+
+- ✅ macOS self-signed dev bundle: configured a code-signing certificate so the system privacy panel (camera/mic/notifications) recognizes and can authorize the app
+- ✅ Version injected via a Vite plugin — changing the version in dev now takes effect on refresh, no dev-server restart needed
+
+### v0.1.2
 
 - 🐛 Fixed large-output AI requests rejected because max_tokens exceeded the model context: country detail / assistant recommendation / home overview now explicitly use the 32k model
 - 🐛 Removed the yellow degraded banner on Home and Country Detail; replaced with a minimal data-source indicator (small dot tooltip) that never appears when AI is healthy

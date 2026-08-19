@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.2-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,12 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.1.2 (当前版本)
+### v0.2.0 (当前版本)
+
+- ✅ 开发包 macOS 自签名：配置代码签名证书，隐私面板（摄像头/麦克风/通知）可识别并授权应用
+- ✅ 版本号改为插件注入，dev 下改版本号刷新即生效，无需重启 dev server
+
+### v0.1.2
 
 - 🐛 修复大输出 AI 请求因 max_tokens 超出模型上下文被拒：国家详情/助手推荐/首页概览显式使用 32k 模型
 - 🐛 移除首页与国家详情页的黄色降级横幅，改为极轻量数据来源指示（小圆点 tooltip），AI 正常时不出现
