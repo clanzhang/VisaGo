@@ -130,7 +130,7 @@ export function Step4Result({
               </span>
             )}
             <span className="inline-flex items-center gap-1">
-              <span className="h-3.5 w-3.5 icon-[mdi-light--office-building]" />
+              <span className="h-3.5 w-3.5 icon-[mdi-light--home]" />
               {t(KIND_KEYS[matchedDistrict.kind ?? 'consulate'])}
             </span>
             {visaType.acceptPersonal ? (
@@ -156,7 +156,7 @@ export function Step4Result({
               className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
             >
               {t('encyclopedia.districtOfficial')}
-              <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+              <span className="h-3 w-3 icon-[mdi-light--arrow-right-circle]" />
             </a>
           )}
         </div>
@@ -172,7 +172,7 @@ export function Step4Result({
                 className="ml-2 inline-flex items-center gap-1 font-medium text-amber-900 underline underline-offset-2"
               >
                 {t('encyclopedia.districtOfficial')}
-                <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+                <span className="h-3 w-3 icon-[mdi-light--arrow-right-circle]" />
               </a>
             )}
           </div>

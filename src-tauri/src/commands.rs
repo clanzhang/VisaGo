@@ -8,6 +8,7 @@ use crate::kimi;
 use crate::recognizer;
 use crate::scanner;
 use crate::store;
+use crate::{log_debug, log_info, log_warn};
 
 // ===== DTOs =====
 
@@ -51,10 +52,7 @@ pub(crate) async fn ai_chat(
     messages: Vec<ChatMessageDto>,
     options: Option<ChatOptionsDto>,
 ) -> Result<String, String> {
-    println!("=== ai_chat 收到 messages 数: {} ===", messages.len());
-    for (i, m) in messages.iter().enumerate() {
-        println!("=== ai_chat message[{}] role={}, content前200字: {} ===", i, m.role, m.content.chars().take(200).collect::<String>());
-    }
+    log_info!("[IPC] ai_chat: {} messages", messages.len());
     let msgs = messages
         .into_iter()
         .map(|m| kimi::ChatMessage {
@@ -63,7 +61,6 @@ pub(crate) async fn ai_chat(
         })
         .collect::<Vec<_>>();
     let opts = options.unwrap_or_default();
-    println!("=== ai_chat model: {:?}, max_tokens: {:?} ===", opts.model, opts.max_tokens);
     let result = kimi::chat(
         &app,
         msgs,
@@ -76,8 +73,8 @@ pub(crate) async fn ai_chat(
     )
     .await;
     match &result {
-        Ok(content) => println!("=== ai_chat Kimi 返回 (前1000字): {} ===", content.chars().take(1000).collect::<String>()),
-        Err(e) => println!("=== ai_chat Kimi 错误: {} ===", e),
+        Ok(content) => log_info!("[IPC] ai_chat ok, {} chars", content.len()),
+        Err(e) => log_warn!("[IPC] ai_chat error: {e}"),
     }
     result
 }
@@ -85,9 +82,7 @@ pub(crate) async fn ai_chat(
 /// IPC: kimi_chat — 简单版 Kimi 对话（单 prompt，可指定模型）
 #[tauri::command]
 pub(crate) async fn kimi_chat(app: tauri::AppHandle, prompt: String, model: Option<String>) -> Result<String, String> {
-    println!("=== 生成请求 prompt 长度: {} 字符 ===", prompt.chars().count());
-    println!("=== 生成请求 model: {:?} ===", model);
-    println!("=== 生成请求 prompt 前500字: {} ===", prompt.chars().take(500).collect::<String>());
+    log_info!("[IPC] kimi_chat: prompt {} chars, model {:?}", prompt.chars().count(), model);
     let messages = vec![kimi::ChatMessage {
         role: "user".to_string(),
         content: prompt,
@@ -104,12 +99,8 @@ pub(crate) async fn kimi_chat(app: tauri::AppHandle, prompt: String, model: Opti
     )
     .await;
     match &result {
-        Ok(resp) => {
-            println!("=== Kimi 返回 (前1000字): {} ===", resp.chars().take(1000).collect::<String>());
-        }
-        Err(e) => {
-            println!("=== Kimi 错误: {} ===", e);
-        }
+        Ok(resp) => log_info!("[IPC] kimi_chat ok, {} chars", resp.len()),
+        Err(e) => log_warn!("[IPC] kimi_chat error: {e}"),
     }
     result
 }
@@ -146,7 +137,7 @@ pub(crate) async fn test_kimi_connection(
             } else {
                 "network"
             };
-            println!("=== test_kimi_connection 结果: {} ===", kind);
+            log_info!("[IPC] test_kimi_connection: {kind}");
             Ok(serde_json::json!({ "kind": kind }))
         }
     }
@@ -159,7 +150,7 @@ pub(crate) async fn test_kimi_connection(
 /// 不再在 Rust 端弹选择器（文件夹选择器在 macOS 上无法选单个文件）。
 #[tauri::command]
 pub(crate) fn scan_folder(app: tauri::AppHandle, path: String) -> Result<ScanResult, String> {
-    println!("[IPC] scan_folder 被调用，扫描路径: {path}");
+    log_info!("[IPC] scan_folder: 扫描路径 {path}");
     let files = scanner::scan_folder(&path)?;
     let result = ScanResult {
         folder: path.clone(),
@@ -194,7 +185,7 @@ pub(crate) fn scan_folder(app: tauri::AppHandle, path: String) -> Result<ScanRes
 /// 支持用户只选一个文件或多个文件，而不是整文件夹。
 #[tauri::command]
 pub(crate) fn scan_files(app: tauri::AppHandle, paths: Vec<String>) -> Result<ScanResult, String> {
-    println!("[IPC] scan_files 被调用，共 {} 个文件", paths.len());
+    log_info!("[IPC] scan_files: {} 个文件", paths.len());
     let mut items = Vec::new();
     for p in &paths {
         let meta = std::fs::metadata(p).map_err(|e| format!("读取文件失败 {p}: {e}"))?;
@@ -248,7 +239,7 @@ pub(crate) fn scan_files(app: tauri::AppHandle, paths: Vec<String>) -> Result<Sc
 /// IPC: recognize_file — 读文件内容，调 Kimi 识别类型 + 提取字段
 #[tauri::command]
 pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: String) -> Result<RecognizeResult, String> {
-    println!("[IPC] recognize_file 被调用: {name} ({path})");
+    log_info!("[IPC] recognize_file: {name}");
 
     let ext = path
         .rsplit('.')
@@ -265,19 +256,19 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
             match scanner::extract_pdf_text(&path) {
                 // 文本充足（≥50 字符）→ 文本识别
                 Ok(text) if text.trim().chars().count() >= 50 => {
-                    println!("[recognize] PDF 文本提取成功: {} 字符，走文本识别", text.chars().count());
+                    log_debug!("[recognize] PDF 文本提取成功: {} 字符", text.chars().count());
                     file_text = Some(text);
                 }
                 // 文本为空或过短（<50）→ 扫描件，sips 渲染为图片走视觉识别
                 Ok(text) => {
-                    println!("[recognize] PDF 文本不足 ({} 字符)，判断为扫描件，sips 渲染为图片走视觉识别", text.trim().chars().count());
+                    log_debug!("[recognize] PDF 文本不足 ({} 字符)，sips 渲染", text.trim().chars().count());
                     match crate::scanner::render_pdf_to_png(&path) {
                         Ok(b64) => {
-                            println!("[recognize] sips 渲染 PDF 成功，图片 base64 长度 {}", b64.len());
+                            log_debug!("[recognize] sips 渲染 PDF 成功，base64 长度 {}", b64.len());
                             content_b64 = Some(b64);
                         }
                         Err(e) => {
-                            println!("[recognize] sips 渲染 PDF 失败: {e}，回退为文件名识别");
+                            log_warn!("[recognize] sips 渲染 PDF 失败: {e}，回退文件名识别");
                             file_text = Some(format!(
                                 "（这是一个扫描件/图片型 PDF，无法直接提取文本。请根据文件名「{name}」和你的常识判断该文件类型，并尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
                             ));
@@ -285,14 +276,14 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
                     }
                 }
                 Err(e) => {
-                    println!("[recognize] PDF 文本提取失败: {e}，尝试 sips 渲染为图片");
+                    log_warn!("[recognize] PDF 文本提取失败: {e}，尝试 sips 渲染");
                     match crate::scanner::render_pdf_to_png(&path) {
                         Ok(b64) => {
-                            println!("[recognize] sips 渲染 PDF 成功，图片 base64 长度 {}", b64.len());
+                            log_debug!("[recognize] sips 渲染 PDF 成功，base64 长度 {}", b64.len());
                             content_b64 = Some(b64);
                         }
                         Err(e2) => {
-                            println!("[recognize] sips 渲染 PDF 失败: {e2}，回退为文件名识别");
+                            log_warn!("[recognize] sips 渲染 PDF 失败: {e2}，回退文件名识别");
                             file_text = Some(format!(
                                 "（PDF 提取失败。请根据文件名「{name}」和你的常识判断该文件类型，尽力提取字段；若无法确定则 category 填\"其他\"，fields 全部填 null）"
                             ));
@@ -304,19 +295,19 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
         "docx" | "doc" => {
             match scanner::extract_docx_text(&path) {
                 Ok(text) if text.trim().chars().count() >= 50 => {
-                    println!("[recognize] DOCX 文本提取成功: {} 字符，走文本识别", text.chars().count());
+                    log_debug!("[recognize] DOCX 文本提取成功: {} 字符", text.chars().count());
                     file_text = Some(text);
                 }
                 // DOCX 文本为空或过短 → 尝试渲染为图片走视觉识别
                 _ => {
-                    println!("[recognize] DOCX 文本不足，尝试 sips 渲染为图片走视觉识别");
+                    log_debug!("[recognize] DOCX 文本不足，sips 渲染");
                     match crate::scanner::render_pdf_to_png(&path) {
                         Ok(b64) => {
-                            println!("[recognize] DOCX sips 渲染成功，图片 base64 长度 {}", b64.len());
+                            log_debug!("[recognize] DOCX sips 渲染成功，base64 长度 {}", b64.len());
                             content_b64 = Some(b64);
                         }
                         Err(e) => {
-                            println!("[recognize] DOCX 无文本且无法渲染: {e}");
+                            log_warn!("[recognize] DOCX 无文本且无法渲染: {e}");
                         }
                     }
                 }
@@ -325,29 +316,27 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
         "jpg" | "jpeg" | "png" => {
             match scanner::read_file_base64(&path) {
                 Ok(b64) => {
-                    println!("[recognize] 读取图片成功: {} bytes(base64 长度 {})", name, b64.len());
+                    log_debug!("[recognize] 读取图片成功: {name}, base64 长度 {}", b64.len());
                     content_b64 = Some(b64);
                 }
                 Err(e) => {
-                    println!("[recognize] 读取图片失败: {name}: {e}");
+                    log_warn!("[recognize] 读取图片失败: {name}: {e}");
                     return Err(format!("读取图片失败: {e}"));
                 }
             }
         }
         _ => {
-            println!("[recognize] 不支持的扩展名: {ext}");
+            log_debug!("[recognize] 不支持的扩展名: {ext}");
         }
     }
 
-    println!("[recognize] 发送给 Kimi: name={name}, ext={ext}, file_text={}, content_b64={}",
-        file_text.as_ref().map(|t| t.chars().count()).unwrap_or(0),
-        content_b64.is_some());
+    log_debug!("[recognize] 发送给 Kimi: name={name}, ext={ext}");
 
     // 针对多信息文件（户口本/银行流水）打印识别提示日志
     if name.contains("户口本") || name.contains("户籍") {
-        println!("[recognize] 识别提示: 该文件是户口本，提取与户主关系为'子'的申请人信息");
+        log_debug!("[recognize] 识别提示: 户口本，提取申请人信息");
     } else if name.contains("银行流水") || name.contains("流水") {
-        println!("[recognize] 识别提示: 该文件是银行流水，客户名为申请人本人");
+        log_debug!("[recognize] 识别提示: 银行流水");
     }
 
     // 429 限流重试：识别失败若含 429/rate_limit，等 3 秒重试，最多 2 次
@@ -355,25 +344,25 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
     let recognized = loop {
         match recognizer::recognize_file(&app, &path, &name, file_text.clone(), content_b64.clone()).await {
             Ok(r) => {
-                // 打印 family 字段（户口本家庭成员）长度，确认数据已写入
+                // 只打印元信息，不打印字段值
                 let family_len = r
                     .fields
                     .get("family")
                     .and_then(|v| v.as_array())
                     .map(|a| a.len())
                     .unwrap_or(0);
-                println!("[recognize] Kimi 识别成功: category={}, family={} 人, fields={}", r.category, family_len, r.fields);
+                log_info!("[recognize] ok, category={}, family={} 人", r.category, family_len);
                 break r;
             }
             Err(e) => {
                 let is_rate_limit = e.contains("429") || e.to_lowercase().contains("rate_limit") || e.to_lowercase().contains("rate limit");
                 if is_rate_limit && attempt < 2 {
                     attempt += 1;
-                    println!("[recognize] 429 限流 (尝试 {attempt}/2)，等待 3 秒后重试...");
+                    log_info!("[recognize] 429 限流 (尝试 {attempt}/2)，等待 3 秒后重试...");
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                     continue;
                 }
-                println!("[recognize] Kimi 识别失败: {e}");
+                log_warn!("[recognize] 失败: {e}");
                 return Err(e);
             }
         }
@@ -407,9 +396,9 @@ pub(crate) async fn recognize_file(app: tauri::AppHandle, path: String, name: St
 pub(crate) fn get_scanned_files(app: tauri::AppHandle) -> Result<Option<store::ScannedFiles>, String> {
     let r = store::load_scanned(&app);
     match &r {
-        Ok(Some(s)) => println!("[IPC] get_scanned_files: {} 个文件", s.files.len()),
-        Ok(None) => println!("[IPC] get_scanned_files: 暂无扫描记录"),
-        Err(e) => println!("[IPC] get_scanned_files 失败: {e}"),
+        Ok(Some(s)) => log_info!("[IPC] get_scanned_files: {} 个文件", s.files.len()),
+        Ok(None) => log_debug!("[IPC] get_scanned_files: 暂无扫描记录"),
+        Err(e) => log_warn!("[IPC] get_scanned_files 失败: {e}"),
     }
     r
 }
@@ -421,8 +410,8 @@ pub(crate) fn get_scanned_files(app: tauri::AppHandle) -> Result<Option<store::S
 pub(crate) fn list_profiles(app: tauri::AppHandle) -> Result<Vec<store::ProfileCard>, String> {
     let r = store::list_profiles(&app);
     match &r {
-        Ok(cards) => println!("[IPC] list_profiles: {} 张资料卡", cards.len()),
-        Err(e) => println!("[IPC] list_profiles 失败: {e}"),
+        Ok(cards) => log_info!("[IPC] list_profiles: {} 张资料卡", cards.len()),
+        Err(e) => log_warn!("[IPC] list_profiles 失败: {e}"),
     }
     r
 }
@@ -430,7 +419,7 @@ pub(crate) fn list_profiles(app: tauri::AppHandle) -> Result<Vec<store::ProfileC
 /// IPC: create_profile — 新建资料卡
 #[tauri::command]
 pub(crate) fn create_profile(app: tauri::AppHandle, name: String) -> Result<store::ProfileCard, String> {
-    println!("[IPC] create_profile: name={name}");
+    log_info!("[IPC] create_profile: name={name}");
     store::create_profile(&app, &name)
 }
 
@@ -440,14 +429,14 @@ pub(crate) fn save_profile_card(
     app: tauri::AppHandle,
     card: store::ProfileCard,
 ) -> Result<(), String> {
-    println!("[IPC] save_profile_card: id={}, name={}", card.id, card.name);
+    log_info!("[IPC] save_profile_card: id={}", card.id);
     store::save_profile_card(&app, &card)
 }
 
 /// IPC: delete_profile — 删除资料卡
 #[tauri::command]
 pub(crate) fn delete_profile(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    println!("[IPC] delete_profile: id={id}");
+    log_info!("[IPC] delete_profile: id={id}");
     store::delete_profile(&app, &id)
 }
 
@@ -463,18 +452,17 @@ pub(crate) fn set_active_profile_id(
     app: tauri::AppHandle,
     id: Option<String>,
 ) -> Result<(), String> {
-    println!("[IPC] set_active_profile_id: {id:?}");
+    log_info!("[IPC] set_active_profile_id: {id:?}");
     store::set_active_profile_id(&app, id.as_deref())
 }
 
 /// IPC: save_profile — 保存用户资料
 #[tauri::command]
 pub(crate) fn save_profile(app: tauri::AppHandle, profile: store::UserProfile) -> Result<(), String> {
-    println!("[IPC] save_profile 被调用: name={}, passport={}", profile.name, profile.passport_number);
+    log_info!("[IPC] save_profile: name={}", profile.name);
     let r = store::save_profile(&app, &profile);
-    match &r {
-        Ok(_) => println!("[IPC] save_profile 保存成功"),
-        Err(e) => println!("[IPC] save_profile 失败: {e}"),
+    if let Err(e) = &r {
+        log_warn!("[IPC] save_profile 失败: {e}");
     }
     r
 }
@@ -545,14 +533,14 @@ pub struct ReminderDto {
 /// 并自动推送 macOS 系统通知（即使应用最小化也能弹出）。
 #[tauri::command]
 pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
-    println!("[IPC] check_reminders 被调用");
+    log_info!("[IPC] check_reminders");
     let mut reminders = Vec::new();
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
 
     // 读取设置：desktopNotification 为 true 才推系统通知
     let settings = store::load_settings(&app).unwrap_or_default();
     let push_system = settings.desktop_notification;
-    println!("[IPC] check_reminders: desktop_notification={push_system}");
+    log_debug!("[IPC] check_reminders: desktop_notification={push_system}");
 
     for app_json in store::load_all_applications(&app) {
         let id = app_json["id"].as_str().unwrap_or("").to_string();
@@ -569,7 +557,7 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
         // 递签提醒：submission_date == 今天
         if let Some(d) = app_json["submission_date"].as_str() {
             if d == today && settings.notify_submission {
-                println!("[IPC] 匹配到递签提醒: {title} @ {d}");
+                log_debug!("[IPC] 匹配到递签提醒: {title} @ {d}");
                 let body = format!("今天（{d}）是递签日期，请带齐材料前往签证中心");
                 reminders.push(ReminderDto {
                     id: id.clone(),
@@ -588,7 +576,7 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
             let is_today = d == today;
             let is_pre_issue = settings.notify_pre_issue && is_within_days(d, &today, 3);
             if (is_today && settings.notify_submission) || (is_pre_issue && !is_today) {
-                println!("[IPC] 匹配到出签提醒: {title} @ {d}");
+                log_debug!("[IPC] 匹配到出签提醒: {title} @ {d}");
                 let body = if is_today {
                     format!("今天（{d}）是预计出签日期，请留意结果通知")
                 } else {
@@ -607,7 +595,7 @@ pub(crate) fn check_reminders(app: tauri::AppHandle) -> Vec<ReminderDto> {
             }
         }
     }
-    println!("[IPC] check_reminders: 共 {} 条提醒", reminders.len());
+    log_info!("[IPC] check_reminders: 共 {} 条提醒", reminders.len());
     reminders
 }
 
@@ -633,16 +621,16 @@ fn push_system_notification(app: &tauri::AppHandle, title: &str, body: &str) {
         .body(body.to_string())
         .show()
     {
-        println!("[IPC] 系统通知发送失败: {e}");
+        log_warn!("[IPC] 系统通知发送失败: {e}");
     } else {
-        println!("[IPC] 系统通知已发送: {title} - {body}");
+        log_debug!("[IPC] 系统通知已发送: {title}");
     }
 }
 
 /// IPC: push_notification — 手动推送 macOS 系统通知
 #[tauri::command]
 pub(crate) fn push_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
-    println!("[IPC] push_notification: {title} - {body}");
+    log_debug!("[IPC] push_notification: {title}");
     push_system_notification(&app, &title, &body);
     Ok(())
 }
@@ -650,7 +638,7 @@ pub(crate) fn push_notification(app: tauri::AppHandle, title: String, body: Stri
 /// IPC: send_notification — 发送系统通知（用户命名，等价 push_notification）
 #[tauri::command]
 pub(crate) fn send_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
-    println!("[IPC] send_notification: {title} - {body}");
+    log_debug!("[IPC] send_notification: {title}");
     push_system_notification(&app, &title, &body);
     Ok(())
 }
@@ -666,8 +654,7 @@ pub(crate) fn load_settings(app: tauri::AppHandle) -> Result<store::AppSettings,
 /// IPC: save_settings — 保存用户设置
 #[tauri::command]
 pub(crate) fn save_settings(app: tauri::AppHandle, settings: store::AppSettings) -> Result<(), String> {
-    println!("[IPC] save_settings: desktop={}, submission={}, pre_issue={}, lang={}",
-        settings.desktop_notification, settings.notify_submission, settings.notify_pre_issue, settings.language);
+    log_info!("[IPC] save_settings: lang={}", settings.language);
     store::save_settings(&app, &settings)
 }
 
@@ -678,28 +665,28 @@ pub(crate) fn request_notification_permission(app: tauri::AppHandle) -> Result<b
     // permission_state() / request_permission() 均为同步方法
     let state = app.notification().permission_state().unwrap_or(tauri_plugin_notification::PermissionState::Prompt);
     if state == tauri_plugin_notification::PermissionState::Granted {
-        println!("[IPC] 通知权限已授予");
+        log_info!("[IPC] 通知权限已授予");
         return Ok(true);
     }
     let granted = app
         .notification()
         .request_permission()
         .map_err(|e| format!("请求通知权限失败: {e}"))?;
-    println!("[IPC] 通知权限请求结果: {granted:?}");
+    log_info!("[IPC] 通知权限请求结果: {granted:?}");
     Ok(granted == tauri_plugin_notification::PermissionState::Granted)
 }
 
 /// IPC: save_application — 保存申请记录到 applications/<id>.json（供提醒检查读取）
 #[tauri::command]
 pub(crate) fn save_application(app: tauri::AppHandle, id: String, data: serde_json::Value) -> Result<(), String> {
-    println!("[IPC] save_application: id={id}, 含日期 submission/issue");
+    log_info!("[IPC] save_application: id={id}");
     store::save_application(&app, &id, &data)
 }
 
 /// IPC: delete_application — 删除申请记录
 #[tauri::command]
 pub(crate) fn delete_application(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    println!("[IPC] delete_application: id={id}");
+    log_info!("[IPC] delete_application: id={id}");
     let dir = store::applications_dir(&app)?;
     let path = dir.join(format!("{id}.json"));
     if path.exists() {

@@ -8,6 +8,7 @@ import { countries } from '@/data/countries'
 import type { TripData } from '@/types'
 import { useAppStore } from '@/stores/appStore'
 import { useI18n } from '@/i18n'
+import { debug } from '@/utils/log'
 import {
   scanFiles,
   pickFiles,
@@ -189,7 +190,7 @@ export default function Scan() {
         .map((it) => (it.fields ?? {})['family'])
         .find((f) => Array.isArray(f) && f.length > 0)
       if (Array.isArray(familyArr) && familyArr.length > 0) {
-        console.log('[Scan] 保存资料卡：写入 family', familyArr.length, '人', familyArr)
+        debug('[Scan] 保存资料卡：写入 family', familyArr.length, '人')
         fields['family'] = familyArr
       }
       await saveProfileCard({ ...target, fields })
@@ -299,7 +300,7 @@ export default function Scan() {
   // 侧边栏点击「材料扫描」事件：回到文件列表页（保留已扫描文件，可追加）
   useEffect(() => {
     const handler = () => {
-      console.log('[Scan] 收到侧边栏重置事件，回到文件列表页')
+      debug('[Scan] 收到侧边栏重置事件，回到文件列表页')
       setStep(itemsRef.current.length > 0 ? 2 : 1)
     }
     window.addEventListener('visago:reset-scan', handler)
@@ -316,14 +317,14 @@ export default function Scan() {
     }
     setScanning(true)
     try {
-      console.log('[Scan] 弹文件选择器...')
+      debug('[Scan] 弹文件选择器...')
       const files = await pickFiles(true)
       if (!files || files.length === 0) {
-        console.log('[Scan] 用户取消了文件选择')
+        debug('[Scan] 用户取消了文件选择')
         setScanning(false)
         return
       }
-      console.log('[Scan] 用户选择文件数:', files.length)
+      debug('[Scan] 用户选择文件数:', files.length)
       const result: ScanResult = await scanFiles(files)
       applyScanResult(result)
     } catch (e) {
@@ -384,13 +385,13 @@ export default function Scan() {
     }
     setScanning(true)
     try {
-      console.log('[Scan] 追加：弹文件选择器...')
+      debug('[Scan] 追加：弹文件选择器...')
       const files = await pickFiles(true, '选择要追加的材料文件（可多选）')
       if (!files || files.length === 0) {
         setScanning(false)
         return
       }
-      console.log('[Scan] 追加：用户选择', files.length, '个文件')
+      debug('[Scan] 追加：用户选择', files.length, '个文件')
       const result: ScanResult = await scanFiles(files)
       applyScanResult(result, true)
     } catch (e) {
@@ -426,9 +427,9 @@ export default function Scan() {
       prev.map((x) => (x.path === item.path ? { ...x, status: 'recognizing' } : x)),
     )
     try {
-      console.log('[Scan] 调用 recognize_file:', item.name)
+      debug('[Scan] 调用 recognize_file:', item.name)
       const res: RecognizeResult = await recognizeFile(item.path, item.name)
-      console.log('[Scan] recognize_file 成功:', res)
+      debug('[Scan] recognize_file 成功:', res.category)
       setItems((prev) =>
         prev.map((x) =>
           x.path === item.path
@@ -567,15 +568,13 @@ export default function Scan() {
     for (const item of items) {
       if (item.status !== 'done') continue
       const fields = (item.fields ?? {}) as Record<string, unknown>
-      // 调试：打印 Kimi 返回的字段 keys，对比前端期望
-      console.log('[Scan] 文件识别返回 keys:', item.name, Object.keys(fields))
-      console.log('[Scan] 前端期望 keys:', fieldKeys)
+      debug('[Scan] 文件识别返回 keys:', item.name, Object.keys(fields).length, '个字段')
       // 提取行程数据（识别为行程单的文件）
       const rawTrip = fields['trip']
       if (rawTrip && typeof rawTrip === 'object' && !Array.isArray(rawTrip)) {
         trip = rawTrip as TripData
         tripSrc = item.name
-        console.log('[Scan] 识别到行程数据:', trip)
+        debug('[Scan] 识别到行程数据:', trip?.destination, trip?.days, '天')
       }
       // 先按别名归一化，再按 FIELD_SPECS 取 key
       const normalized: Record<string, unknown> = { ...fields }
@@ -604,7 +603,7 @@ export default function Scan() {
     // 冲突字段：合并进 profile 时保留首个来源，但把冲突信息传给核对表单提示
     setFieldConflicts(conflicts)
     if (Object.keys(conflicts).length > 0) {
-      console.warn('[Scan] 多文件字段冲突:', conflicts)
+      console.warn('[Scan] 多文件字段冲突:', Object.keys(conflicts).length, '个字段')
     }
 
     // P0-1：occupation 归一化为枚举；无法映射时不静默丢弃，提示并建议填入职位
@@ -647,7 +646,7 @@ export default function Scan() {
   }
 
   async function handleSaveProfile(): Promise<{ ok: boolean; cardName?: string; cardId?: string; fieldCount?: number; missing?: string[] }> {
-    console.log('[Scan] handleSaveProfile 被调用，profile=', profile)
+    debug('[Scan] handleSaveProfile 被调用，字段数:', Object.keys(profile).length)
     const result = await handleSaveToCard()
     if (result.ok) {
       // P1-10：保存成功后更新脏状态基准
@@ -719,7 +718,7 @@ export default function Scan() {
       if (reviseNote?.trim()) {
         prompt += `\n\n用户修改要求：${reviseNote.trim()}`
       }
-      console.log('[Scan] 生成 prompt 长度:', prompt.length, '字符')
+      debug('[Scan] 生成 prompt 长度:', prompt.length, '字符')
       // 生成材料（尤其含行程明细）用 32k 模型，避免 8k token 超限
       const content = await kimiChat(prompt, 'moonshot-v1-32k')
       if (cancelGenerateRef.current) {

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use crate::store;
+use crate::{log_error, log_warn};
 
 const BASE_URL: &str = "https://api.moonshot.cn/v1/chat/completions";
 const MODEL: &str = "moonshot-v1-8k";
@@ -120,26 +121,26 @@ pub async fn chat_with_key(
         .send()
         .await
         .map_err(|e| {
-            println!("=== Kimi 请求网络错误: {e} ===");
+            log_error!("[kimi] 请求网络错误: {e}");
             format!("Kimi 请求失败: {e}")
         })?;
 
     let status = res.status();
     if !status.is_success() {
         let body = res.text().await.unwrap_or_default();
-        println!("=== Kimi 返回错误 {status}: {body} ===");
+        log_warn!("[kimi] 返回错误 {status}: {body}");
         return Err(format!("Kimi 返回错误 {status}: {body}"));
     }
 
     let data: ChatResponse = res.json().await.map_err(|e| {
-        println!("=== Kimi 响应解析失败: {e} ===");
+        log_error!("[kimi] 响应解析失败: {e}");
         format!("Kimi 响应解析失败: {e}")
     })?;
     data.choices
         .first()
         .map(|c| c.message.content.clone())
         .ok_or_else(|| {
-            println!("=== Kimi 返回内容为空 ===");
+            log_error!("[kimi] 返回内容为空");
             "Kimi 返回内容为空".to_string()
         })
 }

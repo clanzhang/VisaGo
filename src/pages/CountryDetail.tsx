@@ -476,7 +476,7 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
               </span>
             )}
             <span className="inline-flex items-center gap-1">
-              <span className="h-3.5 w-3.5 icon-[mdi-light--office-building]" />
+              <span className="h-3.5 w-3.5 icon-[mdi-light--home]" />
               {t(KIND_KEYS[matchedStatic.kind ?? 'consulate'])}
             </span>
             {visaType.acceptPersonal ? (
@@ -502,7 +502,7 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
               className="mt-1.5 inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline"
             >
               {t('encyclopedia.districtOfficial')}
-              <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+              <span className="h-3 w-3 icon-[mdi-light--arrow-right-circle]" />
             </a>
           )}
         </div>
@@ -519,7 +519,7 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
               className="ml-2 inline-flex items-center gap-1 font-medium text-amber-900 underline underline-offset-2"
             >
               {t('encyclopedia.districtOfficial')}
-              <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+              <span className="h-3 w-3 icon-[mdi-light--arrow-right-circle]" />
             </a>
           )}
         </div>
@@ -578,7 +578,7 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
                     className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
                   >
                     {t('encyclopedia.districtOfficial')}
-                    <span className="h-3 w-3 icon-[mdi-light--open-in-new]" />
+                    <span className="h-3 w-3 icon-[mdi-light--arrow-right-circle]" />
                   </a>
                 )}
               </div>
@@ -590,7 +590,7 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
       {!hasStatic && showAiFallback && aiOffices.length > 0 && (
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-[#7B2FBE]">
-            <span className="h-3.5 w-3.5 icon-[mdi-light--robot]" />
+            <span className="h-3.5 w-3.5 icon-[mdi-light--account]" />
             {t('encyclopedia.districtSourceAi')}
           </div>
           <div className="space-y-3">

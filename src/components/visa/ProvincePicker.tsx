@@ -107,7 +107,7 @@ export function ProvincePicker({ value, onChange }: Props) {
               setQuery('')
               inputRef.current?.focus()
             }}
-            className="h-4 w-4 shrink-0 text-ink/40 transition-colors hover:text-ink icon-[mdi-light--close]"
+            className="h-4 w-4 shrink-0 text-ink/40 transition-colors hover:text-ink icon-[mdi-light--cancel]"
           />
         ) : (
           <span className="h-4 w-4 shrink-0 text-ink/30 icon-[mdi-light--chevron-down]" />

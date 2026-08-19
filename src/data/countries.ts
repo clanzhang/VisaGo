@@ -19,10 +19,10 @@ export const PROVINCES = [
 ]
 
 export const OCCUPATIONS = [
-  { value: 'employed', icon: 'ri:briefcase-line' },
-  { value: 'student', icon: 'ri:graduation-cap-line' },
-  { value: 'retired', icon: 'ri:user-smile-line' },
-  { value: 'freelance', icon: 'ri:group-line' },
+  { value: 'employed' },
+  { value: 'student' },
+  { value: 'retired' },
+  { value: 'freelance' },
 ] as const
 
 // ===== 从元数据生成统一结构 =====
@@ -188,13 +188,13 @@ export const VISA_TYPE_STYLE: Record<Country['visaType'], { label: string; cls: 
 
 export const REQUIREMENT_CATEGORIES: Record<
   'basic' | 'identity' | 'financial' | 'travel' | 'extra',
-  Localized & { icon: string }
+  Localized
 > = {
-  basic: { zh: '基础材料', en: 'Basic Documents', icon: 'ri:file-list-3-line' },
-  identity: { zh: '身份材料', en: 'Identity Documents', icon: 'ri:id-card-line' },
-  financial: { zh: '财力材料', en: 'Financial Documents', icon: 'ri:wallet-3-line' },
-  travel: { zh: '行程材料', en: 'Travel Documents', icon: 'ri:map-2-line' },
-  extra: { zh: '补充材料', en: 'Additional Documents', icon: 'ri:add-circle-line' },
+  basic: { zh: '基础材料', en: 'Basic Documents' },
+  identity: { zh: '身份材料', en: 'Identity Documents' },
+  financial: { zh: '财力材料', en: 'Financial Documents' },
+  travel: { zh: '行程材料', en: 'Travel Documents' },
+  extra: { zh: '补充材料', en: 'Additional Documents' },
 }
 
 export function getCountry(id: string): Country | undefined {

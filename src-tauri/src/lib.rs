@@ -2,6 +2,7 @@ mod cache;
 mod commands;
 mod exporter;
 mod kimi;
+pub mod log;
 mod recognizer;
 pub mod scanner;
 mod store;
@@ -66,7 +67,7 @@ pub fn run() {
         })
         .on_menu_event(|app, event| {
             if event.id.as_ref() == "open-preferences" {
-                println!("[menu] 偏好设置被点击（⌘,），通知前端打开弹窗");
+                log_event!("[menu] 偏好设置被点击（⌘,），通知前端打开弹窗");
                 let _ = app.emit("open-preferences", ());
             }
         })

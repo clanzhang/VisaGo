@@ -3,6 +3,7 @@
 // printpdf 支持嵌入 TTF 字体（中文），优先 macOS 系统字体，fallback Helvetica
 
 use printpdf::{BuiltinFont, IndirectFontRef, Mm, PdfDocument, PdfLayerReference};
+use crate::{log_debug, log_error, log_info};
 
 /// 从 HTML/Markdown 中提取纯文本：
 /// - 去掉 HTML 标签
@@ -77,11 +78,11 @@ fn load_chinese_font_bytes() -> Option<Vec<u8>> {
             // ttc 是字体集合，printpdf/rusttype 只支持 ttf/otf；跳过 ttc
             let ext = path.rsplit('.').next().unwrap_or("").to_lowercase();
             if ext == "ttf" || ext == "otf" {
-                println!("[export] 使用中文字体: {path}");
+                log_debug!("[export] 使用中文字体: {path}");
                 return Some(bytes);
             }
             // ttc 无法直接用，跳过
-            println!("[export] 跳过 ttc 字体（不支持集合）: {path}");
+            log_debug!("[export] 跳过 ttc 字体（不支持集合）: {path}");
         }
     }
     // 没有可用的 TTF 中文字体
@@ -143,7 +144,7 @@ fn make_pdf(text: &str) -> Vec<u8> {
 
     // 序列化为字节
     doc.save_to_bytes().map_err(|e| e.to_string()).unwrap_or_else(|e| {
-        println!("[export] PDF 序列化失败: {e}");
+        log_error!("[export] PDF 序列化失败: {e}");
         Vec::new()
     })
 }
@@ -152,10 +153,10 @@ fn make_pdf(text: &str) -> Vec<u8> {
 /// 注意：rfd 保存对话框必须在主线程调用，故为同步函数
 pub fn export_pdf(html: String, filename: String) -> Result<String, String> {
     let text = strip_html_and_markdown(&html);
-    println!("[export] 提取纯文本 {} 字符", text.chars().count());
+    log_info!("[export] 提取纯文本 {} 字符", text.chars().count());
     // 空文本保护：无内容时不导出空白页 PDF
     if text.trim().is_empty() {
-        println!("[export] 无内容可导出（提取文本为空）");
+        log_info!("[export] 无内容可导出（提取文本为空）");
         return Err("没有可导出的内容".to_string());
     }
     let pdf = make_pdf(&text);
@@ -171,7 +172,7 @@ pub fn export_pdf(html: String, filename: String) -> Result<String, String> {
     let default_name = if safe_name.is_empty() { "document".to_string() } else { safe_name };
     let default_name = format!("{default_name}.pdf");
 
-    println!("[export] 弹出保存对话框，默认文件名: {default_name}");
+    log_info!("[export] 弹出保存对话框，默认文件名: {default_name}");
     // 用 rfd 原生保存对话框，用户自行选择保存位置
     let picked = rfd::FileDialog::new()
         .set_title("选择保存位置")
@@ -182,11 +183,11 @@ pub fn export_pdf(html: String, filename: String) -> Result<String, String> {
     let path = match picked {
         Some(p) => p,
         None => {
-            println!("[export] 用户取消了保存");
+            log_info!("[export] 用户取消了保存");
             return Err("用户取消了保存".to_string());
         }
     };
-    println!("[export] 用户选择保存到: {}", path.display());
+    log_info!("[export] 用户选择保存到: {}", path.display());
 
     std::fs::write(&path, pdf).map_err(|e| format!("写 PDF 失败: {e}"))?;
     Ok(path.to_string_lossy().to_string())
@@ -233,7 +234,7 @@ mod tests {
         let text = "在职证明\n\n兹证明张三（身份证号：110105198001011234）自2020年1月起在我公司任职。\n\n特此证明。";
         let pdf = make_pdf(text);
         assert!(!pdf.is_empty(), "PDF 不应为空");
-        println!("[test] 生成的 PDF 大小: {} bytes ({:.1} KB)", pdf.len(), pdf.len() as f64 / 1024.0);
+        log_debug!("[test] 生成的 PDF 大小: {} bytes ({:.1} KB)", pdf.len(), pdf.len() as f64 / 1024.0);
         assert!(pdf.len() > 500, "PDF 大小应合理: {}", pdf.len());
         // subsetting 后文件应远小于全量嵌入（Arial Unicode 23MB）；短文本应 < 200KB
         assert!(pdf.len() < 200 * 1024, "PDF 应使用字体子集化，大小异常: {} bytes", pdf.len());

@@ -40,7 +40,7 @@ export function RequirementList({ countryName, requirements, translationBanner }
       CATEGORY_ORDER.map((cat) => ({
         cat,
         label: pickL(REQUIREMENT_CATEGORIES[cat]),
-        icon: REQUIREMENT_CATEGORIES[cat].icon,
+        // icon 已迁移至 CATEGORY_ICON (emoji)，不再使用 Iconify 图标
         list: requirements.filter((r) => r.category === cat),
       })).filter((g) => g.list.length > 0),
     [requirements],

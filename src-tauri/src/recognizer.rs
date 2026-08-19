@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::kimi;
+use crate::{log_debug, log_info};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RecognizedDoc {
@@ -80,7 +81,7 @@ pub async fn recognize_file(
     let raw = if let Some(b64) = &content_b64 {
         // 图片类 / 扫描件 PDF 渲染图：走视觉模型识图
         if b64.len() >= 3_000_000 {
-            println!("=== 图片 base64 过大 ({}), 跳过识图，回退文件名识别 ===", b64.len());
+            log_debug!("[recognize] 图片 base64 过大 ({}), 跳过识图", b64.len());
             // 过大则用文件名提示走文本模型
             let hint = file_type_hint(name);
             let hint_text = if hint.is_empty() { String::new() } else { format!("【识别提示】{hint}\n") };
@@ -110,7 +111,7 @@ pub async fn recognize_file(
             .await?
         } else {
             // 正常：视觉模型 + 图片
-            println!("=== 使用视觉模型识别图片 (base64 长度 {}) ===", b64.len());
+            log_debug!("[recognize] 使用视觉模型识别图片 (base64 长度 {})", b64.len());
             let hint = file_type_hint(name);
             let hint_text = if hint.is_empty() { String::new() } else { format!("【识别提示】{hint}\n") };
             let text = format!(
@@ -127,16 +128,16 @@ pub async fn recognize_file(
         if !hint.is_empty() {
             msg.push_str(&format!("【识别提示】{hint}\n"));
         }
-        println!("=== 文件路径: {} ===", path);
+        log_debug!("[recognize] 文件路径: {path}");
 
         if let Some(text) = &file_text {
             let text = text.trim();
             if !text.is_empty() {
-                println!("=== 提取文本长度: {} ===", text.len());
-                println!("=== 文本内容: {} ===", text);
+                log_debug!("[recognize] 提取文本长度: {} 字符", text.len());
+                // 文本内容只打印长度，不打印值（防隐私泄露）
                 msg.push_str(&format!("文件文本内容：\n{text}\n"));
             } else {
-                println!("=== 提取文本长度: 0（扫描件/图片型文件）===");
+                log_debug!("[recognize] 提取文本长度: 0（扫描件/图片型文件）");
                 msg.push_str("文件文本内容：<空>（可能是扫描件/图片型文件）\n");
             }
         }
@@ -164,7 +165,8 @@ pub async fn recognize_file(
         .await?
     };
 
-    println!("=== Kimi 返回: {} ===", raw);
+    // 只打印长度，不打印原始响应内容（防隐私泄露）
+    log_debug!("[recognize] Kimi 返回 {} 字符", raw.len());
 
     // 提取 JSON：先尝试整体解析，失败则 strip markdown 代码块再解析
     let json: serde_json::Value = {
@@ -206,7 +208,9 @@ pub async fn recognize_file(
         (cat, fields)
     };
 
-    println!("[recognize] 解析结果: category={}, fields={}", category, fields);
+    // 只打印数量和元信息，不打印字段值
+    let field_count = fields.as_object().map(|m| m.len()).unwrap_or(0);
+    log_info!("[recognize] ok, category={category}, {field_count} fields");
 
     Ok(RecognizedDoc {
         category,
