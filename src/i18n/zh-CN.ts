@@ -121,6 +121,7 @@ export default {
     total: '总计',
     notes: '注意事项',
     rejectionReasons: '常见拒签原因',
+    entryRefusalReasons: '常见拒绝入境原因',
     needInterview: '是否需要面试',
     canApplyOnline: '是否支持电子签',
     days: '天',
@@ -480,6 +481,10 @@ export default {
     optionalCount: '选交 {n} 项',
     totalCount: '共 {n} 项',
     translationNote: '需附英文翻译件',
+    faqExpandAll: '展开全部',
+    faqCollapseAll: '收起全部',
+    faqEmpty: '暂无 FAQ 内容',
+    faqEmptyDesc: '该国家的 FAQ 数据正在完善中，你可以问问 AI 助手获取实时信息。',
   },
   scan: {
     title: '材料扫描助手',

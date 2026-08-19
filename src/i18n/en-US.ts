@@ -121,6 +121,7 @@ export default {
     total: 'Total',
     notes: 'Notes',
     rejectionReasons: 'Rejection Reasons',
+    entryRefusalReasons: 'Entry Refusal Reasons',
     needInterview: 'Interview required?',
     canApplyOnline: 'E-visa supported?',
     days: 'days',
@@ -480,6 +481,10 @@ export default {
     optionalCount: '{n} optional',
     totalCount: '{n} total',
     translationNote: 'English translation required',
+    faqExpandAll: 'Expand All',
+    faqCollapseAll: 'Collapse All',
+    faqEmpty: 'No FAQ items yet',
+    faqEmptyDesc: 'FAQ data for this country is being updated. Ask the AI assistant for real-time information.',
   },
   scan: {
     title: 'Material Scanner',

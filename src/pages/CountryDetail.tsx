@@ -1,5 +1,5 @@
 // pages/CountryDetail.tsx — 国家详情页（静态兜底 + Kimi AI 实时数据）
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useI18n, regionLabelKey } from '@/i18n'
 import { VButton, VBadge } from '@/components/common'
@@ -8,6 +8,7 @@ import { countries, DIFFICULTY_LABELS } from '@/data/countries'
 import { useCountryAIData } from '@/hooks/useAIData'
 import { ProvincePicker } from '@/components/visa'
 import { KIND_KEYS, DISTRICT_NO_NEED_KEYS, districtNoNeedType, joinProvinces } from '@/utils/districts'
+import { getRejectionTitleKey } from '@/data/faq-templates'
 import type { AiCountryData } from '@/types/ai'
 import type { Country, VisaType } from '@/types'
 
@@ -342,33 +343,11 @@ export default function CountryDetail() {
         )}
 
         {tab === 'faq' && (
-          <div className="space-y-3">
-            {visaType.faq.map((f, i) => (
-              <details key={i} className="group rounded-xl border border-ink/5 p-4">
-                <summary className="cursor-pointer list-none text-sm font-medium text-ink">
-                  <span className="mr-2 text-primary">Q.</span>
-                  {pickL(f.question)}
-                  <span className="float-right text-ink/60 transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p className="mt-3 pl-6 text-sm leading-relaxed text-ink/60">{pickL(f.answer)}</p>
-              </details>
-            ))}
-            {visaType.rejectionReasons.length > 0 && (
-              <div className="rounded-xl bg-red-50/60 p-4">
-                <div className="mb-2 text-sm font-semibold text-red-600">
-                  {t('assistant.rejectionReasons')}
-                </div>
-                <ul className="space-y-1.5">
-                  {visaType.rejectionReasons.map((r, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[13px] text-ink/60">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-                      {pickL(r)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <FaqSection
+            country={country}
+            visaType={visaType}
+            ai={ai}
+          />
         )}
       </div>
 
@@ -607,4 +586,198 @@ function DistrictSection({ country, visaType, ai }: DistrictSectionProps) {
       {!hasStatic && !showAiFallback && renderEmptyNote()}
     </div>
   )
+}
+
+// ===== FAQ Tab =====
+
+interface FaqSectionProps {
+  country: Country
+  visaType: VisaType
+  ai: AiCountryData | null
+}
+
+/** FAQ 主题分组（纯展示用，不改变数据） */
+const FAQ_GROUPS: Record<string, { zh: string; en: string }> = {
+  required: { zh: '材料与费用', en: 'Documents & Fees' },
+  process: { zh: '办理流程与周期', en: 'Processing & Timeline' },
+  risk: { zh: '风险与注意事项', en: 'Risks & Tips' },
+  other: { zh: '其他问题', en: 'Other Questions' },
+}
+
+function FaqSection({ country, visaType, ai }: FaqSectionProps) {
+  const { t, pickL } = useI18n()
+  const navigate = useNavigate()
+  const [expanded, setExpanded] = useState<Set<number>>(new Set([0]))
+  const [allOpen, setAllOpen] = useState(false)
+
+  // 合并 AI FAQ 与静态 FAQ，去重（按 question 的当前语言去重）
+  const mergedFaq = useMemo(() => {
+    const staticFaq = visaType.faq
+    const aiFaq = ai?.faq ?? []
+    const combined = [...staticFaq]
+    const existingQs = new Set(staticFaq.map((f) => pickL(f.question)))
+    for (const af of aiFaq) {
+      if (!existingQs.has(af.question)) {
+        combined.push({
+          question: { zh: af.question, en: af.question },
+          answer: { zh: af.answer, en: af.answer },
+        })
+        existingQs.add(af.question)
+      }
+    }
+    // 分组：简单按关键词归类
+    return combined.map((f) => ({
+      ...f,
+      group: guessGroup(pickL(f.question)),
+    }))
+  }, [visaType.faq, ai?.faq, pickL])
+
+  const toggleAll = useCallback(() => {
+    if (allOpen) {
+      setExpanded(new Set([0]))
+      setAllOpen(false)
+    } else {
+      setExpanded(new Set(mergedFaq.map((_, i) => i)))
+      setAllOpen(true)
+    }
+  }, [allOpen, mergedFaq.length])
+
+  const toggleItem = useCallback((i: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
+    setAllOpen(false)
+  }, [])
+
+  // 空状态
+  if (mergedFaq.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-ink/15 bg-[#F9F9F6] px-6 py-12 text-center">
+        <span className="text-4xl">💬</span>
+        <h4 className="text-base font-bold text-ink">{t('encyclopedia.faqEmpty')}</h4>
+        <p className="max-w-md text-sm text-ink/60">{t('encyclopedia.faqEmptyDesc')}</p>
+        <VButton
+          size="lg"
+          className="mt-2"
+          onClick={() => navigate('/assistant', { state: { countryId: country.id, visaTypeId: visaType.id } })}
+        >
+          <span className="text-sm">🤖</span> {t('encyclopedia.askAI')}
+        </VButton>
+      </div>
+    )
+  }
+
+  // 分组渲染
+  const grouped = useMemo(() => {
+    const groups: Record<string, typeof mergedFaq> = {}
+    for (const f of mergedFaq) {
+      const g = f.group
+      if (!groups[g]) groups[g] = []
+      groups[g].push(f)
+    }
+    return groups
+  }, [mergedFaq])
+
+  // 拒签/拒绝入境原因标题 key
+  const rejectionKey = getRejectionTitleKey(country.visaType)
+
+  return (
+    <div className="space-y-3">
+      {/* 展开/收起全部 */}
+      {mergedFaq.length > 3 && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-ink/60">{mergedFaq.length} 条问答</span>
+          <button
+            onClick={toggleAll}
+            className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            {allOpen ? t('encyclopedia.faqCollapseAll') : t('encyclopedia.faqExpandAll')}
+          </button>
+        </div>
+      )}
+
+      {Object.entries(grouped).map(([groupKey, items]) => (
+        <div key={groupKey}>
+          {Object.keys(grouped).length > 1 && (
+            <div className="mb-2 text-xs font-medium text-ink/60">{getGroupLabel(groupKey, pickL)}</div>
+          )}
+          <div className="space-y-2">
+            {items.map((f) => {
+              const idx = mergedFaq.indexOf(f)
+              const open = expanded.has(idx)
+              return (
+                <details
+                  key={idx}
+                  open={open}
+                  className="group rounded-xl border border-ink/5 p-4 transition-all duration-200"
+                >
+                  <summary
+                    className="flex cursor-pointer list-none items-start justify-between gap-2 text-sm font-medium text-ink"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      toggleItem(idx)
+                    }}
+                  >
+                    <span className="flex-1">
+                      <span className="mr-2 shrink-0 text-primary">Q.</span>
+                      {pickL(f.question)}
+                    </span>
+                    <span
+                      className={`shrink-0 text-ink/60 transition-transform duration-200 ${open ? 'rotate-45' : ''}`}
+                      aria-hidden="true"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 pl-6 text-sm leading-relaxed text-ink/60">{pickL(f.answer)}</p>
+                </details>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* 拒签/拒绝入境原因 */}
+      {visaType.rejectionReasons.length > 0 && (
+        <div className="rounded-xl bg-red-50/60 p-4">
+          <div className="mb-2 text-sm font-semibold text-red-600">{t(rejectionKey)}</div>
+          <ul className="space-y-1.5">
+            {visaType.rejectionReasons.map((r, i) => (
+              <li key={i} className="flex items-start gap-2 text-[13px] text-ink/60">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+                {pickL(r)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 根据问题文本猜测所属主题分组 */
+function guessGroup(question: string): string {
+  const q = question.toLowerCase()
+  if (
+    q.includes('材料') || q.includes('费用') || q.includes('money') || q.includes('fee') ||
+    q.includes('document') || q.includes('资金') || q.includes('余额') || q.includes('保险')
+  ) return 'required'
+  if (
+    q.includes('多久') || q.includes('周期') || q.includes('办理') || q.includes('process') ||
+    q.includes('time') || q.includes('how long') || q.includes('预约') || q.includes('面签') ||
+    q.includes('interview') || q.includes('电子签') || q.includes('evisa') || q.includes('在线')
+  ) return 'process'
+  if (
+    q.includes('拒签') || q.includes('拒绝') || q.includes('reject') || q.includes('refusal') ||
+    q.includes('后果') || q.includes('滞留') || q.includes('overstay') || q.includes('风险') ||
+    q.includes('违规') || q.includes('记录')
+  ) return 'risk'
+  return 'other'
+}
+
+function getGroupLabel(key: string, pickL: (_: { zh: string; en: string }) => string): string {
+  return pickL(FAQ_GROUPS[key] ?? FAQ_GROUPS.other)
 }

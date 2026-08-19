@@ -6,6 +6,15 @@ import { COUNTRY_LIST, type CountryMeta } from './country-list'
 import { NEW_ZEALAND_REQUIREMENTS, SCHENGEN_REQUIREMENTS } from './encyclopedia-materials'
 import { getVisaExtra } from './encyclopedia-extra'
 import { getConsularOffices, validateDistrictCoverage } from './consular-districts'
+import { getCountryFaqExtra } from './encyclopedia-faq'
+import {
+  buildMutualVisaFreeFaq,
+  buildOnArrivalFaq,
+  buildEvisaFaq,
+  buildPermitFaq,
+  buildConsularFaq,
+  buildRejectionReasons,
+} from './faq-templates'
 
 // 居住地省份（仅中国大陆省级行政区）。
 // 台湾/香港/澳门不在此列：持这些身份/居住地走的是不同办理渠道，
@@ -82,6 +91,7 @@ export const PERMIT_REGION_IDS = new Set(['hong-kong', 'taiwan', 'macau'])
 
 function buildBasicVisaType(meta: CountryMeta): VisaType {
   const name = `${meta.zh}旅游签证`
+  const visaTypeId = `${meta.id}-tourist`
   const canApplyOnline = meta.visaType === '电子签' || meta.visaType === '落地签'
   const needInterview = meta.difficulty === 'hard'
   const isVisaFree = meta.visaType === '互免签证' || meta.visaType === '单方面免签'
@@ -102,12 +112,38 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
   // 费用映射：优先查表，未列出则免签 0 / 其他 300+200
   const feeData = VISA_FEES[meta.id] || { fee: isVisaFree ? 0 : 300, serviceFee: isVisaFree ? 0 : 200 }
   // 是否接受个人递签：优先用百科扩展数据（如日本须经指定代办机构），未配置默认 true
-  const acceptPersonal = getVisaExtra(meta.id, `${meta.id}-tourist`)?.flags.acceptPersonal ?? true
+  const acceptPersonal = getVisaExtra(meta.id, visaTypeId)?.flags.acceptPersonal ?? true
+  // 签证类型信息
+  const duration = '最长 30 天'
+  // 按签证类型生成通用 FAQ
+  const baseFaq: FAQ[] = (() => {
+    switch (meta.visaType) {
+      case '互免签证':
+      case '单方面免签':
+        return buildMutualVisaFreeFaq(meta.zh, meta.en, duration)
+      case '落地签':
+        return buildOnArrivalFaq(feeData.fee, 'CNY')
+      case '电子签':
+        return buildEvisaFaq(5, 15)
+      case '需通行证':
+        return buildPermitFaq(meta.zh, meta.en)
+      default:
+        return buildConsularFaq(meta.zh, meta.en, 5, 15, canApplyOnline, acceptPersonal, needInterview)
+    }
+  })()
+  // 合并国家专属 FAQ：排在通用之前，同 id 覆盖（这里用 question 的 zh 值作为去重 key）
+  const countryExtra = getCountryFaqExtra(meta.id, visaTypeId)
+  const extraFaq = countryExtra?.faq ?? []
+  const extraKeys = new Set(extraFaq.map((f) => f.question.zh))
+  const mergedFaq: FAQ[] = [...extraFaq, ...baseFaq.filter((f) => !extraKeys.has(f.question.zh))]
+  // 按签证类型生成拒绝入境/拒签原因
+  const rejectionReasons = countryExtra?.rejectionReasons ?? buildRejectionReasons(meta.visaType)
+
   return {
-    id: `${meta.id}-tourist`,
+    id: visaTypeId,
     name: { zh: name, en: `${meta.en} Tourist Visa` },
     category: 'tourist',
-    duration: '最长 30 天',
+    duration,
     validity: '3 个月',
     entries: isVisaFree ? 'multiple' : 'single',
     fee: { amount: feeData.fee, currency: 'CNY' },
@@ -121,7 +157,7 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
     acceptPersonal,
     targetAudience: { zh: `赴${meta.zh}旅游的申请人`, en: `Travelers to ${meta.en}` },
     tips: { zh: `请以${meta.zh}驻华使领馆最新要求为准。`, en: `Refer to ${meta.en} embassy for latest requirements.` },
-    rejectionReasons: [{ zh: '材料不齐全', en: 'Incomplete documents' }],
+    rejectionReasons,
     // 真实领区数据（仅送签国配置；免签/落地签/电子签国家为空数组，界面走空态）
     consularDistricts: getConsularOffices(meta.id).map((o) => ({
       name: o.name,
@@ -132,9 +168,7 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
       verifiedAt: o.verifiedAt,
     })),
     requirements,
-    faq: [
-      { question: { zh: `去${meta.zh}需要什么材料？`, en: `What's needed for ${meta.en}?` }, answer: { zh: '护照、照片、申请表、在职证明、流水、行程。', en: 'Passport, photo, form, employment, bank, itinerary.' } },
-    ] as FAQ[],
+    faq: mergedFaq,
   }
 }
 
