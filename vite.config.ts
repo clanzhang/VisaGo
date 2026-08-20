@@ -47,6 +47,22 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'es2021',
+      rollupOptions: {
+        output: {
+          // 共享 chunk 拆分：框架与数据表独立成块，长期缓存不随页面重下
+          manualChunks(id) {
+            // react 全家桶 → vendor
+            if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) {
+              return 'vendor'
+            }
+            // 静态数据表（91 国 + 领区 + 费用）被 10+ 文件共享 → data
+            if (id.includes('/src/data/')) {
+              return 'data'
+            }
+            return undefined
+          },
+        },
+      },
     },
   }
 })
