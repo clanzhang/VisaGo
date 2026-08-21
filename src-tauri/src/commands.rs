@@ -143,6 +143,50 @@ pub(crate) async fn test_kimi_connection(
     }
 }
 
+/// 材料图片合规检测（证件照 / 银行流水）— 复用 kimi::chat_vision 真实识别
+/// kind: "photo" | "bank"；image_b64 为图片 base64（不含 data: 前缀）
+/// 返回结构化 JSON：photo → {passed, score, issues[]}；bank → {bank, account_name, match_applicant, covers_required, balance, issues[]}
+#[tauri::command]
+pub(crate) async fn check_material_image(
+    app: tauri::AppHandle,
+    kind: String,
+    image_b64: String,
+    applicant_name: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let (system, text) = match kind.as_str() {
+        "photo" => (
+            "你是签证材料审核员。检查证件照是否符合签证照片规范，输出 JSON：{\"passed\": bool, \"score\": 0-100, \"issues\": [\"问题描述\"]}。检查项：白色或浅色背景、面部居中且完整可见、无帽子/墨镜/口罩遮挡、表情自然（不露齿/不皱眉）、光线均匀无阴影、近期拍摄。只要有一项不达标 passed 就为 false 并在 issues 说明。只输出 JSON，不要 markdown。".to_string(),
+            "请检查这张签证证件照是否合规。".to_string(),
+        ),
+        "bank" => {
+            let name = applicant_name.unwrap_or_default();
+            (
+                "你是签证材料审核员。检查银行流水是否满足签证要求，输出 JSON：{\"bank\": \"银行名\", \"account_name\": \"账户名\", \"match_applicant\": bool, \"covers_required\": bool, \"balance\": number, \"issues\": [\"问题描述\"]}。核对：账户名是否与申请人一致、时间范围是否覆盖近6个月、余额是否充足（>3万）、是否有异常大额转入。无法从图中识别时相应字段给空串/0/false 并在 issues 说明。只输出 JSON，不要 markdown。".to_string(),
+                format!("请检查这张银行流水。申请人姓名：{name}"),
+            )
+        }
+        _ => return Err("未知的检测类型".to_string()),
+    };
+
+    let raw = kimi::chat_vision(&app, &system, &text, &image_b64)
+        .await
+        .map_err(|e| {
+            log_info!("[IPC] check_material_image 失败: {e}");
+            e
+        })?;
+
+    // 容错解析：剥 markdown 围栏与前后噪音，取首个 JSON 对象
+    let cleaned = raw.trim().trim_start_matches("```json").trim_start_matches("```").trim_end_matches("```").trim();
+    let parsed = serde_json::from_str::<serde_json::Value>(cleaned).unwrap_or_else(|_| {
+        let s = raw.find('{').and_then(|i| raw.rfind('}').map(|j| (i, j)));
+        match s {
+            Some((i, j)) if j > i => serde_json::from_str(&raw[i..=j]).unwrap_or(serde_json::Value::Null),
+            _ => serde_json::Value::Null,
+        }
+    });
+    Ok(parsed)
+}
+
 // ===== 文件扫描与识别 =====
 
 /// IPC: scan_folder — 扫描指定文件夹（前端已用 dialog 选好路径）

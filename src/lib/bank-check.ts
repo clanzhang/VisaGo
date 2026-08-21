@@ -1,5 +1,7 @@
 // lib/bank-check.ts — 银行流水检查
-// 上传后调 Kimi 多模态提取字段并判定；此处提供结构化判定封装。
+// Tauri 桌面端：调 Rust kimi::chat_vision 真实提取流水字段并判定；
+// Web 模式（无 IPC）：返回「待检测」占位，绝不编造「示例银行/账户匹配」。
+import { isTauri, checkMaterialImage } from '@/api/tauri'
 
 export interface BankCheckResult {
   bank: string
@@ -14,10 +16,10 @@ export interface BankCheckResult {
 /**
  * 银行流水检查。
  * 提取：银行名、账户名、时间范围、最终余额、大额异常转入。
- * @param imageBase64 流水图片/PDF base64（可选）
- * @param requiredMonths 需要覆盖的月数（默认 6）
- * @param minBalance 最低余额要求（默认 30000）
- * @param applicantName 申请人姓名（校验账户名是否匹配）
+ * @param imageBase64 流水图片/PDF base64（不含 data: 前缀）
+ * @param opts.requiredMonths 需要覆盖的月数（默认 6）
+ * @param opts.minBalance 最低余额要求（默认 30000）
+ * @param opts.applicantName 申请人姓名（校验账户名是否匹配）
  */
 export async function checkBankStatement(
   imageBase64?: string,
@@ -37,15 +39,46 @@ export async function checkBankStatement(
       issues: ['尚未上传银行流水'],
     }
   }
-  // TODO: 调用 Kimi 多模态提取真实字段
+  if (isTauri()) {
+    try {
+      const raw = await checkMaterialImage('bank', imageBase64, applicantName)
+      const toNum = (v: unknown) => (typeof v === 'number' ? v : Number(v) || 0)
+      return {
+        bank: typeof raw.bank === 'string' ? raw.bank : '',
+        accountName: typeof raw.account_name === 'string' ? raw.account_name : '',
+        matchApplicant: raw.match_applicant === true,
+        coversRequired: raw.covers_required === true,
+        balance: toNum(raw.balance),
+        largeTransfers: Array.isArray(raw.large_transfers)
+          ? (raw.large_transfers as { date?: unknown; amount?: unknown; note?: unknown }[]).map((t) => ({
+              date: String(t.date ?? ''),
+              amount: toNum(t.amount),
+              note: String(t.note ?? ''),
+            }))
+          : [],
+        issues: Array.isArray(raw.issues) ? raw.issues.map(String) : [],
+      }
+    } catch (e) {
+      return {
+        bank: '',
+        accountName: '',
+        matchApplicant: false,
+        coversRequired: false,
+        balance: 0,
+        largeTransfers: [],
+        issues: [`检测失败：${e instanceof Error ? e.message : String(e)}`],
+      }
+    }
+  }
+  // Web 模式无 IPC：诚实占位，不编造结果
   return {
-    bank: '示例银行',
-    accountName: applicantName ?? '',
-    matchApplicant: true,
+    bank: '',
+    accountName: '',
+    matchApplicant: false,
     coversRequired: false,
     balance: 0,
     largeTransfers: [],
-    issues: [`已上传，等待 Kimi 解析（要求 ${requiredMonths} 个月 / 余额 ≥ ¥${minBalance}，当前为占位实现）`],
+    issues: [`已上传，等待桌面端解析（要求 ${requiredMonths} 个月 / 余额 ≥ ¥${minBalance}）`],
   }
 }
 

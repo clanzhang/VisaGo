@@ -285,6 +285,19 @@ export function testKimiConnection(key?: string): Promise<{ kind: KimiConnection
   return invoke<{ kind: KimiConnectionResult }>('test_kimi_connection', key ? { key } : {})
 }
 
+/** 材料图片合规检测（证件照/银行流水）——走 Rust kimi::chat_vision 真实识别 */
+export function checkMaterialImage(
+  kind: 'photo' | 'bank',
+  imageBase64: string,
+  applicantName?: string,
+): Promise<Record<string, unknown>> {
+  return invoke<Record<string, unknown>>('check_material_image', {
+    kind,
+    imageB64: imageBase64,
+    applicantName: applicantName ?? null,
+  })
+}
+
 export function requestNotificationPermission(): Promise<boolean> {
   return invoke<boolean>('request_notification_permission')
 }
