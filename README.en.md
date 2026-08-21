@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,12 @@ visago/
 
 ## 📦 Changelog
 
-### v0.2.0 (Current)
+### v0.2.1 (Current)
+
+- 🐛 Fixed fake "passed" results for photo/bank statement checks: the stub hard-coded passing results and misled users; now wired to real Kimi vision recognition, with failures reported honestly
+- 🐛 Page-level code splitting + vendor/data shared chunk split — removes white-screen on navigation and lowers first-screen load
+
+### v0.2.0
 
 - ✅ macOS self-signed dev bundle: configured a code-signing certificate so the system privacy panel (camera/mic/notifications) recognizes and can authorize the app
 - ✅ Version injected via a Vite plugin — changing the version in dev now takes effect on refresh, no dev-server restart needed

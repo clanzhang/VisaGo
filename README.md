@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,12 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.2.0 (当前版本)
+### v0.2.1 (当前版本)
+
+- 🐛 修复证件照/银行流水检测的假「通过」：占位实现硬编码返回通过结果误导用户，改为接入 Kimi 视觉真实识别，失败如实显示原因
+- 🐛 页面级代码分割 + vendor/data 共享 chunk 拆分，消除切页白屏、降低首屏加载
+
+### v0.2.0
 
 - ✅ 开发包 macOS 自签名：配置代码签名证书，隐私面板（摄像头/麦克风/通知）可识别并授权应用
 - ✅ 版本号改为插件注入，dev 下改版本号刷新即生效，无需重启 dev server
