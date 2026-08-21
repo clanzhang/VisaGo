@@ -593,6 +593,7 @@ export default {
     materialHint_employment: '根据在职信息与行程日期生成',
     materialHint_employmentPartial: '在职信息不全，已按模板生成，可补全后重新生成',
     materialHint_itinerary: '根据目的地与日期生成',
+    itineraryAiNote: 'AI 生成建议，请按真实计划修改',
     materialHint_photo: '要求：白底 · 35×45mm · 近 6 个月内拍摄，系统会自动检测合规性',
     materialHint_bank: '要求：近 6 个月流水 · 账户名须与申请人一致 · 余额建议覆盖行程花费',
     autoProgress: '已自动完成 {done} / 共 {total} 项',

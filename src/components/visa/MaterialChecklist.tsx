@@ -149,21 +149,14 @@ export function MaterialChecklist({
     return profile
   }
 
-  // 页面加载自动跑一遍检测 + 生成；监听资料卡更新事件自动刷新
+  // 页面加载自动跑检测；资料卡更新时重新检测
+  // 注意：不再自动生成行程——行程是 AI 建议内容，应等用户显式点「生成」再生成，
+  // 避免用户什么都没做就得到一份 AI 编造的「假行程」（原静默自动生成已移除）。
   useEffect(() => {
     let cancelled = false
     const run = async () => {
       const profile = await refreshMaterials()
       if (cancelled || !profile) return
-      // 自动生成行程（Kimi）——静默执行，失败不阻塞
-      try {
-        setGenerating(true)
-        await generateItinerary(countryName, dates)
-      } catch {
-        /* 静默 */
-      } finally {
-        setGenerating(false)
-      }
     }
     void run()
     // 资料卡保存后（Scan 页 dispatch）重新检测
@@ -269,6 +262,8 @@ export function MaterialChecklist({
     }
     if (item.status === 'auto-generate') {
       if (item.id === 'employment' && item.progress < 100) return t('scan.materialHint_employmentPartial')
+      // 行程是 AI 生成建议：明确标注，避免用户误当真实计划
+      if (item.id === 'itinerary') return t('scan.itineraryAiNote')
       return t(`scan.materialHint_${item.id}`)
     }
     // 未完成项：上传说明 + 前置规格（C14：先写要求，再让用户传）

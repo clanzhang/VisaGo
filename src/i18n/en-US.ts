@@ -593,6 +593,7 @@ export default {
     materialHint_employment: 'Generated from employment info & trip dates',
     materialHint_employmentPartial: 'Employment info incomplete — generated from template; regenerate after completing',
     materialHint_itinerary: 'Generated from destination & dates',
+    itineraryAiNote: 'AI-generated suggestion — revise with your real plan',
     materialHint_photo: 'Required: white background · 35×45mm · taken within 6 months; compliance is checked automatically',
     materialHint_bank: 'Required: last 6 months of statements · account name must match the applicant · balance should cover trip costs',
     autoProgress: 'Auto-completed {done} / {total} items',
