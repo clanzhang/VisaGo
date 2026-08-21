@@ -81,6 +81,8 @@ export default function Assistant() {
   const [unrecognizedOccupation, setUnrecognizedOccupation] = useState(false)
   // /scan 返回后资料卡更新 → 覆盖确认弹窗
   const [overwritePrompt, setOverwritePrompt] = useState<{ profile: UserProfile; name: string } | null>(null)
+  // 重新开始确认（VModal，替代 window.confirm）
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
 
   /** 读取活跃资料卡（归一化 + 兜底校验），返回 null 表示无卡 */
   const readActiveCard = useCallback(async (): Promise<{ profile: UserProfile; name: string } | null> => {
@@ -342,13 +344,34 @@ export default function Assistant() {
             added={added}
             onMaterialsReadyChange={setMaterialsReady}
             onProgressChange={(done, total) => setStepProgress({ done, total })}
-            onReset={() => {
-              if (window.confirm(t('assistant.resetConfirm'))) reset()
-            }}
+            onReset={() => setResetConfirmOpen(true)}
             onTrack={startTracking}
           />
         </>
       )}
+
+      {/* 重新开始确认（VModal，替换 window.confirm） */}
+      <VModal
+        open={resetConfirmOpen}
+        onClose={() => setResetConfirmOpen(false)}
+        title={t('assistant.resetTitle')}
+        footer={
+          <>
+            <VButton variant="secondary" onClick={() => setResetConfirmOpen(false)}>{t('common.cancel')}</VButton>
+            <VButton
+              variant="danger"
+              onClick={() => {
+                setResetConfirmOpen(false)
+                reset()
+              }}
+            >
+              {t('common.confirm')}
+            </VButton>
+          </>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink/70">{t('assistant.resetConfirm')}</p>
+      </VModal>
 
       {/* 资料卡更新 → 覆盖确认（不静默覆盖用户手输内容） */}
       <VModal

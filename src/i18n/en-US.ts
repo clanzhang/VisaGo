@@ -175,6 +175,7 @@ export default {
     recruitRiskTips: 'Risk notes',
     recruitProcessing: 'Processing estimate: {v}',
     recruitFee: 'Fee estimate: {v}',
+    resetTitle: 'Restart the application?',
     resetConfirm: 'Restart from scratch? Your selected country and entered info will be cleared.',
     passportFormatHint: 'Passport numbers are usually 1-2 letters + 7-8 digits, e.g. E12345678',
     provinceUnrecognized: 'Could not detect your province — please select it manually',

@@ -175,6 +175,7 @@ export default {
     recruitRiskTips: '风险提示',
     recruitProcessing: '办理周期预估：{v}',
     recruitFee: '费用预估：{v}',
+    resetTitle: '重新开始申请？',
     resetConfirm: '确定要重新开始吗？当前已选择的国家和填写的信息将被清空。',
     passportFormatHint: '护照号通常为 1-2 位字母 + 7-8 位数字，如 E12345678',
     provinceUnrecognized: '未能识别你的户籍，请手动选择',
