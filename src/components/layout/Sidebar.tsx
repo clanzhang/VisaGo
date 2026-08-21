@@ -25,7 +25,7 @@ interface Props {
 export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
   const { t, lang, setLang } = useI18n()
   const { reset } = useVisaStore()
-  const { openSettings, openProfile } = useAppStore()
+  const { openProfile } = useAppStore()
   const { name, cardName, filledCount } = useUserIdentity()
   const [expanded, setExpanded] = useState(true)
 
@@ -54,8 +54,6 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
       />
       <SidebarUser name={name} cardName={cardName} filledCount={filledCount} expanded={expanded} t={t} onOpenProfile={openProfile} />
       <NavItems expanded={expanded} onNavigate={handleNavClick} t={t} />
-      {/* 设置独立入口（职责分离：用户卡→个人资料，齿轮→设置） */}
-      <SidebarSettings expanded={expanded} t={t} onOpenSettings={openSettings} />
       <SidebarFooter expanded={expanded} lang={lang} setLang={setLang} />
     </aside>
   )
@@ -103,7 +101,6 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
         </div>
         <SidebarUser name={name} cardName={cardName} filledCount={filledCount} expanded t={t} onOpenProfile={openProfile} />
         <NavItems expanded onNavigate={handleNavClick} t={t} />
-        <SidebarSettings expanded={expanded} t={t} onOpenSettings={openSettings} />
         <SidebarFooter expanded={expanded} lang={lang} setLang={setLang} />
       </aside>
     </div>
@@ -202,49 +199,6 @@ function SidebarUser({
         </div>
       </div>
     </button>
-  )
-}
-
-/** 设置入口（齿轮）：与用户卡片职责分离——卡片看个人资料，齿轮进应用设置 */
-function SidebarSettings({
-  expanded,
-  t,
-  onOpenSettings,
-}: {
-  expanded: boolean
-  t: (key: string, params?: Record<string, string | number>) => string
-  onOpenSettings: () => void
-}) {
-  return (
-    <div className={`mb-2 ${expanded ? 'px-4' : 'px-0'}`}>
-      <button
-        type="button"
-        onClick={onOpenSettings}
-        title={t('sidebar.settingsHint')}
-        aria-label={t('sidebar.settingsHint')}
-        className={`flex w-full items-center rounded-lg py-2.5 text-sm text-white/60 transition-all duration-[390ms] hover:bg-white/5 hover:text-white ${
-          expanded ? 'gap-3 px-3.5' : 'justify-center px-0'
-        }`}
-      >
-        <svg
-          className="shrink-0"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
-        </svg>
-        <span className={`whitespace-nowrap transition-opacity duration-[260ms] ${expanded ? 'opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
-          {t('sidebar.settings')}
-        </span>
-      </button>
-    </div>
   )
 }
 

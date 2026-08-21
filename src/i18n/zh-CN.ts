@@ -16,8 +16,6 @@ export default {
   sidebar: {
     collapse: '收起侧边栏',
     expand: '展开侧边栏',
-    settings: '设置',
-    settingsHint: '设置（⌘,）',
     profileHint: '查看个人资料',
     savedCount: '已保存 {n} 项资料',
     anonymous: '欢迎回来',

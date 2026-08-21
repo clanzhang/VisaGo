@@ -16,8 +16,6 @@ export default {
   sidebar: {
     collapse: 'Collapse sidebar',
     expand: 'Expand sidebar',
-    settings: 'Settings',
-    settingsHint: 'Settings (⌘,)',
     profileHint: 'View profile',
     savedCount: '{n} fields saved',
     anonymous: 'Welcome back',
