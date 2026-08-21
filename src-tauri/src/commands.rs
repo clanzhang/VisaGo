@@ -1,8 +1,6 @@
 // src/commands.rs — Tauri IPC 命令
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
 
-use crate::cache;
 use crate::exporter;
 use crate::kimi;
 use crate::recognizer;
@@ -515,41 +513,6 @@ pub(crate) fn save_profile(app: tauri::AppHandle, profile: store::UserProfile) -
 #[tauri::command]
 pub(crate) fn load_profile(app: tauri::AppHandle) -> Result<Option<store::UserProfile>, String> {
     store::load_profile(&app)
-}
-
-// ===== 签证数据缓存 =====
-
-/// IPC: get_visa_data — 读取签证数据（优先本地缓存）
-#[tauri::command]
-pub(crate) fn get_visa_data(app: tauri::AppHandle, key: String) -> Result<serde_json::Value, String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    cache::read(&dir, &key).ok_or_else(|| "缓存不存在或已过期".to_string())
-}
-
-/// IPC: refresh_visa_data — 强制刷新签证数据
-#[tauri::command]
-pub(crate) async fn refresh_visa_data(
-    app: tauri::AppHandle,
-    key: String,
-    prompt: String,
-) -> Result<serde_json::Value, String> {
-    let content = kimi::chat(
-        &app,
-        vec![kimi::ChatMessage {
-            role: "user".to_string(),
-            content: prompt,
-        }],
-        kimi::ChatOptions {
-            temperature: Some(0.2),
-            max_tokens: Some(12000),
-            ..Default::default()
-        },
-    )
-    .await?;
-    let json: serde_json::Value = serde_json::from_str(&content).unwrap_or(serde_json::Value::String(content));
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    cache::write(&dir, &key, json.clone());
-    Ok(json)
 }
 
 // ===== PDF 导出 =====

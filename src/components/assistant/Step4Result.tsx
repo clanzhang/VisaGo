@@ -8,6 +8,7 @@ import { MATERIAL_TEMPLATE } from '@/lib/material-check'
 import { getVisaExtra } from '@/data/encyclopedia-extra'
 import { getVisaOfficialFee, formatFee } from '@/data/visa-fees'
 import { KIND_KEYS, DISTRICT_NO_NEED_KEYS, districtNoNeedType } from '@/utils/districts'
+import { useAIRecruit, type RecommendResult } from '@/hooks/useAIRecruit'
 import type { Country, UserProfile, VisaType } from '@/types'
 
 interface Props {
@@ -43,6 +44,27 @@ export function Step4Result({
   const [highlightPending, setHighlightPending] = useState(false)
   const [feeOpen, setFeeOpen] = useState(false)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 个性化推荐（进入方案页时自动拉取；失败区分离线/Key 问题）
+  const { recommend, loading: recommendLoading, error: recruitError } = useAIRecruit()
+  const [recommendResult, setRecommendResult] = useState<RecommendResult | null>(null)
+
+  // 进入方案页时拉取个性化推荐（国家/类型/资料就绪）
+  useEffect(() => {
+    let cancelled = false
+    if (!profile) return
+    void (async () => {
+      const result = await recommend({
+        country: pickL(country.name),
+        visaType: pickL(visaType.name),
+        profile,
+      })
+      if (!cancelled) setRecommendResult(result)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country.id, visaType.id, profile])
 
   const total = MATERIAL_TEMPLATE.length
   const done = total - incompleteIds.length
@@ -190,6 +212,68 @@ export function Step4Result({
           🌐 {t('encyclopedia.districtNotCollected')}
         </div>
       )}
+
+      {/* 个性化推荐（Kimi 实时，失败时明确区分原因而非假装存在） */}
+      {recruitError ? (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800" role="status">
+          {recruitError.kind === 'invalid_key'
+            ? t('assistant.recruitKeyInvalid')
+            : t('assistant.recruitUnavailable')}
+        </div>
+      ) : recommendLoading ? (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-ink/5 px-5 py-4 text-sm text-ink/60">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#39A2B8] border-t-transparent" aria-hidden="true" />
+          {t('assistant.recruitLoading')}
+        </div>
+      ) : recommendResult ? (
+        <div className="mb-6 rounded-xl border border-ink/5 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-4 w-4 text-[#39A2B8] icon-[mdi-light--lightbulb-on]" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-ink">{t('assistant.recruitTitle')}</h3>
+            <span className="ml-auto rounded-full bg-[#39A2B8]/10 px-2 py-0.5 text-[11px] font-medium text-[#39A2B8]">
+              {t('assistant.recruitSource')}
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {recommendResult.materials.length > 0 && (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-ink/60">{t('assistant.recruitMaterials')}</div>
+                <ul className="space-y-1">
+                  {recommendResult.materials.map((m, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-[13px] text-ink/75">
+                      <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${m.required ? 'bg-[#1460A4]' : 'bg-ink/30'}`} />
+                      <span>{m.name}{m.required && <span className="ml-1 text-[#1460A4]">*</span>}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {recommendResult.riskTips.length > 0 && (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-ink/60">{t('assistant.recruitRiskTips')}</div>
+                <ul className="space-y-1">
+                  {recommendResult.riskTips.map((tip, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-[13px] text-ink/75">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          {(recommendResult.processingEstimate || recommendResult.feeEstimate) && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-ink/5 pt-3 text-xs text-ink/60">
+              {recommendResult.processingEstimate && (
+                <span>{t('assistant.recruitProcessing', { v: recommendResult.processingEstimate })}</span>
+              )}
+              {recommendResult.feeEstimate && (
+                <span>{t('assistant.recruitFee', { v: recommendResult.feeEstimate })}</span>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* 左栏：材料（整页滚动，无内层滚动容器） */}
