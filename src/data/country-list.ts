@@ -138,6 +138,5 @@ export const COUNTRY_LIST: CountryMeta[] = [
   { id: 'taiwan', zh: '台湾', en: 'Taiwan', flag: '🏝️', visaType: '需通行证', difficulty: 'easy', region: '亚洲', desc: '大陆居民需办入台证 + 大通证，目前个人游部分开放', aliases: ['tai wan', 'taiwan', 'tw', '宝岛'] },
 ]
 
-/** 分组顺序（按签证类型四大组） */
-export const VISA_TYPE_ORDER = ['互免签证', '单方面免签', '落地签', '电子签', '需通行证'] as const
-export const REGION_ORDER = ['亚洲', '欧洲', '美洲', '大洋洲', '非洲', '港澳台']
+/** 分组顺序（互免/单免/落地/电子/通行证；区域顺序）——来自 visa-group-order.ts，此处 re-export 兼容旧调用方 */
+export { VISA_TYPE_ORDER, REGION_ORDER } from './visa-group-order'
