@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,14 @@ visago/
 
 ## 📦 Changelog
 
-### v0.2.1 (Current)
+### v0.3.0 (Current)
+
+- ✅ Assistant now generates personalized advice on the results page (key documents / risk tips / processing & fee estimates) with an "AI live" source tag; invalid-key and offline states show clear reasons
+- ✅ Sidebar user card opens a dedicated "Profile" dialog (account feature placeholder), separated from and mutually exclusive with the Settings dialog
+- 🐛 Removed silent auto-generated itineraries: the materials page no longer fabricates a trip on load; itineraries are user-triggered and labeled "AI-generated suggestion — revise with your real plan"
+- 🐛 Removed dead Rust commands with no frontend callers (get_visa_data / refresh_visa_data and the unused cache module) — cargo builds warning-free
+
+### v0.2.1
 
 - 🐛 Fixed fake "passed" results for photo/bank statement checks: the stub hard-coded passing results and misled users; now wired to real Kimi vision recognition, with failures reported honestly
 - 🐛 Page-level code splitting + vendor/data shared chunk split — removes white-screen on navigation and lowers first-screen load

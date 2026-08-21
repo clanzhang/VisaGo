@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/yourusername/visago)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/yourusername/visago)
 [![Platform](https://img.shields.io/badge/platform-macOS%7CWindows%7CLinux-lightgrey)](https://tauri.app)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
@@ -125,7 +125,14 @@ visago/
 
 ## 📦 迭代版本
 
-### v0.2.1 (当前版本)
+### v0.3.0 (当前版本)
+
+- ✅ 申请助手接入个性化推荐：进入方案页自动生成「个性化建议」（重点材料/风险提示/办理周期与费用预估），带「AI 实时生成」来源标注；Key 无效/离线时明确提示原因
+- ✅ 侧栏用户卡片弹出「个人资料」弹窗（账号功能占位），与设置弹窗职责分离、互斥打开
+- 🐛 移除行程静默自动生成：材料页加载不再自动编造行程，改为用户主动生成，并标注「AI 生成建议，请按真实计划修改」
+- 🐛 清理前端零调用的 Rust 死命令（get_visa_data / refresh_visa_data 及未用 cache 模块），cargo 零警告
+
+### v0.2.1
 
 - 🐛 修复证件照/银行流水检测的假「通过」：占位实现硬编码返回通过结果误导用户，改为接入 Kimi 视觉真实识别，失败如实显示原因
 - 🐛 页面级代码分割 + vendor/data 共享 chunk 拆分，消除切页白屏、降低首屏加载
