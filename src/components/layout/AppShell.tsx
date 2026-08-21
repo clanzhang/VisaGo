@@ -1,17 +1,21 @@
 // components/layout/AppShell.tsx — 应用外壳（侧边栏 + 主内容区）
 // ≤768px：侧边栏抽屉化（汉堡按钮 + 遮罩），主内容不横向溢出
 import { useEffect, useState, type ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
+import { ProfileCardDetailModal } from '@/components/common'
 import { SettingsModal } from '@/components/common/SettingsModal'
 import { useAppStore } from '@/stores/appStore'
+import { useActiveCard } from '@/hooks/useActiveCard'
 import { useI18n } from '@/i18n'
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { openSettings } = useAppStore()
+  const { openSettings, profileOpen, closeProfile } = useAppStore()
   const { t } = useI18n()
   const location = useLocation()
+  const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { card } = useActiveCard()
 
   // 路由变化时自动收起移动端抽屉
   useEffect(() => {
@@ -51,6 +55,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </main>
       <SettingsModal />
+      {/* 个人资料弹窗（侧栏用户卡片入口）：无活跃卡或 Web 模式时显示空态 */}
+      <ProfileCardDetailModal
+        open={profileOpen}
+        card={card}
+        onClose={closeProfile}
+        onSupplement={() => {
+          closeProfile()
+          navigate('/scan')
+        }}
+      />
     </div>
   )
 }

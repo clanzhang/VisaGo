@@ -14,9 +14,9 @@ export interface UserIdentity {
   filledCount: number
 }
 
-/** 内部资料卡 ID（如 profile_001）不应直接暴露给用户 */
+/** 内部资料卡 ID（如 profile_001 或「资料卡 profile_001」）不应直接暴露给用户 */
 function isInternalCardName(raw: string): boolean {
-  return /^profile_\d+$/i.test(raw.trim())
+  return /^(?:资料卡\s*)?profile_\d+$/i.test(raw.trim())
 }
 
 function countFilledFields(fields: Record<string, unknown>): number {

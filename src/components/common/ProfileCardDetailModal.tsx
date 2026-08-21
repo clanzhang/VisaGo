@@ -7,7 +7,9 @@ import { useModalA11y } from '@/hooks/useModalA11y'
 import type { ProfileCard } from '@/api/tauri'
 
 interface Props {
-  /** 当前查看的资料卡；null 时弹窗关闭 */
+  /** 弹窗是否打开（区别于 card 内容：打开但无活跃卡时显示空态） */
+  open: boolean
+  /** 当前查看的资料卡；null 时显示「无活跃资料卡」空态 */
   card: ProfileCard | null
   /** 关闭弹窗 */
   onClose: () => void
@@ -69,12 +71,43 @@ const FIX_HINT_KEYS: Record<string, string> = {
   occupation: 'profile.supplementHint',
 }
 
-export function ProfileCardDetailModal({ card, onClose, onSupplement }: Props) {
+export function ProfileCardDetailModal({ open, card, onClose, onSupplement }: Props) {
   const { t, isZh } = useI18n()
   const titleId = useId()
-  const dialogRef = useModalA11y(!!card, onClose, titleId)
+  const dialogRef = useModalA11y(open, onClose, titleId)
 
-  if (!card) return null
+  if (!open) return null
+
+  // 打开但无活跃资料卡（未建卡 / Web 模式）：空态，不出现空白弹窗
+  if (!card) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-ink/55 backdrop-blur-[2px]" onClick={onClose} />
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="relative flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-8 text-center shadow-float animate-[fadeInUp_0.25s_ease]"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E9F8FA]">
+            <span className="h-8 w-8 text-primary icon-[mdi-light--account-outline]" aria-hidden="true" />
+          </div>
+          <h3 id={titleId} className="mt-4 text-lg font-bold text-ink">{t('profile.noActiveCardTitle')}</h3>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink/60">{t('profile.noActiveCardDesc')}</p>
+          <div className="mt-6 flex gap-3">
+            <VButton variant="secondary" size="sm" onClick={onClose}>{t('profile.close')}</VButton>
+            {onSupplement && (
+              <VButton size="sm" onClick={onSupplement}>
+                <span className="h-4 w-4 icon-[mdi-light--plus]" />
+                {t('profile.supplement')}
+              </VButton>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const fields = (card.fields ?? {}) as Record<string, unknown>
   const has = (key: string) => String(fields[key] ?? '').trim()

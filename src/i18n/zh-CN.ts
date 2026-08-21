@@ -16,7 +16,9 @@ export default {
   sidebar: {
     collapse: '收起侧边栏',
     expand: '展开侧边栏',
+    settings: '设置',
     settingsHint: '设置（⌘,）',
+    profileHint: '查看个人资料',
     savedCount: '已保存 {n} 项资料',
     anonymous: '欢迎回来',
     activeCard: '当前资料卡',
@@ -737,6 +739,8 @@ export default {
     newCard: '新建资料卡',
     emptyTitle: '还没有资料卡',
     emptyDesc: '扫描识别后保存，或点击右上角新建一张资料卡。',
+    noActiveCardTitle: '暂无活跃资料卡',
+    noActiveCardDesc: '在「材料扫描」中保存资料后会在此显示。当前没有可查看的资料卡。',
     unnamed: '未命名',
     nameDialogTitle: '新建资料卡',
     nameDialogDesc: '给这张资料卡起个名字，例如「我的资料」「老婆的资料」「爸妈的资料」',

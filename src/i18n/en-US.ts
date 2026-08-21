@@ -16,7 +16,9 @@ export default {
   sidebar: {
     collapse: 'Collapse sidebar',
     expand: 'Expand sidebar',
+    settings: 'Settings',
     settingsHint: 'Settings (⌘,)',
+    profileHint: 'View profile',
     savedCount: '{n} fields saved',
     anonymous: 'Welcome back',
     activeCard: 'Active profile card',
@@ -737,6 +739,8 @@ export default {
     newCard: 'New Profile Card',
     emptyTitle: 'No profile cards yet',
     emptyDesc: 'Save after scanning, or create a new card from the top right.',
+    noActiveCardTitle: 'No active profile card',
+    noActiveCardDesc: 'Saved cards from Material Scan will appear here. There is no active card right now.',
     unnamed: 'Unnamed',
     nameDialogTitle: 'New Profile Card',
     nameDialogDesc: 'Name this card, e.g. "My profile", "Partner", "Parents"',

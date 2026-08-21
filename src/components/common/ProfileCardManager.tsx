@@ -234,6 +234,7 @@ export function ProfileCardManager({
 
       {/* 资料卡详情弹窗 */}
       <ProfileCardDetailModal
+        open={!!detailCard}
         card={detailCard}
         onClose={() => setDetailCard(null)}
         onSupplement={() => {

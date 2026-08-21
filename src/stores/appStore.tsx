@@ -34,12 +34,16 @@ interface AppStoreValue {
   settingsOpen: boolean
   /** 设置弹窗当前分区（openSettings 指定后作为默认落点） */
   settingsSection: SettingsSection
+  /** 个人资料弹窗（侧栏用户卡片入口）；与设置弹窗互斥 */
+  profileOpen: boolean
   setLanguage: (lang: Language) => void
   toggleTheme: () => void
   toast: (message: string, type?: ToastItem['type'], action?: ToastAction) => void
   dismissToast: (id: number) => void
   openSettings: (section?: SettingsSection) => void
   closeSettings: () => void
+  openProfile: () => void
+  closeProfile: () => void
 }
 
 const AppStoreContext = createContext<AppStoreValue | null>(null)
@@ -53,6 +57,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const toastId = useRef(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('notify')
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const setLanguage = useCallback((lang: Language) => {
     localStorage.setItem('visago:lang', lang)
@@ -80,17 +85,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       isZh: language === 'zh-CN',
       settingsOpen,
       settingsSection,
+      profileOpen,
       setLanguage,
       toggleTheme: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')),
       toast,
       dismissToast,
       openSettings: (section?: SettingsSection) => {
+        // 设置与个人资料互斥：开设置先关资料
+        setProfileOpen(false)
         if (section) setSettingsSection(section)
         setSettingsOpen(true)
       },
       closeSettings: () => setSettingsOpen(false),
+      openProfile: () => {
+        // 个人资料与设置互斥：开资料先关设置
+        setSettingsOpen(false)
+        setProfileOpen(true)
+      },
+      closeProfile: () => setProfileOpen(false),
     }),
-    [language, theme, toasts, settingsOpen, settingsSection, setLanguage, toast, dismissToast],
+    [language, theme, toasts, settingsOpen, settingsSection, profileOpen, setLanguage, toast, dismissToast],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
