@@ -7,6 +7,7 @@ import { NEW_ZEALAND_REQUIREMENTS, SCHENGEN_REQUIREMENTS } from './encyclopedia-
 import { getVisaExtra } from './encyclopedia-extra'
 import { getConsularOffices, validateDistrictCoverage } from './consular-districts'
 import { getCountryFaqExtra } from './encyclopedia-faq'
+import { getDefaultVisaFee } from './default-visa-fees'
 import {
   buildMutualVisaFreeFaq,
   buildOnArrivalFaq,
@@ -35,49 +36,6 @@ export const OCCUPATIONS = [
 ] as const
 
 // ===== 从元数据生成统一结构 =====
-
-/** 基于中国公民实际签证费用（人民币）。未列出的国家用 fallback（免签 0 / 其他 300+200） */
-const VISA_FEES: Record<string, { fee: number; serviceFee: number }> = {
-  // 互免签证（通常免费）
-  uae: { fee: 0, serviceFee: 0 },
-  thailand: { fee: 0, serviceFee: 0 },
-  singapore: { fee: 0, serviceFee: 0 },
-  malaysia: { fee: 0, serviceFee: 0 },
-  qatar: { fee: 0, serviceFee: 0 },
-  serbia: { fee: 0, serviceFee: 0 },
-  belarus: { fee: 0, serviceFee: 0 },
-  maldives: { fee: 0, serviceFee: 0 },
-  mauritius: { fee: 0, serviceFee: 0 },
-  seychelles: { fee: 0, serviceFee: 0 },
-
-  // 落地签（按实际费用）
-  indonesia: { fee: 230, serviceFee: 100 },
-  cambodia: { fee: 210, serviceFee: 100 },
-  laos: { fee: 200, serviceFee: 100 },
-  nepal: { fee: 250, serviceFee: 100 },
-  egypt: { fee: 175, serviceFee: 100 },
-  jordan: { fee: 280, serviceFee: 100 },
-  bahrain: { fee: 200, serviceFee: 100 },
-
-  // 电子签 / 需签证
-  japan: { fee: 250, serviceFee: 150 },
-  korea: { fee: 350, serviceFee: 150 },
-  india: { fee: 600, serviceFee: 200 },
-  'sri-lanka': { fee: 200, serviceFee: 100 },
-  schengen: { fee: 600, serviceFee: 250 },
-  uk: { fee: 900, serviceFee: 300 },
-  ireland: { fee: 500, serviceFee: 200 },
-  usa: { fee: 1100, serviceFee: 400 },
-  canada: { fee: 900, serviceFee: 350 },
-  australia: { fee: 1000, serviceFee: 350 },
-  'new-zealand': { fee: 900, serviceFee: 300 },
-  'south-africa': { fee: 400, serviceFee: 200 },
-
-  // 港澳台
-  'hong-kong': { fee: 80, serviceFee: 20 },
-  macau: { fee: 80, serviceFee: 20 },
-  taiwan: { fee: 90, serviceFee: 60 },
-}
 
 /** 港澳台通行证/入台证办理天数（按目的地区分；其余走通用逻辑） */
 const PERMIT_PROCESSING_DAYS: Record<string, { min: number; max: number }> = {
@@ -109,8 +67,8 @@ function buildBasicVisaType(meta: CountryMeta): VisaType {
             { id: 'bank', name: { zh: '银行流水', en: 'Bank statement' }, category: 'financial', required: true, format: 'copy', translationRequired: false },
             { id: 'itinerary', name: { zh: '行程安排', en: 'Itinerary' }, category: 'travel', required: true, format: 'copy', translationRequired: false },
           ] as Requirement[])
-  // 费用映射：优先查表，未列出则免签 0 / 其他 300+200
-  const feeData = VISA_FEES[meta.id] || { fee: isVisaFree ? 0 : 300, serviceFee: isVisaFree ? 0 : 200 }
+  // 费用映射：优先查默认费用表，未列出则免签 0 / 其他 300+200
+  const feeData = getDefaultVisaFee(meta.id, isVisaFree)
   // 是否接受个人递签：优先用百科扩展数据（如日本须经指定代办机构），未配置默认 true
   const acceptPersonal = getVisaExtra(meta.id, visaTypeId)?.flags.acceptPersonal ?? true
   // 签证类型信息
